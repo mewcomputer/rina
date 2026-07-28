@@ -58,8 +58,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/espeon/SwiftStreamingMarkdown.git",
       "state" : {
-        "branch" : "feature/character-streaming-and-width-fix",
-        "revision" : "218f2004b310db026576f4313f24d83a2e314411"
+        "branch" : "feature/fast-fade",
+        "revision" : "3cd1261142f26a5d5d2f37280aaa3c8e3194c87f"
       }
     },
     {
