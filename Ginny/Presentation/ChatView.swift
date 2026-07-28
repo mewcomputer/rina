@@ -97,82 +97,86 @@ struct ChatView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                ChatHeader(
-                    title: conversationTitle,
-                    onOpenSidebar: { setSidebarPresented(true) }
-                )
-                .frame(maxWidth: 760)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 16)
-                .zIndex(1)
+                ZStack(alignment: .top) {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                if displayedMessages.isEmpty, activeResponse == nil {
+                                    EmptyConversationView()
+                                } else {
+                                    VStack(alignment: .leading, spacing: 20) {
+                                        ForEach(displayedItems) { item in
+                                            switch item {
+                                            case .message(let message):
+                                                ChatMessageView(
+                                                    message: message,
+                                                    markdownConfig: markdownConfig
+                                                )
+                                                .id(item.id)
+                                            case .toolActivity(let message, let group):
+                                                ChatMessageView(
+                                                    message: message,
+                                                    toolActivity: group,
+                                                    markdownConfig: markdownConfig
+                                                )
+                                                .id(item.id)
+                                            }
+                                        }
 
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            if displayedMessages.isEmpty, activeResponse == nil {
-                                EmptyConversationView()
-                            } else {
-                                VStack(alignment: .leading, spacing: 20) {
-                                    ForEach(displayedItems) { item in
-                                        switch item {
-                                        case .message(let message):
-                                            ChatMessageView(
-                                                message: message,
-                                                markdownConfig: markdownConfig
+                                        if let activeResponse {
+                                            StreamedMarkdownView(
+                                                source: activeResponse.source,
+                                                config: markdownConfig.withTextAnimation(.fastFade)
                                             )
-                                            .id(item.id)
-                                        case .toolActivity(let message, let group):
-                                            ChatMessageView(
-                                                message: message,
-                                                toolActivity: group,
-                                                markdownConfig: markdownConfig
-                                            )
-                                            .id(item.id)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .id("active-response")
+                                        }
+
+                                        if let errorMessage = session.errorMessage {
+                                            Text(errorMessage)
+                                                .font(.footnote)
+                                                .foregroundStyle(theme.color("text.error"))
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .padding(14)
+                                                .ginnyGlass(
+                                                    RoundedRectangle(cornerRadius: 14, style: .continuous),
+                                                    prominence: .subtle
+                                                )
+                                                .id("error")
                                         }
                                     }
-
-                                    if let activeResponse {
-                                        StreamedMarkdownView(
-                                            source: activeResponse.source,
-                                            config: markdownConfig.withTextAnimation(.fastFade)
-                                        )
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .id("active-response")
-                                    }
-
-                                    if let errorMessage = session.errorMessage {
-                                        Text(errorMessage)
-                                            .font(.footnote)
-                                            .foregroundStyle(theme.color("text.error"))
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .padding(14)
-                                            .ginnyGlass(
-                                                RoundedRectangle(cornerRadius: 14, style: .continuous),
-                                                prominence: .subtle
-                                            )
-                                            .id("error")
-                                    }
+                                    .padding(.bottom, 24)
                                 }
-                                .padding(.bottom, 24)
+                            }
+                            .frame(maxWidth: 760)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 72)
+                            .padding(.horizontal, 16)
+                        }
+                        .scrollIndicators(.hidden)
+                        .scrollDismissesKeyboard(.interactively)
+                        .onChange(of: session.streamingText) { _, _ in
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                proxy.scrollTo("active-response", anchor: .bottom)
                             }
                         }
-                        .frame(maxWidth: 760)
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
-                    }
-                    .scrollIndicators(.hidden)
-                    .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: session.streamingText) { _, _ in
-                        withAnimation(.easeOut(duration: 0.18)) {
-                            proxy.scrollTo("active-response", anchor: .bottom)
+                        .onChange(of: session.conversation.messages.count) { _, _ in
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(displayedItems.last?.id, anchor: .bottom)
+                            }
                         }
                     }
-                    .onChange(of: session.conversation.messages.count) { _, _ in
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo(displayedItems.last?.id, anchor: .bottom)
-                        }
-                    }
+
+                    ChatHeader(
+                        title: conversationTitle,
+                        onOpenSidebar: { setSidebarPresented(true) }
+                    )
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 16)
+                    .zIndex(1)
                 }
+                .frame(maxHeight: .infinity)
 
                 ComposerView(
                     draft: $draft,
