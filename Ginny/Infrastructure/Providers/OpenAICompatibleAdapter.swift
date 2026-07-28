@@ -346,7 +346,7 @@ private struct KimiThinking: Encodable {
 private extension ThinkingLevel {
     var reasoningEffort: String? {
         switch self {
-        case .low, .high, .max:
+        case .low, .medium, .high, .max:
             rawValue
         case .off, .on:
             nil
@@ -359,7 +359,7 @@ private extension ThinkingLevel {
             KimiThinking(type: "disabled")
         case .on:
             KimiThinking(type: "enabled")
-        case .low, .high, .max:
+        case .low, .medium, .high, .max:
             nil
         }
     }

@@ -168,6 +168,42 @@ final class ProviderSettingsTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
+    func testModelReasoningMetadataProvidesThinkingOptionsAndPersistsSelection() async throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let settings = ProviderSettings(
+            defaults: defaults,
+            credentialStore: TestCredentialStore(),
+            modelCatalog: TestModelCatalog(models: [
+                ProviderModel(
+                    id: "umans-reasoning",
+                    displayName: "Umans Reasoning",
+                    capabilities: ModelCapabilities(
+                        reasoning: ModelReasoningCapabilities(
+                            supported: true,
+                            canDisable: true,
+                            levels: ["low", "medium", "high"],
+                            defaultLevel: "high"
+                        )
+                    )
+                )
+            ])
+        )
+
+        settings.selectModel("umans-reasoning")
+        await settings.refreshModels()
+
+        XCTAssertEqual(settings.thinkingOptions, [.off, .low, .medium, .high])
+        XCTAssertEqual(settings.thinkingLevel, .high)
+        settings.selectThinkingLevel(.medium)
+        XCTAssertEqual(settings.thinkingLevel, .medium)
+
+        settings.selectModel("umans-reasoning")
+        XCTAssertEqual(settings.thinkingLevel, .medium)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
     func testMigratesLegacyFullEndpointToProviderBaseURL() throws {
         let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

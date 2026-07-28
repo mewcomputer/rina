@@ -64,6 +64,20 @@ final class ProviderSettings: ObservableObject {
     }
 
     var thinkingOptions: [ThinkingLevel] {
+        if let reasoning = selectedModel?.capabilities.reasoning,
+           reasoning.supported == true
+        {
+            var options = reasoning.levels.compactMap {
+                ThinkingLevel(rawValue: $0.lowercased())
+            }
+            if reasoning.canDisable == true, !options.contains(.off) {
+                options.insert(.off, at: 0)
+            }
+            return options.isEmpty
+                ? (reasoning.canDisable == true ? [.off, .on] : [.on])
+                : options
+        }
+
         guard provider == .kimiCode else { return [] }
         if ["kimi-for-coding", "kimi-for-coding-highspeed"].contains(modelText) {
             return [.off, .on]
@@ -128,6 +142,7 @@ final class ProviderSettings: ObservableObject {
                     ?? modelText
                 )
             }
+            synchronizeThinkingLevel()
             catalogMessage = nil
         } catch ProviderError.missingCredential {
             availableModels = []
@@ -140,11 +155,7 @@ final class ProviderSettings: ObservableObject {
 
     func selectModel(_ model: String) {
         modelText = model
-        thinkingLevel = Self.storedThinkingLevel(
-            defaults: defaults,
-            provider: provider,
-            model: model
-        )
+        synchronizeThinkingLevel()
     }
 
     func selectThinkingLevel(_ level: ThinkingLevel) {
@@ -223,15 +234,47 @@ final class ProviderSettings: ObservableObject {
         return components?.url ?? url
     }
 
+    private var selectedModel: ProviderModel? {
+        availableModels.first { $0.id == modelText }
+    }
+
+    private func synchronizeThinkingLevel() {
+        let fallback: ThinkingLevel
+        if let reasoning = selectedModel?.capabilities.reasoning,
+           reasoning.supported == true
+        {
+            fallback = reasoning.defaultLevel
+                .flatMap { ThinkingLevel(rawValue: $0.lowercased()) }
+                ?? thinkingOptions.first
+                ?? .on
+        } else {
+            fallback = Self.defaultThinkingLevel(for: provider, model: modelText)
+        }
+
+        thinkingLevel = Self.storedThinkingLevel(
+            defaults: defaults,
+            provider: provider,
+            model: modelText,
+            fallback: fallback
+        )
+        guard let firstOption = thinkingOptions.first,
+              !thinkingOptions.contains(thinkingLevel)
+        else {
+            return
+        }
+        thinkingLevel = firstOption
+    }
+
     private static func storedThinkingLevel(
         defaults: UserDefaults,
         provider: ProviderID,
-        model: String
+        model: String,
+        fallback: ThinkingLevel = .high
     ) -> ThinkingLevel {
         guard let rawValue = defaults.string(forKey: thinkingLevelKey(for: provider, model: model)),
               let level = ThinkingLevel(rawValue: rawValue)
         else {
-            return defaultThinkingLevel(for: provider, model: model)
+            return fallback
         }
         return level
     }

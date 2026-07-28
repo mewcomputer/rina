@@ -24,6 +24,7 @@ enum ThinkingLevel: String, CaseIterable, Codable, Equatable, Hashable, Sendable
     case off
     case on
     case low
+    case medium
     case high
     case max
 
