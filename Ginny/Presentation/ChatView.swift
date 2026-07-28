@@ -176,7 +176,9 @@ struct ChatView: View {
 
     private var displayedMessages: [Message] {
         guard activeResponse != nil,
-              session.conversation.messages.last?.role == .assistant
+              let lastMessage = session.conversation.messages.last,
+              lastMessage.role == .assistant,
+              !lastMessage.blocks.contains(where: { $0.kind == .toolCall })
         else {
             return session.conversation.messages
         }
@@ -824,15 +826,140 @@ private struct ChatMessageView: View {
                         prominence: .subtle
                     )
                     .frame(maxWidth: .infinity, alignment: .trailing)
+            } else if message.role == .tool {
+                ToolResultGroupView(results: toolResults)
             } else {
-                MarkdownView(text: text, config: markdownConfig)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 12) {
+                    if !toolCalls.isEmpty {
+                        ToolCallGroupView(calls: toolCalls)
+                    }
+                    if !text.isEmpty {
+                        MarkdownView(text: text, config: markdownConfig)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
             }
         }
     }
 
     private var text: String {
-        message.blocks.map(\.payload).joined()
+        message.blocks
+            .filter { $0.kind == .text }
+            .map(\.payload)
+            .joined()
+    }
+
+    private var toolCalls: [ContentBlock] {
+        message.blocks.filter { $0.kind == .toolCall }
+    }
+
+    private var toolResults: [ContentBlock] {
+        message.blocks.filter { $0.kind == .toolResult }
+    }
+}
+
+private struct ToolCallGroupView: View {
+    let calls: [ContentBlock]
+    @Environment(\.ginnyTheme) private var theme
+    @State private var isExpanded = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(calls, id: \.id) { call in
+                    ToolCallRow(call: call)
+                }
+            }
+            .padding(.top, 10)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "wrench.and.screwdriver")
+                    .font(.subheadline.weight(.medium))
+                Text(calls.count == 1 ? "Tool call" : "\(calls.count) tool calls")
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                if calls.contains(where: { !$0.isComplete }) {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(theme.color("text.success"))
+                }
+            }
+        }
+        .tint(theme.color("text.body"))
+        .padding(14)
+        .background(
+            theme.color("card").opacity(0.3),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+    }
+}
+
+private struct ToolCallRow: View {
+    let call: ContentBlock
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        let name = call.attributes["name"] ?? "Tool"
+
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: call.isComplete ? "checkmark" : "ellipsis")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(
+                        call.isComplete
+                            ? theme.color("text.success")
+                            : theme.color("text.muted")
+                    )
+                Text(name.isEmpty ? "Tool" : name)
+                    .font(.subheadline.weight(.medium))
+            }
+
+            if !call.payload.isEmpty {
+                Text(call.payload)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(theme.color("text.muted"))
+                    .textSelection(.enabled)
+            }
+        }
+    }
+}
+
+private struct ToolResultGroupView: View {
+    let results: [ContentBlock]
+    @Environment(\.ginnyTheme) private var theme
+    @State private var isExpanded = false
+
+    private var containsError: Bool {
+        results.contains { $0.attributes["isError"] == "true" }
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(results, id: \.id) { result in
+                    Text(result.payload)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(theme.color("text.muted"))
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(.top, 10)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: containsError ? "exclamationmark.triangle" : "checkmark.circle")
+                    .font(.subheadline.weight(.medium))
+                Text(results.count == 1 ? "Tool result" : "Tool results")
+                    .font(.subheadline.weight(.medium))
+            }
+        }
+        .tint(containsError ? theme.color("text.error") : theme.color("text.body"))
+        .padding(14)
+        .background(
+            (containsError ? theme.color("surface.error") : theme.color("card")).opacity(0.3),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
     }
 }
 
