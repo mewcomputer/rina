@@ -94,6 +94,24 @@ final class ProviderSettingsTests: XCTestCase {
 
         defaults.removePersistentDomain(forName: suiteName)
     }
+
+    func testMigratesLegacyFullEndpointToProviderBaseURL() throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let credentials = TestCredentialStore()
+        credentials.values[ProviderSettings.credentialID] = "secret"
+        defaults.set("https://api.code.umans.ai/v1/messages", forKey: "provider.endpoint")
+
+        let settings = ProviderSettings(defaults: defaults, credentialStore: credentials)
+
+        XCTAssertEqual(settings.endpointText, "https://api.code.umans.ai")
+        XCTAssertEqual(
+            settings.configuration?.endpoint.absoluteString,
+            "https://api.code.umans.ai/v1/messages"
+        )
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
 }
 
 private final class TestCredentialStore: CredentialStore, @unchecked Sendable {

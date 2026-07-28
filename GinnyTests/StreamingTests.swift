@@ -86,6 +86,7 @@ final class StreamingTests: XCTestCase {
             try parser.parse(ServerSentEvent(data: "{\"type\":\"message_stop\"}")),
             [.responseEnded]
         )
+        XCTAssertEqual(try parser.parse(ServerSentEvent(data: "[DONE]")), [.responseEnded])
     }
 
     func testAnthropicStreamParserMapsProviderError() {
@@ -219,6 +220,30 @@ final class StreamingTests: XCTestCase {
             transport: FixtureStreamingTransport(
                 statusCode: 200,
                 body: "data: {\"type\":\"message_start\"}\n\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi\"}}\n\ndata: {\"type\":\"message_stop\"}\n\n"
+            )
+        )
+
+        var events: [ProviderStreamEvent] = []
+        for try await event in adapter.stream(for: ProviderRequest(messages: [.user("Hello")])) {
+            events.append(event)
+        }
+
+        XCTAssertEqual(events, [.responseStarted, .textDelta("Hi"), .responseEnded])
+    }
+
+    func testAnthropicAdapterCompletesWhenStreamClosesAfterText() async throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-coder",
+            credentialID: "umans-api-key"
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: FixtureStreamingTransport(
+                statusCode: 200,
+                body: "data: {\"type\":\"message_start\"}\n\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi\"}}\n\n"
             )
         )
 

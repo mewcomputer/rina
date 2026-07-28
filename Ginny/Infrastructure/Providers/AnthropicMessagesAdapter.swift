@@ -2,6 +2,10 @@ import Foundation
 
 struct AnthropicMessagesStreamParser: Sendable {
     func parse(_ event: ServerSentEvent) throws -> [ProviderStreamEvent] {
+        if event.data == "[DONE]" {
+            return [.responseEnded]
+        }
+
         guard let data = event.data.data(using: .utf8) else {
             throw ProviderError.malformedEvent
         }
@@ -133,9 +137,17 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
 
                     var sseParser = ServerSentEventParser()
                     let streamParser = AnthropicMessagesStreamParser()
+                    var didStartResponse = false
+                    var didEndResponse = false
                     for try await byte in response.bytes {
                         for event in sseParser.append([byte]) {
                             for mappedEvent in try streamParser.parse(event) {
+                                if mappedEvent == .responseStarted || mappedEvent.isTextDelta {
+                                    didStartResponse = true
+                                }
+                                if mappedEvent == .responseEnded {
+                                    didEndResponse = true
+                                }
                                 continuation.yield(mappedEvent)
                             }
                         }
@@ -143,8 +155,20 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
 
                     for event in sseParser.finish() {
                         for mappedEvent in try streamParser.parse(event) {
+                            if mappedEvent == .responseStarted || mappedEvent.isTextDelta {
+                                didStartResponse = true
+                            }
+                            if mappedEvent == .responseEnded {
+                                didEndResponse = true
+                            }
                             continuation.yield(mappedEvent)
                         }
+                    }
+                    guard didStartResponse else {
+                        throw ProviderError.invalidResponse
+                    }
+                    if !didEndResponse {
+                        continuation.yield(.responseEnded)
                     }
                     continuation.finish()
                 } catch {
@@ -178,4 +202,13 @@ private struct AnthropicMessagesRequestBody: Encodable {
 private struct AnthropicMessage: Encodable {
     let role: String
     let content: String
+}
+
+private extension ProviderStreamEvent {
+    var isTextDelta: Bool {
+        if case .textDelta = self {
+            return true
+        }
+        return false
+    }
 }

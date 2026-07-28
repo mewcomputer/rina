@@ -27,14 +27,16 @@ final class ProviderSettings: ObservableObject {
         self.defaults = defaults
         self.credentialStore = credentialStore
         self.modelCatalog = modelCatalog
-        let selectedProvider = ProviderID(rawValue: defaults.string(forKey: "provider.id") ?? "") ?? .umans
+        let storedProvider = defaults.string(forKey: "provider.id")
+        let selectedProvider = ProviderID(rawValue: storedProvider ?? "") ?? .umans
         provider = selectedProvider
-        endpointText = defaults.string(forKey: selectedProvider.baseURLKey)
-            ?? defaults.string(forKey: "provider.endpoint")
+        let storedBaseURL = defaults.string(forKey: selectedProvider.baseURLKey)
+            ?? (storedProvider == nil ? nil : defaults.string(forKey: "provider.endpoint"))
+        let storedModel = defaults.string(forKey: selectedProvider.modelKey)
+            ?? (storedProvider == nil ? nil : defaults.string(forKey: "provider.model"))
+        endpointText = Self.normalizedBaseURLText(storedBaseURL, provider: selectedProvider)
             ?? selectedProvider.defaultBaseURL
-        modelText = defaults.string(forKey: selectedProvider.modelKey)
-            ?? defaults.string(forKey: "provider.model")
-            ?? selectedProvider.defaultModel
+        modelText = storedModel ?? selectedProvider.defaultModel
         credentialText = (try? credentialStore.credential(for: selectedProvider.credentialID)) ?? ""
     }
 
@@ -62,7 +64,7 @@ final class ProviderSettings: ObservableObject {
         else {
             return nil
         }
-        return url
+        return Self.normalizedBaseURL(url, provider: provider)
     }
 
     func selectProvider(_ provider: ProviderID) {
@@ -113,11 +115,11 @@ final class ProviderSettings: ObservableObject {
 
     @discardableResult
     func save() -> Bool {
-        guard validBaseURL != nil else {
+        guard let baseURL = validBaseURL else {
             validationMessage = "Use HTTPS, or a localhost endpoint for local development."
             return false
         }
-        let endpoint = endpointText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let endpoint = baseURL.absoluteString
         let model = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !model.isEmpty else {
             validationMessage = "Enter the model name."
@@ -146,6 +148,36 @@ final class ProviderSettings: ObservableObject {
         credentialText = credential
         validationMessage = nil
         return true
+    }
+
+    private static func normalizedBaseURLText(
+        _ value: String?,
+        provider: ProviderID
+    ) -> String? {
+        guard let value,
+              let url = URL(string: value)
+        else {
+            return nil
+        }
+        return normalizedBaseURL(url, provider: provider).absoluteString
+    }
+
+    private static func normalizedBaseURL(_ url: URL, provider: ProviderID) -> URL {
+        let endpointSuffix: String
+        switch provider {
+        case .umans:
+            endpointSuffix = "/v1/messages"
+        case .kimi, .openAICompatible:
+            endpointSuffix = "/v1/chat/completions"
+        }
+
+        guard url.path.hasSuffix(endpointSuffix) else {
+            return url
+        }
+
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        components?.path = String(url.path.dropLast(endpointSuffix.count))
+        return components?.url ?? url
     }
 
 }
