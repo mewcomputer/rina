@@ -89,6 +89,10 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
             model: configuration.model,
             messages: request.messages,
             maxTokens: 32_768,
+            reasoningEffort: configuration.provider == .kimiCode
+                && ["k3", "k3-256k"].contains(configuration.model)
+                ? configuration.thinkingLevel?.rawValue
+                : nil,
             stream: true
         )
         urlRequest.httpBody = try JSONEncoder().encode(body)
@@ -143,12 +147,14 @@ private struct OpenAICompatibleRequestBody: Encodable {
     let model: String
     let messages: [ProviderMessage]
     let maxTokens: Int
+    let reasoningEffort: String?
     let stream: Bool
 
     private enum CodingKeys: String, CodingKey {
         case model
         case messages
         case maxTokens = "max_tokens"
+        case reasoningEffort = "reasoning_effort"
         case stream
     }
 }

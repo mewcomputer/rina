@@ -10,6 +10,7 @@ final class ProviderSettings: ObservableObject {
     @Published var endpointText: String
     @Published var modelText: String
     @Published var credentialText: String
+    @Published var thinkingLevel: ThinkingLevel = .high
     @Published private(set) var availableModels: [ProviderModel] = []
     @Published private(set) var isLoadingModels = false
     @Published private(set) var catalogMessage: String?
@@ -38,6 +39,11 @@ final class ProviderSettings: ObservableObject {
             ?? selectedProvider.defaultBaseURL
         modelText = storedModel ?? selectedProvider.defaultModel
         credentialText = (try? credentialStore.credential(for: selectedProvider.credentialID)) ?? ""
+        thinkingLevel = Self.storedThinkingLevel(
+            defaults: defaults,
+            provider: selectedProvider,
+            model: modelText
+        )
     }
 
     var configuration: ProviderConfiguration? {
@@ -52,8 +58,15 @@ final class ProviderSettings: ObservableObject {
             provider: provider,
             endpoint: provider.messageEndpoint(for: baseURL),
             model: modelText.trimmingCharacters(in: .whitespacesAndNewlines),
-            credentialID: provider.credentialID
+            credentialID: provider.credentialID,
+            thinkingLevel: thinkingOptions.contains(thinkingLevel) ? thinkingLevel : nil
         )
+    }
+
+    var thinkingOptions: [ThinkingLevel] {
+        guard provider == .kimiCode else { return [] }
+        guard ["k3", "k3-256k"].contains(modelText) else { return [] }
+        return [.low, .high, .max]
     }
 
     var validBaseURL: URL? {
@@ -72,6 +85,11 @@ final class ProviderSettings: ObservableObject {
         endpointText = defaults.string(forKey: provider.baseURLKey) ?? provider.defaultBaseURL
         modelText = defaults.string(forKey: provider.modelKey) ?? provider.defaultModel
         credentialText = (try? credentialStore.credential(for: provider.credentialID)) ?? ""
+        thinkingLevel = Self.storedThinkingLevel(
+            defaults: defaults,
+            provider: provider,
+            model: modelText
+        )
         availableModels = []
         catalogMessage = nil
         validationMessage = nil
@@ -99,9 +117,11 @@ final class ProviderSettings: ObservableObject {
                 credential: credential ?? nil
             )
             if !availableModels.contains(where: { $0.id == modelText }) {
-                modelText = availableModels.first(where: { $0.id == "umans-coder" })?.id
+                selectModel(
+                    availableModels.first(where: { $0.id == "umans-coder" })?.id
                     ?? availableModels.first?.id
                     ?? modelText
+                )
             }
             catalogMessage = nil
         } catch ProviderError.missingCredential {
@@ -111,6 +131,24 @@ final class ProviderSettings: ObservableObject {
             availableModels = []
             catalogMessage = "Models could not be refreshed."
         }
+    }
+
+    func selectModel(_ model: String) {
+        modelText = model
+        thinkingLevel = Self.storedThinkingLevel(
+            defaults: defaults,
+            provider: provider,
+            model: model
+        )
+    }
+
+    func selectThinkingLevel(_ level: ThinkingLevel) {
+        guard thinkingOptions.contains(level) else { return }
+        thinkingLevel = level
+        defaults.set(
+            level.rawValue,
+            forKey: Self.thinkingLevelKey(for: provider, model: modelText)
+        )
     }
 
     @discardableResult
@@ -178,6 +216,23 @@ final class ProviderSettings: ObservableObject {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         components?.path = String(url.path.dropLast(endpointSuffix.count))
         return components?.url ?? url
+    }
+
+    private static func storedThinkingLevel(
+        defaults: UserDefaults,
+        provider: ProviderID,
+        model: String
+    ) -> ThinkingLevel {
+        guard let rawValue = defaults.string(forKey: thinkingLevelKey(for: provider, model: model)),
+              let level = ThinkingLevel(rawValue: rawValue)
+        else {
+            return .high
+        }
+        return level
+    }
+
+    private static func thinkingLevelKey(for provider: ProviderID, model: String) -> String {
+        "provider.\(provider.rawValue).model.\(model).thinkingLevel"
     }
 
 }

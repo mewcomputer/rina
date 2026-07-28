@@ -20,6 +20,16 @@ enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
     }
 }
 
+enum ThinkingLevel: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
+    case low
+    case high
+    case max
+
+    var displayName: String {
+        rawValue.capitalized
+    }
+}
+
 enum ProviderMessageRole: String, Codable, Equatable, Sendable {
     case user
     case assistant
@@ -56,19 +66,28 @@ struct ProviderConfiguration: Codable, Equatable, Sendable {
     var endpoint: URL
     var model: String
     var credentialID: String
+    var thinkingLevel: ThinkingLevel?
 
     init(endpoint: URL, model: String, credentialID: String) {
         provider = .openAICompatible
         self.endpoint = endpoint
         self.model = model
         self.credentialID = credentialID
+        thinkingLevel = nil
     }
 
-    init(provider: ProviderID, endpoint: URL, model: String, credentialID: String) {
+    init(
+        provider: ProviderID,
+        endpoint: URL,
+        model: String,
+        credentialID: String,
+        thinkingLevel: ThinkingLevel? = nil
+    ) {
         self.provider = provider
         self.endpoint = endpoint
         self.model = model
         self.credentialID = credentialID
+        self.thinkingLevel = thinkingLevel
     }
 }
 

@@ -618,11 +618,26 @@ private struct ServiceModelMenu: View {
                 Section("Model") {
                     ForEach(settings.availableModels) { model in
                         Button {
-                            settings.modelText = model.id
+                            settings.selectModel(model.id)
                         } label: {
                             Label(
                                 model.displayName,
                                 systemImage: settings.modelText == model.id ? "checkmark" : "circle"
+                            )
+                        }
+                    }
+                }
+            }
+
+            if !settings.thinkingOptions.isEmpty {
+                Section("Thinking") {
+                    ForEach(settings.thinkingOptions, id: \.self) { level in
+                        Button {
+                            settings.selectThinkingLevel(level)
+                        } label: {
+                            Label(
+                                level.displayName,
+                                systemImage: settings.thinkingLevel == level ? "checkmark" : "circle"
                             )
                         }
                     }
@@ -711,6 +726,9 @@ private struct ProviderSettingsView: View {
                         ForEach(settings.availableModels) { model in
                             Text(model.displayName).tag(model.id)
                         }
+                    }
+                    .onChange(of: settings.modelText) { _, model in
+                        settings.selectModel(model)
                     }
                 } else {
                     TextField("Model", text: $settings.modelText)

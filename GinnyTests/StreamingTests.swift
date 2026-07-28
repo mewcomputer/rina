@@ -224,6 +224,29 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer secret")
     }
 
+    func testKimiCodeRequestIncludesSelectedThinkingEffort() throws {
+        let configuration = ProviderConfiguration(
+            provider: .kimiCode,
+            endpoint: URL(string: "https://api.kimi.com/coding/v1/chat/completions")!,
+            model: "k3",
+            credentialID: "kimi-code-api-key",
+            thinkingLevel: .high
+        )
+        let adapter = OpenAICompatibleAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["kimi-code-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.user("Hello")])
+        )
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+
+        XCTAssertEqual(object["reasoning_effort"] as? String, "high")
+    }
+
     func testKimiCodeCompositionUsesTheOpenAICompatibleAdapter() {
         let dependencies = AppDependencies(
             credentialStore: InMemoryCredentialStore(credentials: [:]),

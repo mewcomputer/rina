@@ -144,6 +144,27 @@ final class ProviderSettingsTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
+    func testKimiCodeThinkingLevelIsModelAwareAndPersistent() throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let settings = ProviderSettings(defaults: defaults, credentialStore: TestCredentialStore())
+
+        settings.selectProvider(.kimiCode)
+        XCTAssertTrue(settings.thinkingOptions.isEmpty)
+
+        settings.selectModel("k3")
+        XCTAssertEqual(settings.thinkingOptions, [.low, .high, .max])
+        settings.selectThinkingLevel(.max)
+        XCTAssertEqual(settings.thinkingLevel, .max)
+
+        let restored = ProviderSettings(defaults: defaults, credentialStore: TestCredentialStore())
+        restored.selectProvider(.kimiCode)
+        restored.selectModel("k3")
+        XCTAssertEqual(restored.thinkingLevel, .max)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
     func testMigratesLegacyFullEndpointToProviderBaseURL() throws {
         let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
