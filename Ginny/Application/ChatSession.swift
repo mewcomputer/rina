@@ -8,13 +8,18 @@ final class ChatSession: ObservableObject {
     @Published private(set) var errorMessage: String?
 
     private var provider: (any ProviderAdapter)?
+    private var activeGenerationTask: Task<Void, Never>?
+    private var activeGenerationID: UUID?
+    private let toolRegistry: ToolRegistry
 
     init(
         provider: (any ProviderAdapter)? = nil,
-        conversation: Conversation = Conversation()
+        conversation: Conversation = Conversation(),
+        toolRegistry: ToolRegistry = ToolRegistry()
     ) {
         self.provider = provider
         self.conversation = conversation
+        self.toolRegistry = toolRegistry
     }
 
     func configure(provider: any ProviderAdapter) {
@@ -45,6 +50,35 @@ final class ChatSession: ObservableObject {
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !isGenerating else { return }
 
+        let generationID = UUID()
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.performSend(prompt)
+        }
+        activeGenerationID = generationID
+        activeGenerationTask = task
+
+        await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
+
+        if activeGenerationID == generationID {
+            activeGenerationID = nil
+            activeGenerationTask = nil
+        }
+    }
+
+    func cancel() {
+        guard isGenerating else { return }
+
+        activeGenerationTask?.cancel()
+        try? conversation.cancelGeneration()
+    }
+
+    private func performSend(_ prompt: String) async {
+
         errorMessage = nil
         streamingText = ""
 
@@ -63,21 +97,28 @@ final class ChatSession: ObservableObject {
                 )
             )
 
-            let request = ProviderRequest(
-                messages: conversation.messages.dropLast().map {
-                    ProviderMessage(
-                        role: ProviderMessageRole(rawValue: $0.role.rawValue) ?? .user,
-                        content: $0.blocks.map(\.payload).joined()
-                    )
+            while true {
+                let request = makeRequest()
+                for try await event in provider.stream(for: request) {
+                    try handle(event: event)
                 }
-            )
 
-            for try await event in provider.stream(for: request) {
-                try handle(event: event)
-            }
+                guard conversation.generationState == .streaming else { return }
+                let toolCalls = completedToolCalls(in: conversation.messages.last)
+                if toolCalls.isEmpty {
+                    try finishGeneration()
+                    return
+                }
 
-            if conversation.generationState == .streaming {
-                try finishGeneration()
+                try finalizeAssistantForToolCalls()
+                try await execute(toolCalls)
+                try conversation.appendMessage(
+                    Message(
+                        role: .assistant,
+                        blocks: [.text("", isComplete: false)]
+                    )
+                )
+                streamingText = ""
             }
         } catch is CancellationError {
             try? conversation.cancelGeneration()
@@ -90,13 +131,13 @@ final class ChatSession: ObservableObject {
     private func handle(event: ProviderStreamEvent) throws {
         switch event {
         case .responseStarted:
-            if conversation.generationState == .preparing {
-                try conversation.beginStreaming()
-            }
+            guard conversation.generationState == .preparing else { return }
+            try conversation.beginStreaming()
         case .textDelta(let delta):
             if conversation.generationState == .preparing {
                 try conversation.beginStreaming()
             }
+            guard conversation.generationState == .streaming else { return }
             guard var assistant = conversation.messages.last,
                   assistant.role == .assistant,
                   var block = assistant.blocks.first
@@ -109,29 +150,181 @@ final class ChatSession: ObservableObject {
             block.isComplete = false
             assistant.blocks = [block]
             try conversation.updateMessage(assistant)
+        case .continuationDelta(let delta):
+            if conversation.generationState == .preparing {
+                try conversation.beginStreaming()
+            }
+            guard conversation.generationState == .streaming,
+                  var assistant = conversation.messages.last,
+                  assistant.role == .assistant
+            else {
+                return
+            }
+
+            if let index = assistant.providerContinuations.firstIndex(where: {
+                $0.provider == delta.provider
+                    && $0.id == delta.id
+                    && $0.kind == delta.kind
+            }) {
+                switch delta.operation {
+                case .append:
+                    assistant.providerContinuations[index].fields[delta.field, default: ""] += delta.value
+                case .replace:
+                    assistant.providerContinuations[index].fields[delta.field] = delta.value
+                }
+            } else {
+                assistant.providerContinuations.append(
+                    ProviderContinuation(
+                        provider: delta.provider,
+                        id: delta.id,
+                        kind: delta.kind,
+                        fields: [delta.field: delta.value]
+                    )
+                )
+            }
+            try conversation.updateMessage(assistant)
+        case .toolCallDelta(let delta):
+            if conversation.generationState == .preparing {
+                try conversation.beginStreaming()
+            }
+            guard conversation.generationState == .streaming,
+                  var assistant = conversation.messages.last,
+                  assistant.role == .assistant
+            else {
+                return
+            }
+
+            if let index = assistant.blocks.firstIndex(where: {
+                $0.kind == .toolCall && $0.attributes["callID"] == delta.id
+            }) {
+                if let name = delta.name {
+                    assistant.blocks[index].attributes["name"] = name
+                }
+                if let arguments = delta.arguments {
+                    assistant.blocks[index].payload += arguments
+                }
+            } else {
+                assistant.blocks.append(
+                    .toolCall(
+                        callID: delta.id,
+                        name: delta.name ?? "",
+                        arguments: delta.arguments ?? ""
+                    )
+                )
+            }
+            try conversation.updateMessage(assistant)
         case .finish:
             break
         case .responseEnded:
-            try finishGeneration()
+            break
         }
     }
 
-    private func finishGeneration() throws {
+    private func makeRequest() -> ProviderRequest {
+        ProviderRequest(
+            messages: conversation.messages.dropLast().map { message in
+                let toolCalls = message.blocks.compactMap { block -> ProviderToolCall? in
+                    guard block.kind == .toolCall,
+                          let id = block.attributes["callID"],
+                          let name = block.attributes["name"]
+                    else {
+                        return nil
+                    }
+                    return ProviderToolCall(
+                        id: id,
+                        name: name,
+                        arguments: block.payload,
+                        isComplete: block.isComplete
+                    )
+                }
+                let toolCallID = message.blocks.first(where: { $0.kind == .toolResult })?
+                    .attributes["callID"]
+                return ProviderMessage(
+                    role: ProviderMessageRole(rawValue: message.role.rawValue) ?? .user,
+                    content: message.blocks
+                        .filter { $0.kind == .text || $0.kind == .toolResult }
+                        .map(\.payload)
+                        .joined(),
+                    continuations: message.providerContinuations,
+                    toolCalls: toolCalls,
+                    toolCallID: toolCallID
+                )
+            },
+            tools: provider?.supportsTools == true ? toolRegistry.definitions : []
+        )
+    }
+
+    private func completedToolCalls(in message: Message?) -> [ContentBlock] {
+        message?.blocks.filter { $0.kind == .toolCall } ?? []
+    }
+
+    private func finalizeAssistantForToolCalls() throws {
         guard var assistant = conversation.messages.last,
-              assistant.role == .assistant,
-              var block = assistant.blocks.first
+              assistant.role == .assistant
         else {
             return
         }
 
-        block.payload = streamingText
-        block.isComplete = true
-        assistant.blocks = [block]
+        for index in assistant.blocks.indices where assistant.blocks[index].kind == .toolCall {
+            assistant.blocks[index].isComplete = true
+        }
+        if let index = assistant.blocks.firstIndex(where: { $0.kind == .text }) {
+            assistant.blocks[index].isComplete = true
+        }
+        try conversation.updateMessage(assistant)
+    }
+
+    private func execute(_ calls: [ContentBlock]) async throws {
+        for call in calls {
+            guard let callID = call.attributes["callID"],
+                  let name = call.attributes["name"]
+            else {
+                continue
+            }
+
+            do {
+                let result = try await toolRegistry.execute(name: name, arguments: call.payload)
+                try conversation.appendMessage(
+                    Message(role: .tool, blocks: [.toolResult(callID: callID, result: result)])
+                )
+            } catch {
+                try conversation.appendMessage(
+                    Message(
+                        role: .tool,
+                        blocks: [
+                            .toolResult(
+                                callID: callID,
+                                result: "Tool error: \(error.localizedDescription)",
+                                isError: true
+                            )
+                        ]
+                    )
+                )
+            }
+        }
+    }
+
+    private func finishGeneration() throws {
+        guard conversation.generationState == .streaming else { return }
+
+        guard var assistant = conversation.messages.last,
+              assistant.role == .assistant
+        else {
+            return
+        }
+
+        if let index = assistant.blocks.firstIndex(where: { $0.kind == .text }) {
+            assistant.blocks[index].payload = streamingText
+            assistant.blocks[index].isComplete = true
+        } else {
+            assistant.blocks.append(.text(streamingText))
+        }
+        for index in assistant.blocks.indices where assistant.blocks[index].kind == .toolCall {
+            assistant.blocks[index].isComplete = true
+        }
         try conversation.updateMessage(assistant)
 
-        if conversation.generationState == .streaming {
-            try conversation.completeGeneration()
-        }
+        try conversation.completeGeneration()
     }
 
     private func message(for error: Error) -> String {

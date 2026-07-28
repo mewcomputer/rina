@@ -167,6 +167,7 @@ struct ChatView: View {
                     settings: settings,
                     isGenerating: session.isGenerating,
                     send: send,
+                    cancel: cancel,
                     openSettings: { showsSettings = true }
                 )
                 .frame(height: 100)
@@ -315,13 +316,18 @@ struct ChatView: View {
 
         generationTask = Task { @MainActor in
             await session.send(prompt)
-            if session.conversation.generationState == .completed {
+            if [.completed, .cancelled, .failed].contains(session.conversation.generationState) {
                 history.save(session.conversation)
             }
             response.source.finish()
             activeResponse = nil
             generationTask = nil
         }
+    }
+
+    private func cancel() {
+        session.cancel()
+        generationTask?.cancel()
     }
 }
 
@@ -536,11 +542,12 @@ private struct ComposerView: View {
     @ObservedObject var settings: ProviderSettings
     let isGenerating: Bool
     let send: () -> Void
+    let cancel: () -> Void
     let openSettings: () -> Void
     @Environment(\.ginnyTheme) private var theme
 
-    private var canSend: Bool {
-        !isGenerating && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    private var canSubmit: Bool {
+        isGenerating || !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -566,15 +573,15 @@ private struct ComposerView: View {
 
                 Spacer(minLength: 0)
 
-                Button(action: send) {
+                Button(action: isGenerating ? cancel : send) {
                     Image(systemName: isGenerating ? "stop" : "arrow.up")
                         .font(.system(size: 16, weight: .bold))
                         .frame(width: 36, height: 36)
                         .foregroundStyle(theme.color("primary_foreground"))
                         .background(theme.color("primary"), in: Circle())
                 }
-                .disabled(!canSend)
-                .opacity(canSend ? 1 : 0.38)
+                .disabled(!canSubmit)
+                .opacity(canSubmit ? 1 : 0.38)
                 .accessibilityLabel(isGenerating ? "Stop generating" : "Send message")
             }
         }

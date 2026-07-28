@@ -32,7 +32,7 @@ final class StreamingTests: XCTestCase {
     }
 
     func testOpenAIStreamParserMapsTextAndDoneEvents() throws {
-        let parser = OpenAICompatibleStreamParser()
+        var parser = OpenAICompatibleStreamParser()
 
         XCTAssertEqual(
             try parser.parse(
@@ -45,8 +45,66 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(try parser.parse(ServerSentEvent(data: "[DONE]")), [.responseEnded])
     }
 
+    func testOpenAIStreamParserMapsReasoningContentAsContinuationMetadata() throws {
+        var parser = OpenAICompatibleStreamParser(provider: .kimiCode)
+
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"choices\":[{\"delta\":{\"reasoning_content\":\"think\"}}]}"
+                )
+            ),
+            [.continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .kimiCode,
+                    id: "reasoning",
+                    kind: "reasoning",
+                    field: "text",
+                    value: "think",
+                    operation: .append
+                )
+            )]
+        )
+    }
+
+    func testOpenAIStreamParserMapsToolCallDeltas() throws {
+        var parser = OpenAICompatibleStreamParser(provider: .kimiCode)
+
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call-1\",\"function\":{\"name\":\"current_time\",\"arguments\":\"{}\"}}]}}]}"
+                )
+            ),
+            [.toolCallDelta(
+                ProviderToolCallDelta(
+                    provider: .kimiCode,
+                    id: "call-1",
+                    name: "current_time",
+                    arguments: "{}"
+                )
+            )]
+        )
+
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"more\"}}]}}]}"
+                )
+            ),
+            [.toolCallDelta(
+                ProviderToolCallDelta(
+                    provider: .kimiCode,
+                    id: "call-1",
+                    name: nil,
+                    arguments: "more"
+                )
+            )]
+        )
+    }
+
     func testOpenAIStreamParserMapsProviderError() {
-        let parser = OpenAICompatibleStreamParser()
+        var parser = OpenAICompatibleStreamParser()
 
         XCTAssertThrowsError(
             try parser.parse(
@@ -98,6 +156,40 @@ final class StreamingTests: XCTestCase {
                 )
             ),
             [.textDelta("Hello")]
+        )
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"plan\"}}"
+                )
+            ),
+            [.continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .umans,
+                    id: "block-0",
+                    kind: "reasoning",
+                    field: "thinking",
+                    value: "plan",
+                    operation: .append
+                )
+            )]
+        )
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"opaque\"}}"
+                )
+            ),
+            [.continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .umans,
+                    id: "block-0",
+                    kind: "reasoning",
+                    field: "signature",
+                    value: "opaque",
+                    operation: .append
+                )
+            )]
         )
         XCTAssertEqual(
             try parser.parse(
@@ -200,6 +292,76 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(object["model"] as? String, "example-model")
         XCTAssertEqual(object["stream"] as? Bool, true)
         XCTAssertEqual(object["max_tokens"] as? Int, 32_768)
+    }
+
+    func testOpenAIRequestIncludesToolDefinitions() throws {
+        let configuration = ProviderConfiguration(
+            endpoint: URL(string: "https://example.com/v1/chat/completions")!,
+            model: "example-model",
+            credentialID: "primary"
+        )
+        let adapter = OpenAICompatibleAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["primary": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+        let tool = ProviderToolDefinition(
+            name: "current_time",
+            description: "Returns the current time.",
+            inputSchema: "{\"type\":\"object\",\"properties\":{}}"
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.user("Hello")], tools: [tool])
+        )
+
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let tools = try XCTUnwrap(object["tools"] as? [[String: Any]])
+        let function = try XCTUnwrap(tools.first?["function"] as? [String: Any])
+        XCTAssertEqual(tools.first?["type"] as? String, "function")
+        XCTAssertEqual(function["name"] as? String, "current_time")
+        let parameters = try XCTUnwrap(function["parameters"] as? [String: Any])
+        XCTAssertEqual(parameters["type"] as? String, "object")
+        XCTAssertNotNil(parameters["properties"] as? [String: Any])
+    }
+
+    func testOpenAIRequestPreservesAssistantToolCallsAndToolResults() throws {
+        let configuration = ProviderConfiguration(
+            endpoint: URL(string: "https://example.com/v1/chat/completions")!,
+            model: "example-model",
+            credentialID: "primary"
+        )
+        let adapter = OpenAICompatibleAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["primary": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+        let call = ProviderToolCall(
+            id: "call-1",
+            name: "current_time",
+            arguments: "{}",
+            isComplete: true
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [
+                .assistant("", toolCalls: [call]),
+                .tool("1970-01-01T00:00:00Z", callID: "call-1"),
+            ])
+        )
+
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let messages = try XCTUnwrap(object["messages"] as? [[String: Any]])
+        let assistant = try XCTUnwrap(messages.first)
+        let toolCalls = try XCTUnwrap(assistant["tool_calls"] as? [[String: Any]])
+        let function = try XCTUnwrap(toolCalls.first?["function"] as? [String: Any])
+        XCTAssertEqual(assistant["role"] as? String, "assistant")
+        XCTAssertEqual(toolCalls.first?["id"] as? String, "call-1")
+        XCTAssertEqual(function["name"] as? String, "current_time")
+        XCTAssertEqual(messages.last?["role"] as? String, "tool")
+        XCTAssertEqual(messages.last?["tool_call_id"] as? String, "call-1")
     }
 
     func testKimiCodeUsesTheOpenAICompatibleCodingEndpoint() throws {
@@ -309,7 +471,24 @@ final class StreamingTests: XCTestCase {
             events.append(event)
         }
 
-        XCTAssertEqual(events, [.responseStarted, .textDelta("answer"), .responseEnded])
+        XCTAssertEqual(
+            events,
+            [
+                .responseStarted,
+                .continuationDelta(
+                    ProviderContinuationDelta(
+                        provider: .kimiCode,
+                        id: "reasoning",
+                        kind: "reasoning",
+                        field: "text",
+                        value: "thinking",
+                        operation: .append
+                    )
+                ),
+                .textDelta("answer"),
+                .responseEnded,
+            ]
+        )
     }
 
     func testAnthropicRequestUsesUmansAuthenticationAndMessagesShape() throws {
@@ -341,6 +520,40 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(object["stream"] as? Bool, true)
         XCTAssertEqual((object["messages"] as? [[String: Any]])?.count, 1)
         XCTAssertEqual((object["messages"] as? [[String: Any]])?.first?["role"] as? String, "user")
+    }
+
+    func testAnthropicRequestPreservesThinkingBlockMetadata() throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-coder",
+            credentialID: "umans-api-key"
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+        let continuation = ProviderContinuation(
+            provider: .umans,
+            id: "block-0",
+            kind: "reasoning",
+            fields: ["thinking": "plan", "signature": "opaque"]
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.assistant("answer", continuations: [continuation])])
+        )
+
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let messages = try XCTUnwrap(object["messages"] as? [[String: Any]])
+        let content = try XCTUnwrap(messages.first?["content"] as? [[String: Any]])
+        XCTAssertEqual(content.first?["type"] as? String, "thinking")
+        XCTAssertEqual(content.first?["thinking"] as? String, "plan")
+        XCTAssertEqual(content.first?["signature"] as? String, "opaque")
+        XCTAssertEqual(content.last?["type"] as? String, "text")
+        XCTAssertEqual(content.last?["text"] as? String, "answer")
     }
 
     func testAnthropicAdapterTranslatesStreamingEvents() async throws {

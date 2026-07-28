@@ -59,6 +59,36 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(conversation.messages[0].blocks, completed.blocks)
     }
 
+    func testConversationRoundTripPreservesContinuationAndToolBlocks() throws {
+        let continuation = ProviderContinuation(
+            provider: .umans,
+            id: "block-0",
+            kind: "reasoning",
+            fields: ["thinking": "plan", "signature": "opaque"]
+        )
+        let conversation = Conversation(
+            messages: [
+                Message(
+                    role: .assistant,
+                    blocks: [
+                        .toolCall(
+                            callID: "call-1",
+                            name: "current_time",
+                            arguments: "{}",
+                            isComplete: true
+                        )
+                    ],
+                    providerContinuations: [continuation]
+                )
+            ]
+        )
+
+        let data = try JSONEncoder().encode(conversation)
+        let decoded = try JSONDecoder().decode(Conversation.self, from: data)
+
+        XCTAssertEqual(decoded, conversation)
+    }
+
     func testGenerationFollowsTheDocumentedLifecycle() throws {
         var conversation = Conversation()
 

@@ -36,30 +36,104 @@ enum ProviderMessageRole: String, Codable, Equatable, Sendable {
     case user
     case assistant
     case system
+    case tool
+}
+
+struct ProviderContinuation: Codable, Equatable, Sendable {
+    let provider: ProviderID
+    let id: String
+    let kind: String
+    var fields: [String: String]
+}
+
+struct ProviderContinuationDelta: Equatable, Sendable {
+    enum Operation: Equatable, Sendable {
+        case append
+        case replace
+    }
+
+    let provider: ProviderID
+    let id: String
+    let kind: String
+    let field: String
+    let value: String
+    let operation: Operation
+}
+
+struct ProviderToolDefinition: Codable, Equatable, Sendable {
+    let name: String
+    let description: String
+    let inputSchema: String
+}
+
+struct ProviderToolCall: Codable, Equatable, Sendable {
+    let id: String
+    let name: String
+    var arguments: String
+    var isComplete: Bool
+}
+
+struct ProviderToolCallDelta: Equatable, Sendable {
+    let provider: ProviderID
+    let id: String
+    let name: String?
+    let arguments: String?
 }
 
 struct ProviderMessage: Codable, Equatable, Sendable {
     let role: ProviderMessageRole
     let content: String
+    let continuations: [ProviderContinuation]
+    let toolCalls: [ProviderToolCall]
+    let toolCallID: String?
+
+    init(
+        role: ProviderMessageRole,
+        content: String,
+        continuations: [ProviderContinuation] = [],
+        toolCalls: [ProviderToolCall] = [],
+        toolCallID: String? = nil
+    ) {
+        self.role = role
+        self.content = content
+        self.continuations = continuations
+        self.toolCalls = toolCalls
+        self.toolCallID = toolCallID
+    }
 
     static func user(_ content: String) -> ProviderMessage {
         ProviderMessage(role: .user, content: content)
     }
 
-    static func assistant(_ content: String) -> ProviderMessage {
-        ProviderMessage(role: .assistant, content: content)
+    static func assistant(
+        _ content: String,
+        continuations: [ProviderContinuation] = [],
+        toolCalls: [ProviderToolCall] = []
+    ) -> ProviderMessage {
+        ProviderMessage(
+            role: .assistant,
+            content: content,
+            continuations: continuations,
+            toolCalls: toolCalls
+        )
     }
 
     static func system(_ content: String) -> ProviderMessage {
         ProviderMessage(role: .system, content: content)
     }
+
+    static func tool(_ content: String, callID: String) -> ProviderMessage {
+        ProviderMessage(role: .tool, content: content, toolCallID: callID)
+    }
 }
 
 struct ProviderRequest: Equatable, Sendable {
     let messages: [ProviderMessage]
+    let tools: [ProviderToolDefinition]
 
-    init(messages: [ProviderMessage]) {
+    init(messages: [ProviderMessage], tools: [ProviderToolDefinition] = []) {
         self.messages = messages
+        self.tools = tools
     }
 }
 
@@ -96,6 +170,8 @@ struct ProviderConfiguration: Codable, Equatable, Sendable {
 enum ProviderStreamEvent: Equatable, Sendable {
     case responseStarted
     case textDelta(String)
+    case continuationDelta(ProviderContinuationDelta)
+    case toolCallDelta(ProviderToolCallDelta)
     case finish(reason: String?)
     case responseEnded
 }
@@ -110,5 +186,7 @@ enum ProviderError: Error, Equatable, Sendable {
 }
 
 protocol ProviderAdapter: Sendable {
+    var supportsTools: Bool { get }
+
     func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error>
 }

@@ -38,6 +38,28 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertEqual(session.errorMessage, "connection lost")
     }
 
+    func testCancellingGenerationStopsTheProviderAndPreservesPartialContent() async {
+        let provider = BlockingProvider()
+        let session = ChatSession(provider: provider)
+        let task = Task { @MainActor in
+            await session.send("Hi")
+        }
+
+        for _ in 0..<100 where session.streamingText != "Partial" {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(session.conversation.generationState, .streaming)
+        session.cancel()
+        await task.value
+
+        XCTAssertEqual(session.conversation.generationState, .cancelled)
+        XCTAssertEqual(session.conversation.messages[1].blocks[0].payload, "Partial")
+        XCTAssertFalse(session.conversation.messages[1].blocks[0].isComplete)
+        let wasTerminated = await provider.terminationState.wasTerminated
+        XCTAssertTrue(wasTerminated)
+    }
+
     func testSessionExplainsRateLimitErrors() async {
         let provider = StubProvider(
             events: [],
@@ -80,11 +102,58 @@ final class ChatSessionTests: XCTestCase {
             "Hello **there**"
         )
     }
+
+    func testSessionPersistsAndReusesProviderContinuationMetadata() async {
+        let provider = RecordingContinuationProvider()
+        let session = ChatSession(provider: provider)
+
+        await session.send("first")
+        await session.send("second")
+
+        let requests = provider.recorder.requests
+        XCTAssertEqual(requests.count, 2)
+        let assistant = requests[1].messages[1]
+        XCTAssertEqual(assistant.role, .assistant)
+        XCTAssertEqual(
+            assistant.continuations.first?.fields["text"],
+            "thinking"
+        )
+    }
+
+    func testSessionExecutesReadOnlyToolAndResumesTheGeneration() async {
+        let fixedDate = Date(timeIntervalSince1970: 0)
+        let provider = ToolLoopProvider()
+        let session = ChatSession(
+            provider: provider,
+            toolRegistry: ToolRegistry(tools: [CurrentTimeTool(now: { fixedDate })])
+        )
+
+        await session.send("What time is it?")
+
+        XCTAssertEqual(session.conversation.generationState, .completed)
+        XCTAssertEqual(
+            session.conversation.messages.map(\.role),
+            [.user, .assistant, .tool, .assistant]
+        )
+        XCTAssertEqual(
+            session.conversation.messages[2].blocks.first?.payload,
+            "1970-01-01T00:00:00Z"
+        )
+        XCTAssertEqual(session.conversation.messages[3].blocks.first?.payload, "Done.")
+
+        let requests = provider.recorder.requests
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests[0].tools.first?.name, "current_time")
+        XCTAssertEqual(requests[1].messages.last?.role, .tool)
+        XCTAssertEqual(requests[1].messages.last?.toolCallID, "call-1")
+    }
 }
 
 private struct StubProvider: ProviderAdapter {
     let events: [ProviderStreamEvent]
     let failure: Error?
+
+    var supportsTools: Bool { false }
 
     init(events: [ProviderStreamEvent], failure: Error? = nil) {
         self.events = events
@@ -101,6 +170,120 @@ private struct StubProvider: ProviderAdapter {
             } else {
                 continuation.finish()
             }
+        }
+    }
+}
+
+private actor StreamTerminationState {
+    private(set) var wasTerminated = false
+
+    func markTerminated() {
+        wasTerminated = true
+    }
+}
+
+private final class BlockingProvider: ProviderAdapter, @unchecked Sendable {
+    let terminationState = StreamTerminationState()
+
+    var supportsTools: Bool { false }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield(.responseStarted)
+            continuation.yield(.textDelta("Partial"))
+            continuation.onTermination = { [terminationState] _ in
+                Task {
+                    await terminationState.markTerminated()
+                }
+            }
+        }
+    }
+}
+
+private final class RequestRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedRequests: [ProviderRequest] = []
+
+    var requests: [ProviderRequest] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedRequests
+    }
+
+    func record(_ request: ProviderRequest) {
+        lock.lock()
+        storedRequests.append(request)
+        lock.unlock()
+    }
+}
+
+private final class RecordingContinuationProvider: ProviderAdapter, @unchecked Sendable {
+    let recorder = RequestRecorder()
+
+    var supportsTools: Bool { false }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        recorder.record(request)
+
+        return AsyncThrowingStream { continuation in
+            continuation.yield(.responseStarted)
+            continuation.yield(.continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .kimiCode,
+                    id: "reasoning",
+                    kind: "reasoning",
+                    field: "text",
+                    value: "thinking",
+                    operation: .append
+                )
+            ))
+            continuation.yield(.textDelta("answer"))
+            continuation.yield(.responseEnded)
+            continuation.finish()
+        }
+    }
+}
+
+private final class ToolLoopProvider: ProviderAdapter, @unchecked Sendable {
+    let recorder = RequestRecorder()
+
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        recorder.record(request)
+        let isFirstResponse = request.messages.last?.role == .user
+        let events: [ProviderStreamEvent]
+        if isFirstResponse {
+            events = [
+                .responseStarted,
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "call-1",
+                        name: "current_time",
+                        arguments: "{"
+                    )
+                ),
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "call-1",
+                        name: nil,
+                        arguments: "}"
+                    )
+                ),
+                .finish(reason: "tool_calls"),
+                .responseEnded,
+            ]
+        } else {
+            events = [.responseStarted, .textDelta("Done."), .responseEnded]
+        }
+
+        return AsyncThrowingStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
         }
     }
 }
