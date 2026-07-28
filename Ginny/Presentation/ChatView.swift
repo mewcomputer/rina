@@ -80,6 +80,9 @@ struct ChatView: View {
         .onDisappear {
             generationTask?.cancel()
         }
+        .task {
+            await settings.refreshModels()
+        }
         .sheet(isPresented: $showsSettings) {
             NavigationStack {
                 ProviderSettingsView(settings: settings)
@@ -161,10 +164,12 @@ struct ChatView: View {
 
                 ComposerView(
                     draft: $draft,
+                    settings: settings,
                     isGenerating: session.isGenerating,
-                    send: send
+                    send: send,
+                    openSettings: { showsSettings = true }
                 )
-                .frame(height: 88)
+                .frame(height: 100)
             }
         }
     }
@@ -528,8 +533,10 @@ private struct EmptyConversationView: View {
 
 private struct ComposerView: View {
     @Binding var draft: String
+    @ObservedObject var settings: ProviderSettings
     let isGenerating: Bool
     let send: () -> Void
+    let openSettings: () -> Void
     @Environment(\.ginnyTheme) private var theme
 
     private var canSend: Bool {
@@ -537,28 +544,32 @@ private struct ComposerView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .bottom, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Start a message", text: $draft)
+                .font(.body)
+                .frame(height: 34)
+                .textFieldStyle(.plain)
+                .submitLabel(.send)
+                .onSubmit(send)
+
+            HStack(spacing: 8) {
                 Button(action: {}) {
                     Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .medium))
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 17, weight: .medium))
+                        .frame(width: 36, height: 36)
                         .foregroundStyle(theme.color("text.body"))
                         .ginnyGlass(Circle(), prominence: .subtle)
                 }
                 .accessibilityLabel("Add attachment")
 
-                TextField("Start a message", text: $draft)
-                    .font(.body)
-                    .frame(height: 44)
-                    .textFieldStyle(.plain)
-                    .submitLabel(.send)
-                    .onSubmit(send)
+                ServiceModelMenu(settings: settings, openSettings: openSettings)
+
+                Spacer(minLength: 0)
 
                 Button(action: send) {
                     Image(systemName: isGenerating ? "stop" : "arrow.up")
-                        .font(.system(size: 17, weight: .bold))
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(width: 36, height: 36)
                         .foregroundStyle(theme.color("primary_foreground"))
                         .background(theme.color("primary"), in: Circle())
                 }
@@ -566,16 +577,75 @@ private struct ComposerView: View {
                 .opacity(canSend ? 1 : 0.38)
                 .accessibilityLabel(isGenerating ? "Stop generating" : "Send message")
             }
-
         }
         .padding(12)
-        .frame(height: 88, alignment: .top)
+        .frame(height: 100, alignment: .top)
         .ginnyGlass(
             RoundedRectangle(cornerRadius: 28, style: .continuous),
             prominence: .elevated
         )
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
+    }
+}
+
+private struct ServiceModelMenu: View {
+    @ObservedObject var settings: ProviderSettings
+    let openSettings: () -> Void
+    @Environment(\.ginnyTheme) private var theme
+
+    private var modelLabel: String {
+        let model = settings.modelText.isEmpty ? "Choose model" : settings.modelText
+        return "\(settings.provider.displayName) · \(model)"
+    }
+
+    var body: some View {
+        Menu {
+            Section("Service") {
+                ForEach(ProviderID.allCases, id: \.self) { provider in
+                    Button {
+                        Task { await settings.selectProviderAndRefresh(provider) }
+                    } label: {
+                        Label(
+                            provider.displayName,
+                            systemImage: settings.provider == provider ? "checkmark" : "circle"
+                        )
+                    }
+                }
+            }
+
+            if !settings.availableModels.isEmpty {
+                Section("Model") {
+                    ForEach(settings.availableModels) { model in
+                        Button {
+                            settings.modelText = model.id
+                        } label: {
+                            Label(
+                                model.displayName,
+                                systemImage: settings.modelText == model.id ? "checkmark" : "circle"
+                            )
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            Button("Configure service", action: openSettings)
+        } label: {
+            HStack(spacing: 5) {
+                Text(modelLabel)
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+            }
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(theme.color("text.body"))
+            .padding(.horizontal, 11)
+            .frame(height: 36)
+            .ginnyGlass(Capsule(), prominence: .subtle)
+        }
+        .accessibilityLabel("Choose service and model")
     }
 }
 

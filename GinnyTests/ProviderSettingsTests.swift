@@ -68,6 +68,32 @@ final class ProviderSettingsTests: XCTestCase {
 
         defaults.removePersistentDomain(forName: suiteName)
     }
+
+    func testProviderSelectionKeepsIndependentServiceSettings() throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let credentials = TestCredentialStore()
+        let settings = ProviderSettings(defaults: defaults, credentialStore: credentials)
+
+        settings.modelText = "umans-coder"
+        settings.credentialText = "umans-secret"
+        XCTAssertTrue(settings.save())
+
+        settings.selectProvider(.kimi)
+        XCTAssertEqual(settings.endpointText, "https://api.moonshot.ai/v1")
+        settings.modelText = "kimi-k2.5"
+        settings.credentialText = "kimi-secret"
+        XCTAssertTrue(settings.save())
+
+        settings.selectProvider(.umans)
+        XCTAssertEqual(settings.modelText, "umans-coder")
+        XCTAssertEqual(settings.credentialText, "umans-secret")
+        settings.selectProvider(.kimi)
+        XCTAssertEqual(settings.modelText, "kimi-k2.5")
+        XCTAssertEqual(settings.credentialText, "kimi-secret")
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
 }
 
 private final class TestCredentialStore: CredentialStore, @unchecked Sendable {
@@ -85,7 +111,11 @@ private final class TestCredentialStore: CredentialStore, @unchecked Sendable {
 private struct TestModelCatalog: ModelCatalogProviding {
     let models: [ProviderModel]
 
-    func models(for provider: ProviderID, baseURL: URL) async throws -> [ProviderModel] {
+    func models(
+        for provider: ProviderID,
+        baseURL: URL,
+        credential: String?
+    ) async throws -> [ProviderModel] {
         return models
     }
 }

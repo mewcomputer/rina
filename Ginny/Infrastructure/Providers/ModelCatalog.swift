@@ -111,7 +111,11 @@ struct ModelReasoningCapabilities: Decodable, Equatable, Sendable {
 }
 
 protocol ModelCatalogProviding: Sendable {
-    func models(for provider: ProviderID, baseURL: URL) async throws -> [ProviderModel]
+    func models(
+        for provider: ProviderID,
+        baseURL: URL,
+        credential: String?
+    ) async throws -> [ProviderModel]
 }
 
 struct URLSessionModelCatalog: ModelCatalogProviding {
@@ -121,14 +125,21 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
         self.session = session
     }
 
-    func models(for provider: ProviderID, baseURL: URL) async throws -> [ProviderModel] {
-        guard provider == .umans else {
-            throw ProviderError.invalidConfiguration("This provider does not publish a model catalog.")
-        }
-
+    func models(
+        for provider: ProviderID,
+        baseURL: URL,
+        credential: String?
+    ) async throws -> [ProviderModel] {
         var request = URLRequest(url: provider.catalogURL(for: baseURL))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        if provider != .umans {
+            guard let credential, !credential.isEmpty else {
+                throw ProviderError.missingCredential
+            }
+            request.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -139,8 +150,19 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
         }
 
         do {
-            let catalog = try JSONDecoder().decode([String: ProviderModel].self, from: data)
-            return catalog.values.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+            let decoder = JSONDecoder()
+            let models: [ProviderModel]
+            if provider == .umans {
+                models = Array(try decoder.decode([String: ProviderModel].self, from: data).values)
+            } else {
+                let response = try decoder.decode(OpenAIModelListResponse.self, from: data)
+                models = response.data.map {
+                    ProviderModel(id: $0.id, displayName: $0.id)
+                }
+            }
+            return models.sorted {
+                $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
+            }
         } catch {
             throw ProviderError.invalidResponse
         }
@@ -152,14 +174,27 @@ extension ProviderID {
         switch self {
         case .umans:
             baseURL.appendingProviderPath("v1/messages")
-        case .openAICompatible:
+        case .kimi, .openAICompatible:
             baseURL.appendingProviderPath("v1/chat/completions")
         }
     }
 
     func catalogURL(for baseURL: URL) -> URL {
-        baseURL.appendingProviderPath("v1/models/info")
+        switch self {
+        case .umans:
+            baseURL.appendingProviderPath("v1/models/info")
+        case .kimi, .openAICompatible:
+            baseURL.appendingProviderPath("v1/models")
+        }
     }
+}
+
+private struct OpenAIModelListResponse: Decodable {
+    let data: [OpenAIModel]
+}
+
+private struct OpenAIModel: Decodable {
+    let id: String
 }
 
 private extension URL {

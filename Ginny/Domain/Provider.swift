@@ -2,12 +2,15 @@ import Foundation
 
 enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
     case umans
+    case kimi
     case openAICompatible
 
     var displayName: String {
         switch self {
         case .umans:
             "Umans"
+        case .kimi:
+            "Kimi"
         case .openAICompatible:
             "OpenAI-compatible"
         }

@@ -29,8 +29,12 @@ final class ProviderSettings: ObservableObject {
         self.modelCatalog = modelCatalog
         let selectedProvider = ProviderID(rawValue: defaults.string(forKey: "provider.id") ?? "") ?? .umans
         provider = selectedProvider
-        endpointText = defaults.string(forKey: "provider.endpoint") ?? Self.defaultEndpoint
-        modelText = defaults.string(forKey: "provider.model") ?? "umans-coder"
+        endpointText = defaults.string(forKey: selectedProvider.baseURLKey)
+            ?? defaults.string(forKey: "provider.endpoint")
+            ?? selectedProvider.defaultBaseURL
+        modelText = defaults.string(forKey: selectedProvider.modelKey)
+            ?? defaults.string(forKey: "provider.model")
+            ?? selectedProvider.defaultModel
         credentialText = (try? credentialStore.credential(for: selectedProvider.credentialID)) ?? ""
     }
 
@@ -63,20 +67,20 @@ final class ProviderSettings: ObservableObject {
 
     func selectProvider(_ provider: ProviderID) {
         self.provider = provider
-        endpointText = provider == .umans ? Self.defaultEndpoint : "https://api.openai.com/v1"
-        modelText = provider == .umans ? "umans-coder" : ""
+        endpointText = defaults.string(forKey: provider.baseURLKey) ?? provider.defaultBaseURL
+        modelText = defaults.string(forKey: provider.modelKey) ?? provider.defaultModel
         credentialText = (try? credentialStore.credential(for: provider.credentialID)) ?? ""
         availableModels = []
         catalogMessage = nil
         validationMessage = nil
     }
 
+    func selectProviderAndRefresh(_ provider: ProviderID) async {
+        selectProvider(provider)
+        await refreshModels()
+    }
+
     func refreshModels() async {
-        guard provider == .umans else {
-            availableModels = []
-            catalogMessage = nil
-            return
-        }
         guard let baseURL = validBaseURL else {
             catalogMessage = "Enter a valid base URL before refreshing models."
             return
@@ -86,14 +90,23 @@ final class ProviderSettings: ObservableObject {
         defer { isLoadingModels = false }
 
         do {
-            availableModels = try await modelCatalog.models(for: provider, baseURL: baseURL)
+            let credential = try? credentialStore.credential(for: provider.credentialID)
+            availableModels = try await modelCatalog.models(
+                for: provider,
+                baseURL: baseURL,
+                credential: credential ?? nil
+            )
             if !availableModels.contains(where: { $0.id == modelText }) {
                 modelText = availableModels.first(where: { $0.id == "umans-coder" })?.id
                     ?? availableModels.first?.id
                     ?? modelText
             }
             catalogMessage = nil
+        } catch ProviderError.missingCredential {
+            availableModels = []
+            catalogMessage = "Add an API key to load models."
         } catch {
+            availableModels = []
             catalogMessage = "Models could not be refreshed."
         }
     }
@@ -117,13 +130,15 @@ final class ProviderSettings: ObservableObject {
         }
 
         do {
-            try credentialStore.save(credential, for: Self.credentialID)
+            try credentialStore.save(credential, for: provider.credentialID)
         } catch {
             validationMessage = "The credential could not be saved securely."
             return false
         }
 
         defaults.set(provider.rawValue, forKey: "provider.id")
+        defaults.set(endpoint, forKey: provider.baseURLKey)
+        defaults.set(model, forKey: provider.modelKey)
         defaults.set(endpoint, forKey: "provider.endpoint")
         defaults.set(model, forKey: "provider.model")
         endpointText = endpoint
@@ -136,12 +151,42 @@ final class ProviderSettings: ObservableObject {
 }
 
 private extension ProviderID {
+    var defaultBaseURL: String {
+        switch self {
+        case .umans:
+            "https://api.code.umans.ai"
+        case .kimi:
+            "https://api.moonshot.ai/v1"
+        case .openAICompatible:
+            "https://api.openai.com/v1"
+        }
+    }
+
+    var defaultModel: String {
+        switch self {
+        case .umans:
+            "umans-coder"
+        case .kimi, .openAICompatible:
+            ""
+        }
+    }
+
     var credentialID: String {
         switch self {
         case .umans:
             "umans-api-key"
+        case .kimi:
+            "kimi-api-key"
         case .openAICompatible:
             "openai-compatible-primary"
         }
+    }
+
+    var baseURLKey: String {
+        "provider.\(rawValue).baseURL"
+    }
+
+    var modelKey: String {
+        "provider.\(rawValue).model"
     }
 }
