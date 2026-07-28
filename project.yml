@@ -45,7 +45,8 @@ targets:
         product: SwiftStreamingMarkdown
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ginny.app
+        DEVELOPMENT_TEAM: P2B3GABB6H
+        PRODUCT_BUNDLE_IDENTIFIER: fm.teal.ginny
         TARGETED_DEVICE_FAMILY: "1,2"
     scheme:
       testTargets:
