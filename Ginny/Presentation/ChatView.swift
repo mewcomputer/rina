@@ -110,12 +110,22 @@ struct ChatView: View {
                                 EmptyConversationView()
                             } else {
                                 VStack(alignment: .leading, spacing: 20) {
-                                    ForEach(displayedMessages, id: \.id) { message in
-                                        ChatMessageView(
-                                            message: message,
-                                            markdownConfig: markdownConfig
-                                        )
-                                        .id(message.id)
+                                    ForEach(displayedItems) { item in
+                                        switch item {
+                                        case .message(let message):
+                                            ChatMessageView(
+                                                message: message,
+                                                markdownConfig: markdownConfig
+                                            )
+                                            .id(item.id)
+                                        case .toolActivity(let message, let group):
+                                            ChatMessageView(
+                                                message: message,
+                                                toolActivity: group,
+                                                markdownConfig: markdownConfig
+                                            )
+                                            .id(item.id)
+                                        }
                                     }
 
                                     if let activeResponse {
@@ -156,7 +166,7 @@ struct ChatView: View {
                     }
                     .onChange(of: session.conversation.messages.count) { _, _ in
                         withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo(session.conversation.messages.last?.id, anchor: .bottom)
+                            proxy.scrollTo(displayedItems.last?.id, anchor: .bottom)
                         }
                     }
                 }
@@ -183,6 +193,43 @@ struct ChatView: View {
             return session.conversation.messages
         }
         return Array(session.conversation.messages.dropLast())
+    }
+
+    private var displayedItems: [ChatDisplayItem] {
+        var items: [ChatDisplayItem] = []
+        var index = 0
+
+        while index < displayedMessages.count {
+            let message = displayedMessages[index]
+            let calls = message.blocks.filter { $0.kind == .toolCall }
+
+            guard message.role == .assistant, !calls.isEmpty else {
+                items.append(.message(message))
+                index += 1
+                continue
+            }
+
+            var results: [ContentBlock] = []
+            var nextIndex = index + 1
+            while nextIndex < displayedMessages.count,
+                  displayedMessages[nextIndex].role == .tool
+            {
+                results.append(contentsOf: displayedMessages[nextIndex].blocks.filter {
+                    $0.kind == .toolResult
+                })
+                nextIndex += 1
+            }
+
+            items.append(
+                .toolActivity(
+                    message: message,
+                    group: ToolActivityGroup(calls: calls, results: results)
+                )
+            )
+            index = nextIndex
+        }
+
+        return items
     }
 
     private func sidebarProgress(for width: CGFloat) -> CGFloat {
@@ -329,6 +376,18 @@ struct ChatView: View {
     private func cancel() {
         session.cancel()
         generationTask?.cancel()
+    }
+}
+
+private enum ChatDisplayItem: Identifiable {
+    case message(Message)
+    case toolActivity(message: Message, group: ToolActivityGroup)
+
+    var id: MessageID {
+        switch self {
+        case .message(let message), .toolActivity(let message, _):
+            message.id
+        }
     }
 }
 
@@ -810,8 +869,19 @@ private struct ActiveResponse {
 
 private struct ChatMessageView: View {
     let message: Message
+    let toolActivity: ToolActivityGroup?
     let markdownConfig: MarkdownRenderConfig
     @Environment(\.ginnyTheme) private var theme
+
+    init(
+        message: Message,
+        toolActivity: ToolActivityGroup? = nil,
+        markdownConfig: MarkdownRenderConfig
+    ) {
+        self.message = message
+        self.toolActivity = toolActivity
+        self.markdownConfig = markdownConfig
+    }
 
     var body: some View {
         Group {
@@ -831,7 +901,10 @@ private struct ChatMessageView: View {
             } else {
                 VStack(alignment: .leading, spacing: 12) {
                     if !toolCalls.isEmpty {
-                        ToolCallGroupView(calls: toolCalls)
+                        ToolActivityGroupView(
+                            group: toolActivity
+                                ?? ToolActivityGroup(calls: toolCalls, results: [])
+                        )
                     }
                     if !text.isEmpty {
                         MarkdownView(text: text, config: markdownConfig)
@@ -858,16 +931,28 @@ private struct ChatMessageView: View {
     }
 }
 
-private struct ToolCallGroupView: View {
-    let calls: [ContentBlock]
+private struct ToolActivityGroupView: View {
+    let group: ToolActivityGroup
     @Environment(\.ginnyTheme) private var theme
     @State private var isExpanded = false
+
+    private var containsError: Bool {
+        group.activities.contains { $0.result?.attributes["isError"] == "true" }
+            || group.unmatchedResults.contains { $0.attributes["isError"] == "true" }
+    }
+
+    private var isPending: Bool {
+        group.activities.contains { !$0.call.isComplete || $0.result == nil }
+    }
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(calls, id: \.id) { call in
-                    ToolCallRow(call: call)
+                ForEach(group.activities) { activity in
+                    ToolActivityRow(activity: activity)
+                }
+                ForEach(group.unmatchedResults, id: \.id) { result in
+                    ToolResultRow(result: result)
                 }
             }
             .padding(.top, 10)
@@ -875,12 +960,19 @@ private struct ToolCallGroupView: View {
             HStack(spacing: 8) {
                 Image(systemName: "wrench.and.screwdriver")
                     .font(.subheadline.weight(.medium))
-                Text(calls.count == 1 ? "Tool call" : "\(calls.count) tool calls")
+                Text(
+                    group.activities.count == 1
+                        ? "Tool activity"
+                        : "\(group.activities.count) tool activities"
+                )
                     .font(.subheadline.weight(.medium))
                 Spacer()
-                if calls.contains(where: { !$0.isComplete }) {
+                if isPending {
                     ProgressView()
                         .controlSize(.small)
+                } else if containsError {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(theme.color("text.error"))
                 } else {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(theme.color("text.success"))
@@ -893,6 +985,23 @@ private struct ToolCallGroupView: View {
             theme.color("card").opacity(0.3),
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
+    }
+}
+
+private struct ToolActivityRow: View {
+    let activity: ToolActivity
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ToolCallRow(call: activity.call)
+
+            if let result = activity.result {
+                Divider()
+                    .overlay(theme.color("border").opacity(0.7))
+                ToolResultRow(result: result)
+            }
+        }
     }
 }
 
@@ -926,6 +1035,28 @@ private struct ToolCallRow: View {
     }
 }
 
+private struct ToolResultRow: View {
+    let result: ContentBlock
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Result", systemImage: "arrow.turn.down.right")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(
+                    result.attributes["isError"] == "true"
+                        ? theme.color("text.error")
+                        : theme.color("text.muted")
+                )
+
+            Text(result.payload)
+                .font(.caption.monospaced())
+                .foregroundStyle(theme.color("text.muted"))
+                .textSelection(.enabled)
+        }
+    }
+}
+
 private struct ToolResultGroupView: View {
     let results: [ContentBlock]
     @Environment(\.ginnyTheme) private var theme
@@ -939,10 +1070,7 @@ private struct ToolResultGroupView: View {
         DisclosureGroup(isExpanded: $isExpanded) {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(results, id: \.id) { result in
-                    Text(result.payload)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(theme.color("text.muted"))
-                        .textSelection(.enabled)
+                    ToolResultRow(result: result)
                 }
             }
             .padding(.top, 10)

@@ -98,6 +98,37 @@ struct ContentBlock: Codable, Equatable, Sendable {
     }
 }
 
+struct ToolActivity: Equatable, Sendable, Identifiable {
+    let call: ContentBlock
+    let result: ContentBlock?
+
+    var id: ContentBlockID {
+        call.id
+    }
+}
+
+struct ToolActivityGroup: Equatable, Sendable {
+    let activities: [ToolActivity]
+    let unmatchedResults: [ContentBlock]
+
+    init(calls: [ContentBlock], results: [ContentBlock]) {
+        var remainingResults = results
+        var activities: [ToolActivity] = []
+
+        for call in calls {
+            let callID = call.attributes["callID"]
+            let resultIndex = remainingResults.firstIndex {
+                $0.attributes["callID"] == callID
+            }
+            let result = resultIndex.map { remainingResults.remove(at: $0) }
+            activities.append(ToolActivity(call: call, result: result))
+        }
+
+        self.activities = activities
+        unmatchedResults = remainingResults
+    }
+}
+
 struct Message: Codable, Equatable, Sendable {
     let id: MessageID
     let role: MessageRole

@@ -89,6 +89,38 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(decoded, conversation)
     }
 
+    func testToolActivityGroupPairsCallsAndResultsByCallID() {
+        let firstCall = ContentBlock.toolCall(
+            callID: "call-1",
+            name: "read",
+            arguments: "{}",
+            isComplete: true
+        )
+        let secondCall = ContentBlock.toolCall(
+            callID: "call-2",
+            name: "shell",
+            arguments: "pwd",
+            isComplete: true
+        )
+        let firstResult = ContentBlock.toolResult(
+            callID: "call-1",
+            result: "file contents"
+        )
+        let secondResult = ContentBlock.toolResult(
+            callID: "call-2",
+            result: "/workspace"
+        )
+
+        let group = ToolActivityGroup(
+            calls: [firstCall, secondCall],
+            results: [secondResult, firstResult]
+        )
+
+        XCTAssertEqual(group.activities.map { $0.call.attributes["callID"] }, ["call-1", "call-2"])
+        XCTAssertEqual(group.activities.map { $0.result?.payload }, ["file contents", "/workspace"])
+        XCTAssertTrue(group.unmatchedResults.isEmpty)
+    }
+
     func testGenerationFollowsTheDocumentedLifecycle() throws {
         var conversation = Conversation()
 
