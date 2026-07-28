@@ -429,6 +429,7 @@ private enum ChatDisplayItem: Identifiable {
 private struct ChatHeader: View {
     let title: String
     let onOpenSidebar: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 12) {
@@ -440,6 +441,11 @@ private struct ChatHeader: View {
             Text(title)
                 .font(.headline)
                 .lineLimit(1)
+                .contentTransition(.opacity)
+                .animation(
+                    reduceMotion ? nil : .easeOut(duration: 0.22),
+                    value: title
+                )
 
             Spacer(minLength: 8)
         }
