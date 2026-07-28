@@ -6,6 +6,11 @@ options:
   createIntermediateGroups: true
   developmentLanguage: en
 
+packages:
+  SwiftStreamingMarkdown:
+    url: https://github.com/espeon/SwiftStreamingMarkdown.git
+    branch: feature/character-streaming-and-width-fix
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -18,6 +23,9 @@ targets:
     platform: iOS
     sources:
       - path: Ginny
+    dependencies:
+      - package: SwiftStreamingMarkdown
+        product: SwiftStreamingMarkdown
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ginny.app

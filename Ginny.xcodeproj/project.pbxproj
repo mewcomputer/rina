@@ -7,11 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */; };
 		1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */; };
 		2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */; };
 		66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */; };
 		78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */; };
+		931DF029769AF70E2FE471EE /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47D54403317B0C02D8EE4F6 /* ChatView.swift */; };
 		C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA14B4BF60B6010216E83851 /* AppDependencies.swift */; };
+		CBCF7264B81A5BD1ABA7C0E3 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */; };
 		CFD2820648D9A8933EA72451 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604F428D68F76A14BCE9A5F5 /* RootView.swift */; };
 		D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5B56B84488FBF598916DDB /* Conversation.swift */; };
 /* End PBXBuildFile section */
@@ -29,14 +32,27 @@
 /* Begin PBXFileReference section */
 		1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identifiers.swift; sourceTree = "<group>"; };
 		383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyApp.swift; sourceTree = "<group>"; };
+		41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatResponseSource.swift; sourceTree = "<group>"; };
 		51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentifiersTests.swift; sourceTree = "<group>"; };
 		520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationTests.swift; sourceTree = "<group>"; };
 		604F428D68F76A14BCE9A5F5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		92C5627E3E2ACC39677676CC /* GinnyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GinnyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA14B4BF60B6010216E83851 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		C4622D72389852D888EE9495 /* Ginny.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ginny.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D47D54403317B0C02D8EE4F6 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		ED5B56B84488FBF598916DDB /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2705513022430BE01CA0510C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CBCF7264B81A5BD1ABA7C0E3 /* SwiftStreamingMarkdown in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1C4AEF37B0F3C72D81911EC2 /* Application */ = {
@@ -50,6 +66,8 @@
 		3F2E3A463EC9A0D4CD77FD33 /* Presentation */ = {
 			isa = PBXGroup;
 			children = (
+				41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */,
+				D47D54403317B0C02D8EE4F6 /* ChatView.swift */,
 				604F428D68F76A14BCE9A5F5 /* RootView.swift */,
 			);
 			path = Presentation;
@@ -110,6 +128,7 @@
 			buildConfigurationList = 205C1EF656B6F48B95F4E84D /* Build configuration list for PBXNativeTarget "Ginny" */;
 			buildPhases = (
 				0A8F43BD9A49FAEC78FFBF4A /* Sources */,
+				2705513022430BE01CA0510C /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -117,6 +136,7 @@
 			);
 			name = Ginny;
 			packageProductDependencies = (
+				BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */,
 			);
 			productName = Ginny;
 			productReference = C4622D72389852D888EE9495 /* Ginny.app */;
@@ -160,6 +180,9 @@
 			);
 			mainGroup = 5557745ADCC3C1C0940861A6;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				05FDBFA513F800E81A112DA8 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B2FEE8F6D7EAB5211AE095BC /* Products */;
 			projectDirPath = "";
@@ -186,6 +209,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */,
+				18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */,
+				931DF029769AF70E2FE471EE /* ChatView.swift in Sources */,
 				D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */,
 				66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */,
 				78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */,
@@ -424,6 +449,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		05FDBFA513F800E81A112DA8 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/espeon/SwiftStreamingMarkdown.git";
+			requirement = {
+				branch = "feature/character-streaming-and-width-fix";
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 05FDBFA513F800E81A112DA8 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */;
+			productName = SwiftStreamingMarkdown;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 623794BEDAB75D309DC84F2C /* Project object */;
 }
