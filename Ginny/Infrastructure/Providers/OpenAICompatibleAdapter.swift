@@ -102,7 +102,11 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
                     let urlRequest = try makeRequest(for: request)
                     let response = try await transport.response(for: urlRequest)
                     guard (200..<300).contains(response.statusCode) else {
-                        throw ProviderError.httpStatus(response.statusCode, message: nil)
+                        let data = try await response.data()
+                        throw ProviderError.httpStatus(
+                            response.statusCode,
+                            message: providerErrorMessage(from: data)
+                        )
                     }
 
                     continuation.yield(.responseStarted)

@@ -59,6 +59,31 @@ final class StreamingTests: XCTestCase {
         }
     }
 
+    func testOpenAIAdapterSurfacesRateLimitMessage() async throws {
+        let adapter = OpenAICompatibleAdapter(
+            configuration: ProviderConfiguration(
+                endpoint: URL(string: "https://example.com/v1/chat/completions")!,
+                model: "example-model",
+                credentialID: "primary"
+            ),
+            credentialStore: InMemoryCredentialStore(credentials: ["primary": "secret"]),
+            transport: FixtureStreamingTransport(
+                statusCode: 429,
+                body: "{\"error\":{\"message\":\"Too many requests. Try again later.\"}}"
+            )
+        )
+
+        do {
+            for try await _ in adapter.stream(for: ProviderRequest(messages: [.user("Hello")])) {}
+            XCTFail("Expected a rate-limit error")
+        } catch {
+            XCTAssertEqual(
+                error as? ProviderError,
+                .httpStatus(429, message: "Too many requests. Try again later.")
+            )
+        }
+    }
+
     func testAnthropicStreamParserMapsMessageEvents() throws {
         let parser = AnthropicMessagesStreamParser()
 

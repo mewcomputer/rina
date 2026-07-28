@@ -144,6 +144,12 @@ final class ChatSession: ObservableObject {
             case .invalidResponse:
                 return "The provider returned an invalid response."
             case .httpStatus(let status, let message):
+                if status == 429 {
+                    if let message, !message.isEmpty {
+                        return "Rate limit reached. \(message)"
+                    }
+                    return "Rate limit reached. Try again in a moment."
+                }
                 return message ?? "The provider returned HTTP status \(status)."
             case .malformedEvent:
                 return "The provider returned a malformed stream event."

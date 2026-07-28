@@ -38,6 +38,24 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertEqual(session.errorMessage, "connection lost")
     }
 
+    func testSessionExplainsRateLimitErrors() async {
+        let provider = StubProvider(
+            events: [],
+            failure: ProviderError.httpStatus(
+                429,
+                message: "Too many requests. Try again later."
+            )
+        )
+        let session = ChatSession(provider: provider)
+
+        await session.send("Hi")
+
+        XCTAssertEqual(
+            session.errorMessage,
+            "Rate limit reached. Too many requests. Try again later."
+        )
+    }
+
     func testSessionConsumesOpenAICompatibleStreamingAdapter() async {
         let adapter = OpenAICompatibleAdapter(
             configuration: ProviderConfiguration(
