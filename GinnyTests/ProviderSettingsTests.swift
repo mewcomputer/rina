@@ -14,8 +14,14 @@ final class ProviderSettingsTests: XCTestCase {
         settings.credentialText = "secret"
 
         XCTAssertTrue(settings.save())
+        XCTAssertEqual(defaults.string(forKey: "provider.id"), ProviderID.umans.rawValue)
         XCTAssertEqual(defaults.string(forKey: "provider.model"), "example-model")
         XCTAssertEqual(credentials.values[ProviderSettings.credentialID], "secret")
+        XCTAssertEqual(settings.configuration?.provider, .umans)
+        XCTAssertEqual(
+            settings.configuration?.endpoint.absoluteString,
+            "https://api.code.umans.ai/v1/messages"
+        )
         XCTAssertEqual(settings.configuration?.model, "example-model")
 
         defaults.removePersistentDomain(forName: suiteName)
@@ -40,6 +46,28 @@ final class ProviderSettingsTests: XCTestCase {
 
         defaults.removePersistentDomain(forName: suiteName)
     }
+
+    func testRefreshingUmansModelsSelectsTheDefaultModel() async throws {
+        let suiteName = "GinnyTests.ProviderSettings.(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let settings = ProviderSettings(
+            defaults: defaults,
+            credentialStore: TestCredentialStore(),
+            modelCatalog: TestModelCatalog(models: [
+                ProviderModel(id: "umans-flash", displayName: "Umans Flash"),
+                ProviderModel(id: "umans-coder", displayName: "Umans Coder")
+            ])
+        )
+
+        settings.modelText = "retired-model"
+        await settings.refreshModels()
+
+        XCTAssertEqual(settings.availableModels.map(\.id), ["umans-flash", "umans-coder"])
+        XCTAssertEqual(settings.modelText, "umans-coder")
+        XCTAssertNil(settings.catalogMessage)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
 }
 
 private final class TestCredentialStore: CredentialStore, @unchecked Sendable {
@@ -51,5 +79,13 @@ private final class TestCredentialStore: CredentialStore, @unchecked Sendable {
 
     func save(_ credential: String, for identifier: String) throws {
         values[identifier] = credential
+    }
+}
+
+private struct TestModelCatalog: ModelCatalogProviding {
+    let models: [ProviderModel]
+
+    func models(for provider: ProviderID, baseURL: URL) async throws -> [ProviderModel] {
+        return models
     }
 }

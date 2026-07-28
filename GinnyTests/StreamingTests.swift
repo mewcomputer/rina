@@ -59,6 +59,49 @@ final class StreamingTests: XCTestCase {
         }
     }
 
+    func testAnthropicStreamParserMapsMessageEvents() throws {
+        let parser = AnthropicMessagesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"message_start\"}")),
+            [.responseStarted]
+        )
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}"
+                )
+            ),
+            [.textDelta("Hello")]
+        )
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}"
+                )
+            ),
+            [.finish(reason: "end_turn")]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"message_stop\"}")),
+            [.responseEnded]
+        )
+    }
+
+    func testAnthropicStreamParserMapsProviderError() {
+        let parser = AnthropicMessagesStreamParser()
+
+        XCTAssertThrowsError(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"error\",\"error\":{\"message\":\"bad key\"}}"
+                )
+            )
+        ) { error in
+            XCTAssertEqual(error as? ProviderError, .remote(message: "bad key"))
+        }
+    }
+
     func testAdapterTranslatesFragmentedSSEBytesIntoCanonicalEvents() async throws {
         let configuration = ProviderConfiguration(
             endpoint: URL(string: "https://example.com/v1/chat/completions")!,
@@ -130,6 +173,61 @@ final class StreamingTests: XCTestCase {
         )
         XCTAssertEqual(object["model"] as? String, "example-model")
         XCTAssertEqual(object["stream"] as? Bool, true)
+    }
+
+    func testAnthropicRequestUsesUmansAuthenticationAndMessagesShape() throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-coder",
+            credentialID: "umans-api-key"
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.system("Be concise."), .user("Hello")])
+        )
+
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "x-api-key"), "secret")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "anthropic-version"), "2023-06-01")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(object["model"] as? String, "umans-coder")
+        XCTAssertEqual(object["system"] as? String, "Be concise.")
+        XCTAssertEqual(object["stream"] as? Bool, true)
+        XCTAssertEqual((object["messages"] as? [[String: Any]])?.count, 1)
+        XCTAssertEqual((object["messages"] as? [[String: Any]])?.first?["role"] as? String, "user")
+    }
+
+    func testAnthropicAdapterTranslatesStreamingEvents() async throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-coder",
+            credentialID: "umans-api-key"
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: FixtureStreamingTransport(
+                statusCode: 200,
+                body: "data: {\"type\":\"message_start\"}\n\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi\"}}\n\ndata: {\"type\":\"message_stop\"}\n\n"
+            )
+        )
+
+        var events: [ProviderStreamEvent] = []
+        for try await event in adapter.stream(for: ProviderRequest(messages: [.user("Hello")])) {
+            events.append(event)
+        }
+
+        XCTAssertEqual(events, [.responseStarted, .textDelta("Hi"), .responseEnded])
     }
 }
 

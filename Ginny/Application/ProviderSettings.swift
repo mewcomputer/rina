@@ -3,32 +3,39 @@ import Foundation
 
 @MainActor
 final class ProviderSettings: ObservableObject {
-    static let defaultEndpoint = "https://api.openai.com/v1/chat/completions"
-    static let credentialID = "openai-compatible-primary"
+    static let defaultEndpoint = "https://api.code.umans.ai"
+    static let credentialID = "umans-api-key"
 
+    @Published var provider: ProviderID
     @Published var endpointText: String
     @Published var modelText: String
     @Published var credentialText: String
+    @Published private(set) var availableModels: [ProviderModel] = []
+    @Published private(set) var isLoadingModels = false
+    @Published private(set) var catalogMessage: String?
     @Published private(set) var validationMessage: String?
 
     private let defaults: UserDefaults
     private let credentialStore: any CredentialStore
+    private let modelCatalog: any ModelCatalogProviding
 
     init(
         defaults: UserDefaults = .standard,
-        credentialStore: any CredentialStore = KeychainCredentialStore()
+        credentialStore: any CredentialStore = KeychainCredentialStore(),
+        modelCatalog: any ModelCatalogProviding = URLSessionModelCatalog()
     ) {
         self.defaults = defaults
         self.credentialStore = credentialStore
+        self.modelCatalog = modelCatalog
+        let selectedProvider = ProviderID(rawValue: defaults.string(forKey: "provider.id") ?? "") ?? .umans
+        provider = selectedProvider
         endpointText = defaults.string(forKey: "provider.endpoint") ?? Self.defaultEndpoint
-        modelText = defaults.string(forKey: "provider.model") ?? ""
-        credentialText = (try? credentialStore.credential(for: Self.credentialID)) ?? ""
+        modelText = defaults.string(forKey: "provider.model") ?? "umans-coder"
+        credentialText = (try? credentialStore.credential(for: selectedProvider.credentialID)) ?? ""
     }
 
     var configuration: ProviderConfiguration? {
-        guard let endpoint = URL(string: endpointText.trimmingCharacters(in: .whitespacesAndNewlines)),
-              endpoint.scheme == "https"
-                || (endpoint.scheme == "http" && ["localhost", "127.0.0.1"].contains(endpoint.host ?? "")),
+        guard let baseURL = validBaseURL,
               !modelText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !credentialText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
@@ -36,26 +43,69 @@ final class ProviderSettings: ObservableObject {
         }
 
         return ProviderConfiguration(
-            endpoint: endpoint,
+            provider: provider,
+            endpoint: provider.messageEndpoint(for: baseURL),
             model: modelText.trimmingCharacters(in: .whitespacesAndNewlines),
-            credentialID: Self.credentialID
+            credentialID: provider.credentialID
         )
+    }
+
+    var validBaseURL: URL? {
+        let endpoint = endpointText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: endpoint),
+              url.scheme == "https"
+                || (url.scheme == "http" && ["localhost", "127.0.0.1"].contains(url.host ?? ""))
+        else {
+            return nil
+        }
+        return url
+    }
+
+    func selectProvider(_ provider: ProviderID) {
+        self.provider = provider
+        endpointText = provider == .umans ? Self.defaultEndpoint : "https://api.openai.com/v1"
+        modelText = provider == .umans ? "umans-coder" : ""
+        credentialText = (try? credentialStore.credential(for: provider.credentialID)) ?? ""
+        availableModels = []
+        catalogMessage = nil
+        validationMessage = nil
+    }
+
+    func refreshModels() async {
+        guard provider == .umans else {
+            availableModels = []
+            catalogMessage = nil
+            return
+        }
+        guard let baseURL = validBaseURL else {
+            catalogMessage = "Enter a valid base URL before refreshing models."
+            return
+        }
+
+        isLoadingModels = true
+        defer { isLoadingModels = false }
+
+        do {
+            availableModels = try await modelCatalog.models(for: provider, baseURL: baseURL)
+            if !availableModels.contains(where: { $0.id == modelText }) {
+                modelText = availableModels.first(where: { $0.id == "umans-coder" })?.id
+                    ?? availableModels.first?.id
+                    ?? modelText
+            }
+            catalogMessage = nil
+        } catch {
+            catalogMessage = "Models could not be refreshed."
+        }
     }
 
     @discardableResult
     func save() -> Bool {
-        let endpoint = endpointText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let model = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: endpoint) else {
-            validationMessage = "Enter a valid provider endpoint."
-            return false
-        }
-        guard url.scheme == "https"
-                || (url.scheme == "http" && ["localhost", "127.0.0.1"].contains(url.host ?? ""))
-        else {
+        guard validBaseURL != nil else {
             validationMessage = "Use HTTPS, or a localhost endpoint for local development."
             return false
         }
+        let endpoint = endpointText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !model.isEmpty else {
             validationMessage = "Enter the model name."
             return false
@@ -73,6 +123,7 @@ final class ProviderSettings: ObservableObject {
             return false
         }
 
+        defaults.set(provider.rawValue, forKey: "provider.id")
         defaults.set(endpoint, forKey: "provider.endpoint")
         defaults.set(model, forKey: "provider.model")
         endpointText = endpoint
@@ -80,5 +131,17 @@ final class ProviderSettings: ObservableObject {
         credentialText = credential
         validationMessage = nil
         return true
+    }
+
+}
+
+private extension ProviderID {
+    var credentialID: String {
+        switch self {
+        case .umans:
+            "umans-api-key"
+        case .openAICompatible:
+            "openai-compatible-primary"
+        }
     }
 }

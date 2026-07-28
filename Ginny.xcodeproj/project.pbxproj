@@ -14,8 +14,11 @@
 		1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */; };
 		24C1EBB267687B9B38781BB8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22AE8DFC71A2A8813F3DF56 /* Theme.swift */; };
 		2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */; };
+		41D19214FF2E191CE77F83A1 /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82BD921B65734CCF8933C9FF /* ModelCatalog.swift */; };
 		43C0DF8434750116FD40D971 /* SSE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4627A6932AFCC922D079F4 /* SSE.swift */; };
+		4F31C594778B2E83D581A951 /* ModelCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F5ED5AA1DAFAADAFD217757 /* ModelCatalogTests.swift */; };
 		515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D633C99839F2015E2F41F17F /* ChatSession.swift */; };
+		56D04DC70D798BA1A6276A61 /* AnthropicMessagesAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */; };
 		586A6E3717047F4B33BFDB71 /* StreamingTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE47BB9A631374B3EDB80A39 /* StreamingTransport.swift */; };
 		66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */; };
 		78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */; };
@@ -51,6 +54,7 @@
 		1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identifiers.swift; sourceTree = "<group>"; };
 		383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyApp.swift; sourceTree = "<group>"; };
 		3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSessionTests.swift; sourceTree = "<group>"; };
+		3F5ED5AA1DAFAADAFD217757 /* ModelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTests.swift; sourceTree = "<group>"; };
 		41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatResponseSource.swift; sourceTree = "<group>"; };
 		4ADDAAEE37F3676CCF6CD42C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		515E025BD4E22E6F292A8415 /* StreamingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTests.swift; sourceTree = "<group>"; };
@@ -60,6 +64,8 @@
 		604F428D68F76A14BCE9A5F5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		682EA6B16D010F5F5D0BCA9D /* SessionHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHistoryTests.swift; sourceTree = "<group>"; };
 		69FA948BCF63CC7B840A03A1 /* Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glass.swift; sourceTree = "<group>"; };
+		7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicMessagesAdapter.swift; sourceTree = "<group>"; };
+		82BD921B65734CCF8933C9FF /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
 		8737F656370217260F93276E /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
 		8F4627A6932AFCC922D079F4 /* SSE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSE.swift; sourceTree = "<group>"; };
 		92C5627E3E2ACC39677676CC /* GinnyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GinnyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -137,6 +143,8 @@
 		7197E2DD947F5583E44EBBE5 /* Providers */ = {
 			isa = PBXGroup;
 			children = (
+				7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */,
+				82BD921B65734CCF8933C9FF /* ModelCatalog.swift */,
 				B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */,
 			);
 			path = Providers;
@@ -194,6 +202,7 @@
 				3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */,
 				520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */,
 				51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */,
+				3F5ED5AA1DAFAADAFD217757 /* ModelCatalogTests.swift */,
 				08C8F3956963A5DBB935220F /* ProviderSettingsTests.swift */,
 				682EA6B16D010F5F5D0BCA9D /* SessionHistoryTests.swift */,
 				515E025BD4E22E6F292A8415 /* StreamingTests.swift */,
@@ -294,6 +303,7 @@
 				EB3FA2229ACB08DCFC53DCD7 /* ChatSessionTests.swift in Sources */,
 				2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */,
 				1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */,
+				4F31C594778B2E83D581A951 /* ModelCatalogTests.swift in Sources */,
 				F0DE5293B1A15136EED8AC3E /* ProviderSettingsTests.swift in Sources */,
 				14140B1EC5B7607184FF42E6 /* SessionHistoryTests.swift in Sources */,
 				9B413C9202E8F998E5B5D05A /* StreamingTests.swift in Sources */,
@@ -305,6 +315,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				56D04DC70D798BA1A6276A61 /* AnthropicMessagesAdapter.swift in Sources */,
 				C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */,
 				18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */,
 				515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */,
@@ -314,6 +325,7 @@
 				66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */,
 				D9BEB6E6A505D06E41A6B43D /* Glass.swift in Sources */,
 				78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */,
+				41D19214FF2E191CE77F83A1 /* ModelCatalog.swift in Sources */,
 				92B12C300FAF9C2E0E3485B3 /* OpenAICompatibleAdapter.swift in Sources */,
 				1460F8A2A269DAAA4905B4B6 /* Provider.swift in Sources */,
 				977F8ABC1324F32138346E20 /* ProviderSettings.swift in Sources */,
@@ -424,6 +436,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -440,6 +453,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

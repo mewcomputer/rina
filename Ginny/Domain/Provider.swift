@@ -1,5 +1,19 @@
 import Foundation
 
+enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
+    case umans
+    case openAICompatible
+
+    var displayName: String {
+        switch self {
+        case .umans:
+            "Umans"
+        case .openAICompatible:
+            "OpenAI-compatible"
+        }
+    }
+}
+
 enum ProviderMessageRole: String, Codable, Equatable, Sendable {
     case user
     case assistant
@@ -32,11 +46,20 @@ struct ProviderRequest: Equatable, Sendable {
 }
 
 struct ProviderConfiguration: Codable, Equatable, Sendable {
+    var provider: ProviderID
     var endpoint: URL
     var model: String
     var credentialID: String
 
     init(endpoint: URL, model: String, credentialID: String) {
+        provider = .openAICompatible
+        self.endpoint = endpoint
+        self.model = model
+        self.credentialID = credentialID
+    }
+
+    init(provider: ProviderID, endpoint: URL, model: String, credentialID: String) {
+        self.provider = provider
         self.endpoint = endpoint
         self.model = model
         self.credentialID = credentialID

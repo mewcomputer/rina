@@ -25,7 +25,10 @@ struct ChatView: View {
         _themeStore = ObservedObject(wrappedValue: themeStore)
         _session = StateObject(wrappedValue: ChatSession())
         _settings = StateObject(
-            wrappedValue: ProviderSettings(credentialStore: dependencies.credentialStore)
+            wrappedValue: ProviderSettings(
+                credentialStore: dependencies.credentialStore,
+                modelCatalog: dependencies.modelCatalog
+            )
         )
         _history = StateObject(wrappedValue: SessionHistoryStore())
     }
@@ -618,15 +621,46 @@ private struct ProviderSettingsView: View {
 
     var body: some View {
         Form {
-            Section("OpenAI-compatible provider") {
-                TextField("Endpoint", text: $settings.endpointText)
+            Section("Provider") {
+                Picker("Provider", selection: $settings.provider) {
+                    ForEach(ProviderID.allCases, id: \.self) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                .onChange(of: settings.provider) { _, provider in
+                    settings.selectProvider(provider)
+                }
+
+                TextField("Base URL", text: $settings.endpointText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
-                TextField("Model", text: $settings.modelText)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("API key or provider token", text: $settings.credentialText)
+
+                if settings.provider == .umans, !settings.availableModels.isEmpty {
+                    Picker("Model", selection: $settings.modelText) {
+                        ForEach(settings.availableModels) { model in
+                            Text(model.displayName).tag(model.id)
+                        }
+                    }
+                } else {
+                    TextField("Model", text: $settings.modelText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                if settings.provider == .umans {
+                    HStack {
+                        if settings.isLoadingModels {
+                            ProgressView()
+                        }
+                        Button("Refresh models") {
+                            Task { await settings.refreshModels() }
+                        }
+                        .disabled(settings.isLoadingModels)
+                    }
+                }
+
+                SecureField("API key", text: $settings.credentialText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
@@ -639,10 +673,18 @@ private struct ProviderSettingsView: View {
                 Text(validationMessage)
                     .foregroundStyle(theme.color("text.error"))
             }
+
+            if let catalogMessage = settings.catalogMessage {
+                Text(catalogMessage)
+                    .foregroundStyle(theme.color("text.error"))
+            }
         }
         .scrollContentBackground(.hidden)
         .background(theme.color("background"))
         .navigationTitle("Provider")
+        .task {
+            await settings.refreshModels()
+        }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
