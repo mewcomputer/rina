@@ -88,6 +88,7 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
         let body = OpenAICompatibleRequestBody(
             model: configuration.model,
             messages: request.messages,
+            maxTokens: 32_768,
             stream: true
         )
         urlRequest.httpBody = try JSONEncoder().encode(body)
@@ -137,5 +138,13 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
 private struct OpenAICompatibleRequestBody: Encodable {
     let model: String
     let messages: [ProviderMessage]
+    let maxTokens: Int
     let stream: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case model
+        case messages
+        case maxTokens = "max_tokens"
+        case stream
+    }
 }

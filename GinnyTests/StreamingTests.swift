@@ -174,6 +174,7 @@ final class StreamingTests: XCTestCase {
         )
         XCTAssertEqual(object["model"] as? String, "example-model")
         XCTAssertEqual(object["stream"] as? Bool, true)
+        XCTAssertEqual(object["max_tokens"] as? Int, 32_768)
     }
 
     func testKimiCodeUsesTheOpenAICompatibleCodingEndpoint() throws {
@@ -212,6 +213,30 @@ final class StreamingTests: XCTestCase {
         )
 
         XCTAssertTrue(dependencies.makeProvider(for: configuration) is OpenAICompatibleAdapter)
+    }
+
+    func testOpenAIAdapterWaitsThroughReasoningBeforeVisibleText() async throws {
+        let configuration = ProviderConfiguration(
+            provider: .kimiCode,
+            endpoint: URL(string: "https://api.kimi.com/coding/v1/chat/completions")!,
+            model: "kimi-for-coding",
+            credentialID: "kimi-code-api-key"
+        )
+        let adapter = OpenAICompatibleAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["kimi-code-api-key": "secret"]),
+            transport: FixtureStreamingTransport(
+                statusCode: 200,
+                body: "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"answer\"}}]}\n\ndata: [DONE]\n\n"
+            )
+        )
+
+        var events: [ProviderStreamEvent] = []
+        for try await event in adapter.stream(for: ProviderRequest(messages: [.user("Hello")])) {
+            events.append(event)
+        }
+
+        XCTAssertEqual(events, [.responseStarted, .textDelta("answer"), .responseEnded])
     }
 
     func testAnthropicRequestUsesUmansAuthenticationAndMessagesShape() throws {
