@@ -593,6 +593,7 @@ private struct ServiceModelMenu: View {
     @ObservedObject var settings: ProviderSettings
     let openSettings: () -> Void
     @Environment(\.ginnyTheme) private var theme
+    @State private var showsModelPicker = false
 
     private var modelLabel: String {
         let model = settings.modelText.isEmpty ? "Choose model" : settings.modelText
@@ -614,19 +615,10 @@ private struct ServiceModelMenu: View {
                 }
             }
 
-            if !settings.availableModels.isEmpty {
-                Section("Model") {
-                    ForEach(settings.availableModels) { model in
-                        Button {
-                            settings.selectModel(model.id)
-                        } label: {
-                            Label(
-                                model.displayName,
-                                systemImage: settings.modelText == model.id ? "checkmark" : "circle"
-                            )
-                        }
-                    }
-                }
+            Button {
+                showsModelPicker = true
+            } label: {
+                Label("Choose model", systemImage: "list.bullet")
             }
 
             if !settings.thinkingOptions.isEmpty {
@@ -661,6 +653,119 @@ private struct ServiceModelMenu: View {
             .ginnyGlass(Capsule(), prominence: .subtle)
         }
         .accessibilityLabel("Choose service and model")
+        .sheet(isPresented: $showsModelPicker) {
+            ModelPickerSheet(settings: settings)
+                .environment(\.ginnyTheme, theme)
+                .preferredColorScheme(theme.mode.colorScheme)
+        }
+    }
+}
+
+private struct ModelPickerSheet: View {
+    @ObservedObject var settings: ProviderSettings
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.ginnyTheme) private var theme
+    @State private var searchText = ""
+    @State private var selectedDetent: PresentationDetent = .large
+
+    private var filteredModels: [ProviderModel] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return settings.availableModels }
+        return settings.availableModels.filter {
+            $0.displayName.localizedCaseInsensitiveContains(query)
+                || $0.id.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    if settings.isLoadingModels {
+                        ProgressView("Loading models…")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 48)
+                    } else if filteredModels.isEmpty {
+                        VStack(spacing: 10) {
+                            Image(systemName: "cube.transparent")
+                                .font(.title2)
+                                .foregroundStyle(theme.color("text.muted"))
+                            Text(searchText.isEmpty ? "No models available." : "No matching models.")
+                                .foregroundStyle(theme.color("text.muted"))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 48)
+                    } else {
+                        ForEach(filteredModels) { model in
+                            Button {
+                                settings.selectModel(model.id)
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(model.displayName)
+                                            .font(.body.weight(.medium))
+                                            .foregroundStyle(theme.color("text.body"))
+                                        if model.displayName != model.id {
+                                            Text(model.id)
+                                                .font(.caption)
+                                                .foregroundStyle(theme.color("text.muted"))
+                                        }
+                                    }
+
+                                    Spacer(minLength: 8)
+
+                                    if settings.modelText == model.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(theme.color("primary"))
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .ginnyGlass(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous),
+                                    prominence: settings.modelText == model.id ? .elevated : .subtle
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .scrollIndicators(.hidden)
+            .searchable(text: $searchText, prompt: "Search models")
+            .navigationTitle(settings.provider.displayName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task { await settings.refreshModels() }
+                    } label: {
+                        if settings.isLoadingModels {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(settings.isLoadingModels)
+                    .accessibilityLabel("Refresh models")
+                }
+            }
+            .task {
+                if settings.availableModels.isEmpty {
+                    await settings.refreshModels()
+                }
+            }
+        }
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
+        .presentationDragIndicator(.visible)
     }
 }
 
