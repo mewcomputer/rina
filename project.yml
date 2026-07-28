@@ -21,17 +21,31 @@ targets:
   Ginny:
     type: application
     platform: iOS
+    info:
+      path: Ginny/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     sources:
       - path: Ginny
+      - path: theme_manifest.json
+        buildPhase: resources
     dependencies:
       - package: SwiftStreamingMarkdown
         product: SwiftStreamingMarkdown
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ginny.app
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Ginny
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         TARGETED_DEVICE_FAMILY: "1,2"
     scheme:
       testTargets:

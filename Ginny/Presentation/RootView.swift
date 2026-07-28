@@ -2,14 +2,15 @@ import SwiftUI
 
 struct RootView: View {
     let dependencies: AppDependencies
+    @ObservedObject var themeStore: ThemeStore
 
     var body: some View {
         NavigationStack {
-            ChatView()
+            ChatView(dependencies: dependencies, themeStore: themeStore)
         }
     }
 }
 
 #Preview {
-    RootView(dependencies: .live)
+    RootView(dependencies: .live, themeStore: ThemeStore())
 }
