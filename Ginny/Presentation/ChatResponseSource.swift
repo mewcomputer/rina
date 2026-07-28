@@ -8,7 +8,7 @@ final class ChatResponseSource: StreamedMarkdownSource, ObservableObject {
     private let continuation: AsyncStream<String>.Continuation
 
     init() {
-        let stream = AsyncStream<String>.makeStream()
+        let stream = AsyncStream<String>.makeStream(bufferingPolicy: .bufferingNewest(1))
         text = stream.stream
         continuation = stream.continuation
     }

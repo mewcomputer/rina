@@ -110,7 +110,7 @@ struct ChatView: View {
                             if displayedMessages.isEmpty, activeResponse == nil {
                                 EmptyConversationView()
                             } else {
-                                LazyVStack(alignment: .leading, spacing: 20) {
+                                VStack(alignment: .leading, spacing: 20) {
                                     ForEach(displayedMessages, id: \.id) { message in
                                         ChatMessageView(
                                             message: message,
