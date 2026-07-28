@@ -378,7 +378,7 @@ private struct SessionSidebar: View {
                         .font(.system(size: 14, weight: .semibold))
                         .frame(width: 44, height: 44)
                         .foregroundStyle(theme.color("text.body"))
-                        .ginnyGlass(Circle(), prominence: .subtle)
+                        .background(theme.color("sidebar_accent"), in: Circle())
                 }
                 .accessibilityLabel("Close session history")
             }
@@ -417,10 +417,6 @@ private struct SessionSidebar: View {
                 .foregroundStyle(theme.color("text.body"))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .ginnyGlass(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous),
-                    prominence: .subtle
-                )
             }
             .accessibilityLabel("Appearance and theme")
 
@@ -458,9 +454,9 @@ private struct SessionSidebar: View {
                     .padding(.vertical, 13)
             }
             .foregroundStyle(theme.color("text.body"))
-            .ginnyGlass(
-                RoundedRectangle(cornerRadius: 18, style: .continuous),
-                prominence: .subtle
+            .background(
+                theme.color("sidebar_accent"),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .accessibilityLabel("Provider settings")
         }
@@ -468,7 +464,7 @@ private struct SessionSidebar: View {
         .safeAreaPadding(.top, 10)
         .safeAreaPadding(.bottom, 8)
         .frame(maxHeight: .infinity, alignment: .top)
-        .ginnyGlass(Rectangle(), prominence: .elevated)
+        .background(theme.color("sidebar.background").ignoresSafeArea())
         .overlay(alignment: .trailing) {
             Rectangle()
                 .fill(theme.color("border").opacity(0.62))
@@ -496,9 +492,9 @@ private struct SessionHistoryRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(13)
-        .ginnyGlass(
-            RoundedRectangle(cornerRadius: 16, style: .continuous),
-            prominence: isSelected ? .subtle : .subtle
+        .background(
+            isSelected ? theme.color("sidebar_accent") : .clear,
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
         )
         .opacity(isSelected ? 1 : 0.88)
     }
@@ -699,9 +695,11 @@ private struct ModelPickerSheet: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
-                                .ginnyGlass(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous),
-                                    prominence: settings.modelText == model.id ? .elevated : .subtle
+                                .background(
+                                    settings.modelText == model.id
+                                        ? theme.color("card")
+                                        : .clear,
+                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 )
                             }
                             .buttonStyle(.plain)
