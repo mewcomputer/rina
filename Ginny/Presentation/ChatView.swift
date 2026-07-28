@@ -174,6 +174,17 @@ struct ChatView: View {
                     .frame(maxWidth: 760)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 16)
+                    .background {
+                        LinearGradient(
+                            colors: [
+                                theme.color("background").opacity(0.94),
+                                theme.color("background").opacity(0.68),
+                                theme.color("background").opacity(0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
                     .zIndex(1)
                 }
                 .frame(maxHeight: .infinity)
@@ -577,7 +588,7 @@ private struct HeaderIconButton: View {
             .font(.system(size: 17, weight: .medium))
             .frame(width: 44, height: 44)
             .foregroundStyle(theme.color("text.body"))
-            .contentShape(Circle())
+            .ginnyGlass(Circle(), prominence: .subtle)
     }
 }
 
