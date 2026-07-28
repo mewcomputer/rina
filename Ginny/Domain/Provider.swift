@@ -3,6 +3,7 @@ import Foundation
 enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
     case umans
     case kimi
+    case kimiCode
     case openAICompatible
 
     var displayName: String {
@@ -11,6 +12,8 @@ enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
             "Umans"
         case .kimi:
             "Kimi"
+        case .kimiCode:
+            "Kimi Code"
         case .openAICompatible:
             "OpenAI-compatible"
         }

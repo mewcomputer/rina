@@ -176,6 +176,44 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(object["stream"] as? Bool, true)
     }
 
+    func testKimiCodeUsesTheOpenAICompatibleCodingEndpoint() throws {
+        let baseURL = URL(string: "https://api.kimi.com/coding/v1")!
+        let configuration = ProviderConfiguration(
+            provider: .kimiCode,
+            endpoint: ProviderID.kimiCode.messageEndpoint(for: baseURL),
+            model: "kimi-for-coding",
+            credentialID: "kimi-code-api-key"
+        )
+        let adapter = OpenAICompatibleAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["kimi-code-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.user("Hello")])
+        )
+
+        XCTAssertEqual(request.url?.absoluteString, "https://api.kimi.com/coding/v1/chat/completions")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer secret")
+    }
+
+    func testKimiCodeCompositionUsesTheOpenAICompatibleAdapter() {
+        let dependencies = AppDependencies(
+            credentialStore: InMemoryCredentialStore(credentials: [:]),
+            transport: UnusedStreamingTransport(),
+            modelCatalog: URLSessionModelCatalog()
+        )
+        let configuration = ProviderConfiguration(
+            provider: .kimiCode,
+            endpoint: URL(string: "https://api.kimi.com/coding/v1/chat/completions")!,
+            model: "kimi-for-coding",
+            credentialID: "kimi-code-api-key"
+        )
+
+        XCTAssertTrue(dependencies.makeProvider(for: configuration) is OpenAICompatibleAdapter)
+    }
+
     func testAnthropicRequestUsesUmansAuthenticationAndMessagesShape() throws {
         let configuration = ProviderConfiguration(
             provider: .umans,

@@ -95,6 +95,55 @@ final class ProviderSettingsTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
+    func testKimiCodeUsesItsOwnCodingServiceDefaults() async throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let settings = ProviderSettings(
+            defaults: defaults,
+            credentialStore: TestCredentialStore(),
+            modelCatalog: URLSessionModelCatalog()
+        )
+
+        settings.selectProvider(.kimiCode)
+
+        XCTAssertEqual(settings.endpointText, "https://api.kimi.com/coding/v1")
+        XCTAssertEqual(settings.modelText, "kimi-for-coding")
+        await settings.refreshModels()
+
+        XCTAssertEqual(
+            settings.availableModels.map(\.id),
+            ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"]
+        )
+        XCTAssertNil(settings.catalogMessage)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    func testKimiCodeKeepsItsCredentialSeparateFromRegularKimi() throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let credentials = TestCredentialStore()
+        let settings = ProviderSettings(defaults: defaults, credentialStore: credentials)
+
+        settings.selectProvider(.kimiCode)
+        settings.modelText = "kimi-for-coding"
+        settings.credentialText = "coding-secret"
+        XCTAssertTrue(settings.save())
+
+        settings.selectProvider(.kimi)
+        XCTAssertEqual(settings.credentialText, "")
+        settings.modelText = "kimi-k2.5"
+        settings.credentialText = "moonshot-secret"
+        XCTAssertTrue(settings.save())
+
+        settings.selectProvider(.kimiCode)
+        XCTAssertEqual(settings.credentialText, "coding-secret")
+        XCTAssertEqual(credentials.values["kimi-api-key"], "moonshot-secret")
+        XCTAssertEqual(credentials.values["kimi-code-api-key"], "coding-secret")
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
     func testMigratesLegacyFullEndpointToProviderBaseURL() throws {
         let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

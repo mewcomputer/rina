@@ -167,7 +167,7 @@ final class ProviderSettings: ObservableObject {
         switch provider {
         case .umans:
             endpointSuffix = "/v1/messages"
-        case .kimi, .openAICompatible:
+        case .kimi, .kimiCode, .openAICompatible:
             endpointSuffix = "/v1/chat/completions"
         }
 
@@ -189,6 +189,8 @@ private extension ProviderID {
             "https://api.code.umans.ai"
         case .kimi:
             "https://api.moonshot.ai/v1"
+        case .kimiCode:
+            "https://api.kimi.com/coding/v1"
         case .openAICompatible:
             "https://api.openai.com/v1"
         }
@@ -198,6 +200,8 @@ private extension ProviderID {
         switch self {
         case .umans:
             "umans-coder"
+        case .kimiCode:
+            "kimi-for-coding"
         case .kimi, .openAICompatible:
             ""
         }
@@ -209,6 +213,8 @@ private extension ProviderID {
             "umans-api-key"
         case .kimi:
             "kimi-api-key"
+        case .kimiCode:
+            "kimi-code-api-key"
         case .openAICompatible:
             "openai-compatible-primary"
         }

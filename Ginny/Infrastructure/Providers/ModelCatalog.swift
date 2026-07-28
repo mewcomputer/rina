@@ -130,6 +130,10 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
         baseURL: URL,
         credential: String?
     ) async throws -> [ProviderModel] {
+        if let knownModels = provider.knownModels {
+            return knownModels
+        }
+
         var request = URLRequest(url: provider.catalogURL(for: baseURL))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -174,7 +178,7 @@ extension ProviderID {
         switch self {
         case .umans:
             baseURL.appendingProviderPath("v1/messages")
-        case .kimi, .openAICompatible:
+        case .kimi, .kimiCode, .openAICompatible:
             baseURL.appendingProviderPath("v1/chat/completions")
         }
     }
@@ -183,8 +187,25 @@ extension ProviderID {
         switch self {
         case .umans:
             baseURL.appendingProviderPath("v1/models/info")
-        case .kimi, .openAICompatible:
+        case .kimi, .kimiCode, .openAICompatible:
             baseURL.appendingProviderPath("v1/models")
+        }
+    }
+
+    var knownModels: [ProviderModel]? {
+        switch self {
+        case .kimiCode:
+            [
+                ProviderModel(id: "k3", displayName: "K3"),
+                ProviderModel(id: "k3-256k", displayName: "K3 256K"),
+                ProviderModel(id: "kimi-for-coding", displayName: "Kimi for Coding"),
+                ProviderModel(
+                    id: "kimi-for-coding-highspeed",
+                    displayName: "Kimi for Coding Highspeed"
+                )
+            ]
+        case .umans, .kimi, .openAICompatible:
+            nil
         }
     }
 }

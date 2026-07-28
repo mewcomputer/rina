@@ -20,7 +20,7 @@ struct AppDependencies: Sendable {
                 credentialStore: credentialStore,
                 transport: transport
             )
-        case .kimi, .openAICompatible:
+        case .kimi, .kimiCode, .openAICompatible:
             OpenAICompatibleAdapter(
                 configuration: configuration,
                 credentialStore: credentialStore,
