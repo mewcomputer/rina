@@ -40,7 +40,7 @@ struct ChatView: View {
                     .ignoresSafeArea()
 
                 chatSurface
-                    .offset(x: progress * sidebarWidth * 0.78)
+                    .offset(x: progress * sidebarWidth)
                     .simultaneousGesture(edgeOpenGesture(width: sidebarWidth))
 
                 if progress > 0 {
