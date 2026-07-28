@@ -36,7 +36,11 @@ struct ChatView: View {
             let progress = sidebarProgress(for: sidebarWidth)
 
             ZStack(alignment: .leading) {
+                theme.color("background")
+                    .ignoresSafeArea()
+
                 chatSurface
+                    .offset(x: progress * sidebarWidth * 0.78)
                     .simultaneousGesture(edgeOpenGesture(width: sidebarWidth))
 
                 if progress > 0 {
@@ -481,11 +485,7 @@ private struct SessionSidebar: View {
         .safeAreaPadding(.top, 10)
         .safeAreaPadding(.bottom, 8)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background {
-            Rectangle()
-                .fill(theme.color("sidebar").opacity(0.38))
-                .background(.thickMaterial)
-        }
+        .ginnyGlass(Rectangle(), prominence: .elevated)
         .overlay(alignment: .trailing) {
             Rectangle()
                 .fill(theme.color("border").opacity(0.62))
