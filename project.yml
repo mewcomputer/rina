@@ -9,7 +9,7 @@ options:
 packages:
   SwiftStreamingMarkdown:
     url: https://github.com/espeon/SwiftStreamingMarkdown.git
-    branch: feature/character-streaming-and-width-fix
+    branch: feature/fast-fade
 
 settings:
   base:

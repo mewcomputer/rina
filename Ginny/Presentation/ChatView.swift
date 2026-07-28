@@ -122,7 +122,7 @@ struct ChatView: View {
                                     if let activeResponse {
                                         StreamedMarkdownView(
                                             source: activeResponse.source,
-                                            config: markdownConfig.withTextAnimation(.fade)
+                                            config: markdownConfig.withTextAnimation(.fastFade)
                                         )
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .id("active-response")
