@@ -12,6 +12,7 @@ struct AppleIntelligenceTitleGenerator: ConversationTitleGenerating {
 
         let session = LanguageModelSession(instructions: """
             Create a concise title for a conversation. Use the first user message and the assistant's answer.
+            Do not simply restate or re-ask the user's question. Focus the title on the underlying topic or task.
             Return only the title, with no explanation, quotes, prefix, or punctuation.
             Use no more than three long words or four short words. Preserve the language of the conversation.
             """)

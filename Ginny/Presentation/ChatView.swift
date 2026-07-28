@@ -184,6 +184,7 @@ struct ChatView: View {
                             startPoint: .top,
                             endPoint: .bottom
                         )
+                        .ignoresSafeArea(edges: .top)
                     }
                     .zIndex(1)
                 }
