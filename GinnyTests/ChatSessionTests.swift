@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import Ginny
 
@@ -36,6 +37,31 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertFalse(session.conversation.messages[1].blocks[0].isComplete)
         XCTAssertEqual(session.errorMessage, "connection lost")
     }
+
+    func testSessionConsumesOpenAICompatibleStreamingAdapter() async {
+        let adapter = OpenAICompatibleAdapter(
+            configuration: ProviderConfiguration(
+                endpoint: URL(string: "https://example.com/v1/chat/completions")!,
+                model: "fixture-model",
+                credentialID: "primary"
+            ),
+            credentialStore: InMemoryCredentialStore(credentials: ["primary": "secret"]),
+            transport: FixtureStreamingTransport(
+                statusCode: 200,
+                body: "data: {\"choices\":[{\"delta\":{\"content\":\"Hello **there**\"}}]}\n\ndata: [DONE]\n\n"
+            )
+        )
+        let session = ChatSession(provider: adapter)
+
+        await session.send("Hello")
+
+        XCTAssertEqual(session.conversation.generationState, .completed)
+        XCTAssertEqual(session.streamingText, "Hello **there**")
+        XCTAssertEqual(
+            session.conversation.messages.last?.blocks.first?.payload,
+            "Hello **there**"
+        )
+    }
 }
 
 private struct StubProvider: ProviderAdapter {
@@ -58,5 +84,20 @@ private struct StubProvider: ProviderAdapter {
                 continuation.finish()
             }
         }
+    }
+}
+
+private struct FixtureStreamingTransport: StreamingTransport {
+    let statusCode: Int
+    let body: String
+
+    func response(for request: URLRequest) async throws -> StreamingResponse {
+        let stream = AsyncThrowingStream<UInt8, Error> { continuation in
+            for byte in body.utf8 {
+                continuation.yield(byte)
+            }
+            continuation.finish()
+        }
+        return StreamingResponse(statusCode: statusCode, bytes: stream)
     }
 }

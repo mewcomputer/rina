@@ -85,6 +85,25 @@ final class StreamingTests: XCTestCase {
         )
     }
 
+    func testURLSessionTransportStreamsBytesFromTheResponse() async throws {
+        StreamingURLProtocol.body = Data("data: fixture\n\n".utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StreamingURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let transport = URLSessionStreamingTransport(session: session)
+
+        var bytes: [UInt8] = []
+        let response = try await transport.response(
+            for: URLRequest(url: URL(string: "https://fixture.test/stream")!)
+        )
+        for try await byte in response.bytes {
+            bytes.append(byte)
+        }
+
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(String(decoding: bytes, as: UTF8.self), "data: fixture\n\n")
+    }
+
     func testOpenAIRequestIncludesBearerAuthenticationAndStreaming() throws {
         let configuration = ProviderConfiguration(
             endpoint: URL(string: "https://example.com/v1/chat/completions")!,
@@ -134,4 +153,30 @@ private struct FixtureStreamingTransport: StreamingTransport {
         }
         return StreamingResponse(statusCode: statusCode, bytes: stream)
     }
+}
+
+private final class StreamingURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var body = Data()
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "text/event-stream"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Self.body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }
