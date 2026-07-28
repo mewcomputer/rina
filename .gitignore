@@ -1,0 +1,14 @@
+.DS_Store
+
+build/
+DerivedData/
+
+*.xcuserstate
+xcuserdata/
+
+*.swiftdoc
+*.swiftmodule
+*.swiftsourceinfo
+
+.build/
+Package.resolved

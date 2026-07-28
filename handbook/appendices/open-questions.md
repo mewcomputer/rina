@@ -1,0 +1,11 @@
+# Appendix D — Open Questions
+- Minimum supported iOS version.
+- Exact SwiftData migration strategy after first public schema.
+- Full-text index implementation.
+- Semantic embedding model and vector index, if any.
+- Initial non-Apple neural speech backend.
+- Mermaid performance and security validation.
+- Multi-window scope on iPad.
+- Revision checkpoint cadence.
+- Current Foundation Models API availability for the deployment target.
+- Future synchronisation remains a separate protocol design.

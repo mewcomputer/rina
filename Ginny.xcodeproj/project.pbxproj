@@ -1,0 +1,421 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */; };
+		66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */; };
+		78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */; };
+		C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA14B4BF60B6010216E83851 /* AppDependencies.swift */; };
+		CFD2820648D9A8933EA72451 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604F428D68F76A14BCE9A5F5 /* RootView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		07D610BA248542447DCC26AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 623794BEDAB75D309DC84F2C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0AEBED158889DE2A3984B81A;
+			remoteInfo = Ginny;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identifiers.swift; sourceTree = "<group>"; };
+		383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyApp.swift; sourceTree = "<group>"; };
+		51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentifiersTests.swift; sourceTree = "<group>"; };
+		604F428D68F76A14BCE9A5F5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		92C5627E3E2ACC39677676CC /* GinnyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GinnyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA14B4BF60B6010216E83851 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
+		C4622D72389852D888EE9495 /* Ginny.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ginny.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1C4AEF37B0F3C72D81911EC2 /* Application */ = {
+			isa = PBXGroup;
+			children = (
+				AA14B4BF60B6010216E83851 /* AppDependencies.swift */,
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
+		3F2E3A463EC9A0D4CD77FD33 /* Presentation */ = {
+			isa = PBXGroup;
+			children = (
+				604F428D68F76A14BCE9A5F5 /* RootView.swift */,
+			);
+			path = Presentation;
+			sourceTree = "<group>";
+		};
+		5557745ADCC3C1C0940861A6 = {
+			isa = PBXGroup;
+			children = (
+				6367FEC595B74A9399415B18 /* Ginny */,
+				DBB2D52842EEE777932F5F26 /* GinnyTests */,
+				B2FEE8F6D7EAB5211AE095BC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6367FEC595B74A9399415B18 /* Ginny */ = {
+			isa = PBXGroup;
+			children = (
+				383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */,
+				1C4AEF37B0F3C72D81911EC2 /* Application */,
+				A3B19236F7232A5A89CB709F /* Domain */,
+				3F2E3A463EC9A0D4CD77FD33 /* Presentation */,
+			);
+			path = Ginny;
+			sourceTree = "<group>";
+		};
+		A3B19236F7232A5A89CB709F /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		B2FEE8F6D7EAB5211AE095BC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C4622D72389852D888EE9495 /* Ginny.app */,
+				92C5627E3E2ACC39677676CC /* GinnyTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DBB2D52842EEE777932F5F26 /* GinnyTests */ = {
+			isa = PBXGroup;
+			children = (
+				51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */,
+			);
+			path = GinnyTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0AEBED158889DE2A3984B81A /* Ginny */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 205C1EF656B6F48B95F4E84D /* Build configuration list for PBXNativeTarget "Ginny" */;
+			buildPhases = (
+				0A8F43BD9A49FAEC78FFBF4A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Ginny;
+			packageProductDependencies = (
+			);
+			productName = Ginny;
+			productReference = C4622D72389852D888EE9495 /* Ginny.app */;
+			productType = "com.apple.product-type.application";
+		};
+		38639F0C01A9B32D52BBFA47 /* GinnyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BD7255DD38A86FB56AF75BEE /* Build configuration list for PBXNativeTarget "GinnyTests" */;
+			buildPhases = (
+				0726B0D2DD8367B25E39E977 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BE216AE9894CB4AB01485748 /* PBXTargetDependency */,
+			);
+			name = GinnyTests;
+			packageProductDependencies = (
+			);
+			productName = GinnyTests;
+			productReference = 92C5627E3E2ACC39677676CC /* GinnyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		623794BEDAB75D309DC84F2C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 2CBEE4EB06223A9D65AF775C /* Build configuration list for PBXProject "Ginny" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 5557745ADCC3C1C0940861A6;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B2FEE8F6D7EAB5211AE095BC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0AEBED158889DE2A3984B81A /* Ginny */,
+				38639F0C01A9B32D52BBFA47 /* GinnyTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0726B0D2DD8367B25E39E977 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0A8F43BD9A49FAEC78FFBF4A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */,
+				66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */,
+				78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */,
+				CFD2820648D9A8933EA72451 /* RootView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BE216AE9894CB4AB01485748 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0AEBED158889DE2A3984B81A /* Ginny */;
+			targetProxy = 07D610BA248542447DCC26AB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1AAA22785CA359715287F3A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Ginny;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ginny.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		2D7B6E95810CEB9343BE4959 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		6CA40A043AC51B07CC4ACDD6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ginny.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ginny.app/Ginny";
+			};
+			name = Debug;
+		};
+		C8368B12E4C6CCCF545086B0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ginny.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ginny.app/Ginny";
+			};
+			name = Release;
+		};
+		E103EA936142AB1B66E886B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Ginny;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ginny.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E5E1289F532501581106EAD3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		205C1EF656B6F48B95F4E84D /* Build configuration list for PBXNativeTarget "Ginny" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1AAA22785CA359715287F3A4 /* Debug */,
+				E103EA936142AB1B66E886B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2CBEE4EB06223A9D65AF775C /* Build configuration list for PBXProject "Ginny" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D7B6E95810CEB9343BE4959 /* Debug */,
+				E5E1289F532501581106EAD3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BD7255DD38A86FB56AF75BEE /* Build configuration list for PBXNativeTarget "GinnyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CA40A043AC51B07CC4ACDD6 /* Debug */,
+				C8368B12E4C6CCCF545086B0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 623794BEDAB75D309DC84F2C /* Project object */;
+}

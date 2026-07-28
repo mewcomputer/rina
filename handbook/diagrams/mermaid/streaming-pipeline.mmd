@@ -1,0 +1,6 @@
+flowchart LR
+ A[URLSession bytes] --> B[Framer] --> C[Provider parser] --> D[Canonical events]
+ D --> E[Conversation engine]
+ E --> F[Renderer]
+ E --> G[Persistence]
+ E --> H[Speech segmenter]
