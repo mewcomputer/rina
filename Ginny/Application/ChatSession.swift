@@ -21,6 +21,17 @@ final class ChatSession: ObservableObject {
         self.provider = provider
     }
 
+    func load(conversation: Conversation) {
+        guard !isGenerating else { return }
+        self.conversation = conversation
+        streamingText = ""
+        errorMessage = nil
+    }
+
+    func reset() {
+        load(conversation: Conversation())
+    }
+
     var isGenerating: Bool {
         switch conversation.generationState {
         case .preparing, .streaming:

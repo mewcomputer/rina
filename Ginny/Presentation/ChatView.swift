@@ -8,10 +8,14 @@ struct ChatView: View {
 
     @StateObject private var session: ChatSession
     @StateObject private var settings: ProviderSettings
+    @StateObject private var history: SessionHistoryStore
     @State private var draft = ""
     @State private var activeResponse: ActiveResponse?
     @State private var generationTask: Task<Void, Never>?
     @State private var showsSettings = false
+    @State private var isSidebarPresented = false
+    @State private var sidebarDragOffset: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         dependencies: AppDependencies = .live,
@@ -23,9 +27,62 @@ struct ChatView: View {
         _settings = StateObject(
             wrappedValue: ProviderSettings(credentialStore: dependencies.credentialStore)
         )
+        _history = StateObject(wrappedValue: SessionHistoryStore())
     }
 
     var body: some View {
+        GeometryReader { geometry in
+            let sidebarWidth = min(340, geometry.size.width * 0.86)
+            let progress = sidebarProgress(for: sidebarWidth)
+
+            ZStack(alignment: .leading) {
+                chatSurface
+                    .simultaneousGesture(edgeOpenGesture(width: sidebarWidth))
+
+                if progress > 0 {
+                    Color.black.opacity(0.42 * progress)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture { setSidebarPresented(false) }
+                        .accessibilityHidden(true)
+                }
+
+                if isSidebarPresented || sidebarDragOffset > 0 {
+                    SessionSidebar(
+                        history: history,
+                        themeStore: themeStore,
+                        currentConversationID: session.conversation.id,
+                        onSelect: selectConversation,
+                        onNewConversation: startNewConversation,
+                        onSettings: { showsSettings = true },
+                        onClose: { setSidebarPresented(false) }
+                    )
+                    .frame(width: sidebarWidth)
+                    .offset(x: drawerOffset(for: sidebarWidth))
+                    .simultaneousGesture(drawerCloseGesture(width: sidebarWidth))
+                    .zIndex(1)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .foregroundStyle(theme.color("text.body"))
+        .toolbar(.hidden, for: .navigationBar)
+        .onChange(of: session.streamingText) { _, snapshot in
+            activeResponse?.source.yield(snapshot)
+        }
+        .onDisappear {
+            generationTask?.cancel()
+        }
+        .sheet(isPresented: $showsSettings) {
+            NavigationStack {
+                ProviderSettingsView(settings: settings)
+            }
+            .environment(\.ginnyTheme, theme)
+            .preferredColorScheme(theme.mode.colorScheme)
+        }
+    }
+
+    private var chatSurface: some View {
         ZStack {
             theme.color("background")
                 .ignoresSafeArea()
@@ -36,7 +93,7 @@ struct ChatView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ChatHeader(
                                 themeStore: themeStore,
-                                showsSettings: $showsSettings
+                                onOpenSidebar: { setSidebarPresented(true) }
                             )
 
                             if displayedMessages.isEmpty, activeResponse == nil {
@@ -66,8 +123,10 @@ struct ChatView: View {
                                             .foregroundStyle(theme.color("text.error"))
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                             .padding(14)
-                                            .background(theme.color("red.bg").opacity(0.12))
-                                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                            .ginnyGlass(
+                                                RoundedRectangle(cornerRadius: 14, style: .continuous),
+                                                prominence: .subtle
+                                            )
                                             .id("error")
                                     }
                                 }
@@ -101,21 +160,6 @@ struct ChatView: View {
                 .frame(height: 116)
             }
         }
-        .foregroundStyle(theme.color("text.body"))
-        .toolbar(.hidden, for: .navigationBar)
-        .onChange(of: session.streamingText) { _, snapshot in
-            activeResponse?.source.yield(snapshot)
-        }
-        .onDisappear {
-            generationTask?.cancel()
-        }
-        .sheet(isPresented: $showsSettings) {
-            NavigationStack {
-                ProviderSettingsView(settings: settings)
-            }
-            .environment(\.ginnyTheme, theme)
-            .preferredColorScheme(theme.mode.colorScheme)
-        }
     }
 
     private var displayedMessages: [Message] {
@@ -125,6 +169,80 @@ struct ChatView: View {
             return session.conversation.messages
         }
         return Array(session.conversation.messages.dropLast())
+    }
+
+    private func sidebarProgress(for width: CGFloat) -> CGFloat {
+        let progress: CGFloat
+        if isSidebarPresented {
+            progress = 1 + sidebarDragOffset / width
+        } else {
+            progress = sidebarDragOffset / width
+        }
+        return min(1, max(0, progress))
+    }
+
+    private func drawerOffset(for width: CGFloat) -> CGFloat {
+        if isSidebarPresented {
+            return min(0, sidebarDragOffset)
+        }
+        return -width + max(0, sidebarDragOffset)
+    }
+
+    private func edgeOpenGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                guard !isSidebarPresented,
+                      value.startLocation.x <= 32,
+                      value.translation.width > 0
+                else { return }
+                sidebarDragOffset = min(width, value.translation.width)
+            }
+            .onEnded { value in
+                guard !isSidebarPresented, value.startLocation.x <= 32 else { return }
+                let projected = value.predictedEndTranslation.width
+                setSidebarPresented(projected > width * 0.32)
+            }
+    }
+
+    private func drawerCloseGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                guard isSidebarPresented,
+                      value.startLocation.x >= width - 64,
+                      value.translation.width < 0
+                else { return }
+                sidebarDragOffset = max(-width, value.translation.width)
+            }
+            .onEnded { value in
+                guard isSidebarPresented, value.startLocation.x >= width - 64 else { return }
+                let projected = value.predictedEndTranslation.width
+                setSidebarPresented(projected < -width * 0.32)
+            }
+    }
+
+    private func setSidebarPresented(_ presented: Bool) {
+        let animation: Animation = reduceMotion
+            ? .easeOut(duration: 0.18)
+            : .interactiveSpring(response: 0.34, dampingFraction: 0.86)
+        withAnimation(animation) {
+            isSidebarPresented = presented
+            sidebarDragOffset = 0
+        }
+    }
+
+    private func selectConversation(_ conversation: Conversation) {
+        guard !session.isGenerating else { return }
+        session.load(conversation: conversation)
+        activeResponse = nil
+        setSidebarPresented(false)
+    }
+
+    private func startNewConversation() {
+        guard !session.isGenerating else { return }
+        session.reset()
+        activeResponse = nil
+        draft = ""
+        setSidebarPresented(false)
     }
 
     private var markdownConfig: MarkdownRenderConfig {
@@ -185,6 +303,9 @@ struct ChatView: View {
 
         generationTask = Task { @MainActor in
             await session.send(prompt)
+            if session.conversation.generationState == .completed {
+                history.save(session.conversation)
+            }
             response.source.finish()
             activeResponse = nil
             generationTask = nil
@@ -195,11 +316,85 @@ struct ChatView: View {
 @MainActor
 private struct ChatHeader: View {
     @ObservedObject var themeStore: ThemeStore
-    @Binding var showsSettings: Bool
+    let onOpenSidebar: () -> Void
     @Environment(\.ginnyTheme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
+            Button(action: onOpenSidebar) {
+                HeaderIconButton(systemImage: "line.3.horizontal")
+            }
+            .accessibilityLabel("Open session history")
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Ginny")
+                    .font(.headline)
+                Text(themeStore.displayName(for: themeStore.selectedThemeID))
+                    .font(.caption)
+                    .foregroundStyle(theme.color("text.muted"))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(themeStore.displayName(for: themeStore.selectedThemeID))
+                .font(.caption)
+                .foregroundStyle(theme.color("text.muted"))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .ginnyGlass(Capsule(), prominence: .subtle)
+                .accessibilityLabel("Current theme")
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 28)
+    }
+}
+
+@MainActor
+private struct SessionSidebar: View {
+    @ObservedObject var history: SessionHistoryStore
+    @ObservedObject var themeStore: ThemeStore
+    let currentConversationID: ConversationID
+    let onSelect: (Conversation) -> Void
+    let onNewConversation: () -> Void
+    let onSettings: () -> Void
+    let onClose: () -> Void
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sessions")
+                        .font(.system(.title2, design: .serif, weight: .medium))
+                    Text("A record of your thinking")
+                        .font(.caption)
+                        .foregroundStyle(theme.color("text.muted"))
+                }
+
+                Spacer()
+
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                        .foregroundStyle(theme.color("text.body"))
+                        .ginnyGlass(Circle(), prominence: .subtle)
+                }
+                .accessibilityLabel("Close session history")
+            }
+
+            Button(action: onNewConversation) {
+                Label("New session", systemImage: "plus")
+                    .font(.body.weight(.medium))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 13)
+            }
+            .foregroundStyle(theme.color("primary_foreground"))
+            .background(theme.color("primary"), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .accessibilityHint("Starts a blank conversation")
+
             Menu {
                 Section("Theme") {
                     ForEach(themeStore.availableThemeIDs, id: \.self) { themeID in
@@ -215,30 +410,127 @@ private struct ChatHeader: View {
                     }
                 }
             } label: {
-                HeaderIconButton(systemImage: "line.3.horizontal")
+                HStack(spacing: 10) {
+                    Image(systemName: "paintpalette")
+                    Text("Appearance")
+                    Spacer()
+                    Text(themeStore.displayName(for: themeStore.selectedThemeID))
+                        .foregroundStyle(theme.color("text.muted"))
+                        .lineLimit(1)
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(theme.color("text.body"))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .ginnyGlass(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous),
+                    prominence: .subtle
+                )
             }
-            .accessibilityLabel("Themes")
+            .accessibilityLabel("Appearance and theme")
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Ginny")
-                    .font(.headline)
-                Text(themeStore.displayName(for: themeStore.selectedThemeID))
-                    .font(.caption)
-                    .foregroundStyle(theme.color("text.muted"))
-                    .lineLimit(1)
+            Text("RECENT")
+                .font(.caption2.weight(.semibold))
+                .tracking(1.2)
+                .foregroundStyle(theme.color("text.muted"))
+                .padding(.top, 4)
+
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    if history.conversations.isEmpty {
+                        Text("Your next thread will appear here.")
+                            .font(.subheadline)
+                            .foregroundStyle(theme.color("text.muted"))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 16)
+                    } else {
+                        ForEach(history.conversations, id: \.id) { conversation in
+                            Button {
+                                onSelect(conversation)
+                            } label: {
+                                SessionHistoryRow(
+                                    conversation: conversation,
+                                    title: history.title(for: conversation),
+                                    preview: history.preview(for: conversation),
+                                    isSelected: conversation.id == currentConversationID
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 0)
 
-            Button {
-                showsSettings = true
-            } label: {
-                HeaderIconButton(systemImage: "gearshape")
+            Button(action: onSettings) {
+                Label("Settings", systemImage: "gearshape")
+                    .font(.body.weight(.medium))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 13)
             }
+            .foregroundStyle(theme.color("text.body"))
+            .ginnyGlass(
+                RoundedRectangle(cornerRadius: 18, style: .continuous),
+                prominence: .subtle
+            )
             .accessibilityLabel("Provider settings")
         }
-        .padding(.top, 12)
-        .padding(.bottom, 28)
+        .padding(.horizontal, 16)
+        .safeAreaPadding(.top, 10)
+        .safeAreaPadding(.bottom, 8)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background {
+            Rectangle()
+                .fill(theme.color("sidebar").opacity(0.38))
+                .background(.thickMaterial)
+        }
+        .overlay(alignment: .trailing) {
+            Rectangle()
+                .fill(theme.color("border").opacity(0.62))
+                .frame(width: 1)
+        }
+    }
+}
+
+private struct SessionHistoryRow: View {
+    let conversation: Conversation
+    let title: String
+    let preview: String
+    let isSelected: Bool
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if isSelected {
+                    Circle()
+                        .fill(theme.color("primary"))
+                        .frame(width: 7, height: 7)
+                }
+            }
+
+            Text(preview)
+                .font(.caption)
+                .foregroundStyle(theme.color("text.muted"))
+                .lineLimit(2)
+
+            Text(conversation.createdAt, style: .relative)
+                .font(.caption2)
+                .foregroundStyle(theme.color("text.muted").opacity(0.78))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(13)
+        .ginnyGlass(
+            RoundedRectangle(cornerRadius: 16, style: .continuous),
+            prominence: isSelected ? .subtle : .subtle
+        )
+        .opacity(isSelected ? 1 : 0.88)
     }
 }
 
@@ -251,11 +543,7 @@ private struct HeaderIconButton: View {
             .font(.system(size: 17, weight: .medium))
             .frame(width: 44, height: 44)
             .foregroundStyle(theme.color("text.body"))
-            .background(theme.color("secondary"), in: Circle())
-            .overlay {
-                Circle()
-                    .stroke(theme.color("border"), lineWidth: 1)
-            }
+            .ginnyGlass(Circle(), prominence: .subtle)
     }
 }
 
@@ -304,7 +592,7 @@ private struct ComposerView: View {
                         .font(.system(size: 18, weight: .medium))
                         .frame(width: 44, height: 44)
                         .foregroundStyle(theme.color("text.body"))
-                        .background(theme.color("secondary"), in: Circle())
+                        .ginnyGlass(Circle(), prominence: .subtle)
                 }
                 .accessibilityLabel("Add attachment")
 
@@ -341,11 +629,10 @@ private struct ComposerView: View {
         }
         .padding(12)
         .frame(height: 116, alignment: .top)
-        .background(theme.color("card"), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(theme.color("border"), lineWidth: 1)
-        }
+        .ginnyGlass(
+            RoundedRectangle(cornerRadius: 28, style: .continuous),
+            prominence: .elevated
+        )
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
     }
@@ -369,7 +656,10 @@ private struct ChatMessageView: View {
                     .foregroundStyle(theme.color("pill.custom.fg"))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
-                    .background(theme.color("pill.custom.bg"), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .ginnyGlass(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous),
+                        prominence: .subtle
+                    )
                     .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
                 MarkdownView(text: text, config: markdownConfig)
