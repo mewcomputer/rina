@@ -65,8 +65,13 @@ final class ProviderSettings: ObservableObject {
 
     var thinkingOptions: [ThinkingLevel] {
         guard provider == .kimiCode else { return [] }
-        guard ["k3", "k3-256k"].contains(modelText) else { return [] }
-        return [.low, .high, .max]
+        if ["kimi-for-coding", "kimi-for-coding-highspeed"].contains(modelText) {
+            return [.off, .on]
+        }
+        if ["k3", "k3-256k"].contains(modelText) {
+            return [.off, .low, .high, .max]
+        }
+        return []
     }
 
     var validBaseURL: URL? {
@@ -226,9 +231,18 @@ final class ProviderSettings: ObservableObject {
         guard let rawValue = defaults.string(forKey: thinkingLevelKey(for: provider, model: model)),
               let level = ThinkingLevel(rawValue: rawValue)
         else {
-            return .high
+            return defaultThinkingLevel(for: provider, model: model)
         }
         return level
+    }
+
+    private static func defaultThinkingLevel(for provider: ProviderID, model: String) -> ThinkingLevel {
+        if provider == .kimiCode,
+           ["kimi-for-coding", "kimi-for-coding-highspeed"].contains(model)
+        {
+            return .on
+        }
+        return .high
     }
 
     private static func thinkingLevelKey(for provider: ProviderID, model: String) -> String {

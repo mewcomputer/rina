@@ -91,7 +91,10 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
             maxTokens: 32_768,
             reasoningEffort: configuration.provider == .kimiCode
                 && ["k3", "k3-256k"].contains(configuration.model)
-                ? configuration.thinkingLevel?.rawValue
+                ? configuration.thinkingLevel?.reasoningEffort
+                : nil,
+            thinking: configuration.provider == .kimiCode
+                ? configuration.thinkingLevel?.kimiThinking
                 : nil,
             stream: true
         )
@@ -148,6 +151,7 @@ private struct OpenAICompatibleRequestBody: Encodable {
     let messages: [ProviderMessage]
     let maxTokens: Int
     let reasoningEffort: String?
+    let thinking: KimiThinking?
     let stream: Bool
 
     private enum CodingKeys: String, CodingKey {
@@ -155,6 +159,33 @@ private struct OpenAICompatibleRequestBody: Encodable {
         case messages
         case maxTokens = "max_tokens"
         case reasoningEffort = "reasoning_effort"
+        case thinking
         case stream
+    }
+}
+
+private struct KimiThinking: Encodable {
+    let type: String
+}
+
+private extension ThinkingLevel {
+    var reasoningEffort: String? {
+        switch self {
+        case .low, .high, .max:
+            rawValue
+        case .off, .on:
+            nil
+        }
+    }
+
+    var kimiThinking: KimiThinking? {
+        switch self {
+        case .off:
+            KimiThinking(type: "disabled")
+        case .on:
+            KimiThinking(type: "enabled")
+        case .low, .high, .max:
+            nil
+        }
     }
 }

@@ -150,15 +150,18 @@ final class ProviderSettingsTests: XCTestCase {
         let settings = ProviderSettings(defaults: defaults, credentialStore: TestCredentialStore())
 
         settings.selectProvider(.kimiCode)
-        XCTAssertTrue(settings.thinkingOptions.isEmpty)
+        XCTAssertEqual(settings.thinkingOptions, [.off, .on])
+        settings.selectThinkingLevel(.off)
+        XCTAssertEqual(settings.thinkingLevel, .off)
 
         settings.selectModel("k3")
-        XCTAssertEqual(settings.thinkingOptions, [.low, .high, .max])
+        XCTAssertEqual(settings.thinkingOptions, [.off, .low, .high, .max])
         settings.selectThinkingLevel(.max)
         XCTAssertEqual(settings.thinkingLevel, .max)
 
         let restored = ProviderSettings(defaults: defaults, credentialStore: TestCredentialStore())
         restored.selectProvider(.kimiCode)
+        XCTAssertEqual(restored.thinkingLevel, .off)
         restored.selectModel("k3")
         XCTAssertEqual(restored.thinkingLevel, .max)
 

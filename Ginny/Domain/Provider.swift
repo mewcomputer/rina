@@ -21,6 +21,8 @@ enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
 }
 
 enum ThinkingLevel: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
+    case off
+    case on
     case low
     case high
     case max

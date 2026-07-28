@@ -247,6 +247,31 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(object["reasoning_effort"] as? String, "high")
     }
 
+    func testKimiCodeRequestUsesThinkingModeForCodingModel() throws {
+        let configuration = ProviderConfiguration(
+            provider: .kimiCode,
+            endpoint: URL(string: "https://api.kimi.com/coding/v1/chat/completions")!,
+            model: "kimi-for-coding",
+            credentialID: "kimi-code-api-key",
+            thinkingLevel: .off
+        )
+        let adapter = OpenAICompatibleAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["kimi-code-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.user("Hello")])
+        )
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let thinking = try XCTUnwrap(object["thinking"] as? [String: Any])
+
+        XCTAssertEqual(thinking["type"] as? String, "disabled")
+        XCTAssertNil(object["reasoning_effort"])
+    }
+
     func testKimiCodeCompositionUsesTheOpenAICompatibleAdapter() {
         let dependencies = AppDependencies(
             credentialStore: InMemoryCredentialStore(credentials: [:]),
