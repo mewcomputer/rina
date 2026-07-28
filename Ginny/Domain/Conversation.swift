@@ -197,19 +197,26 @@ enum ConversationError: Error, Equatable, Sendable {
 struct Conversation: Codable, Equatable, Sendable {
     let id: ConversationID
     let createdAt: Date
+    private(set) var title: String?
     private(set) var messages: [Message]
     private(set) var generationState: GenerationState
 
     init(
         id: ConversationID = ConversationID(),
         createdAt: Date = Date(),
+        title: String? = nil,
         messages: [Message] = [],
         generationState: GenerationState = .idle
     ) {
         self.id = id
         self.createdAt = createdAt
+        self.title = title
         self.messages = messages
         self.generationState = generationState
+    }
+
+    mutating func setTitle(_ title: String?) {
+        self.title = title
     }
 
     mutating func appendMessage(_ message: Message) throws {

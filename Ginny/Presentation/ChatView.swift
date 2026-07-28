@@ -364,8 +364,14 @@ struct ChatView: View {
 
         generationTask = Task { @MainActor in
             await session.send(prompt)
-            if [.completed, .cancelled, .failed].contains(session.conversation.generationState) {
-                history.save(session.conversation)
+            let completedConversation = session.conversation
+            if [.completed, .cancelled, .failed].contains(completedConversation.generationState) {
+                history.save(completedConversation)
+                if completedConversation.generationState == .completed {
+                    Task { @MainActor in
+                        await history.generateTitle(for: completedConversation)
+                    }
+                }
             }
             response.source.finish()
             activeResponse = nil
