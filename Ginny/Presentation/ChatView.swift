@@ -92,14 +92,15 @@ struct ChatView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                ChatHeader(onOpenSidebar: { setSidebarPresented(true) })
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 16)
+                    .zIndex(1)
+
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            ChatHeader(
-                                themeStore: themeStore,
-                                onOpenSidebar: { setSidebarPresented(true) }
-                            )
-
                             if displayedMessages.isEmpty, activeResponse == nil {
                                 EmptyConversationView()
                             } else {
@@ -158,10 +159,9 @@ struct ChatView: View {
                 ComposerView(
                     draft: $draft,
                     isGenerating: session.isGenerating,
-                    themeName: themeStore.displayName(for: themeStore.selectedThemeID),
                     send: send
                 )
-                .frame(height: 116)
+                .frame(height: 88)
             }
         }
     }
@@ -319,9 +319,7 @@ struct ChatView: View {
 
 @MainActor
 private struct ChatHeader: View {
-    @ObservedObject var themeStore: ThemeStore
     let onOpenSidebar: () -> Void
-    @Environment(\.ginnyTheme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
@@ -330,27 +328,13 @@ private struct ChatHeader: View {
             }
             .accessibilityLabel("Open session history")
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Ginny")
-                    .font(.headline)
-                Text(themeStore.displayName(for: themeStore.selectedThemeID))
-                    .font(.caption)
-                    .foregroundStyle(theme.color("text.muted"))
-                    .lineLimit(1)
-            }
+            Text("Ginny")
+                .font(.headline)
 
             Spacer(minLength: 8)
-
-            Text(themeStore.displayName(for: themeStore.selectedThemeID))
-                .font(.caption)
-                .foregroundStyle(theme.color("text.muted"))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .ginnyGlass(Capsule(), prominence: .subtle)
-                .accessibilityLabel("Current theme")
         }
         .padding(.top, 12)
-        .padding(.bottom, 28)
+        .padding(.bottom, 16)
     }
 }
 
@@ -371,9 +355,6 @@ private struct SessionSidebar: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Sessions")
                         .font(.system(.title2, design: .serif, weight: .medium))
-                    Text("A record of your thinking")
-                        .font(.caption)
-                        .foregroundStyle(theme.color("text.muted"))
                 }
 
                 Spacer()
@@ -417,10 +398,6 @@ private struct SessionSidebar: View {
                 HStack(spacing: 10) {
                     Image(systemName: "paintpalette")
                     Text("Appearance")
-                    Spacer()
-                    Text(themeStore.displayName(for: themeStore.selectedThemeID))
-                        .foregroundStyle(theme.color("text.muted"))
-                        .lineLimit(1)
                 }
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(theme.color("text.body"))
@@ -433,16 +410,10 @@ private struct SessionSidebar: View {
             }
             .accessibilityLabel("Appearance and theme")
 
-            Text("RECENT")
-                .font(.caption2.weight(.semibold))
-                .tracking(1.2)
-                .foregroundStyle(theme.color("text.muted"))
-                .padding(.top, 4)
-
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     if history.conversations.isEmpty {
-                        Text("Your next thread will appear here.")
+                        Text("No sessions yet.")
                             .font(.subheadline)
                             .foregroundStyle(theme.color("text.muted"))
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -453,9 +424,7 @@ private struct SessionSidebar: View {
                                 onSelect(conversation)
                             } label: {
                                 SessionHistoryRow(
-                                    conversation: conversation,
                                     title: history.title(for: conversation),
-                                    preview: history.preview(for: conversation),
                                     isSelected: conversation.id == currentConversationID
                                 )
                             }
@@ -495,34 +464,21 @@ private struct SessionSidebar: View {
 }
 
 private struct SessionHistoryRow: View {
-    let conversation: Conversation
     let title: String
-    let preview: String
     let isSelected: Bool
     @Environment(\.ginnyTheme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                if isSelected {
-                    Circle()
-                        .fill(theme.color("primary"))
-                        .frame(width: 7, height: 7)
-                }
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if isSelected {
+                Circle()
+                    .fill(theme.color("primary"))
+                    .frame(width: 7, height: 7)
             }
-
-            Text(preview)
-                .font(.caption)
-                .foregroundStyle(theme.color("text.muted"))
-                .lineLimit(2)
-
-            Text(conversation.createdAt, style: .relative)
-                .font(.caption2)
-                .foregroundStyle(theme.color("text.muted").opacity(0.78))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(13)
@@ -557,15 +513,9 @@ private struct EmptyConversationView: View {
                 .foregroundStyle(theme.color("primary"))
                 .accessibilityHidden(true)
 
-            Text("A quiet place to think.")
+            Text("Start here.")
                 .font(.system(.title2, design: .serif, weight: .medium))
                 .multilineTextAlignment(.center)
-
-            Text("Ask a question, sketch an idea, or follow a thread.")
-                .font(.subheadline)
-                .foregroundStyle(theme.color("text.muted"))
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 280)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 128)
@@ -576,7 +526,6 @@ private struct EmptyConversationView: View {
 private struct ComposerView: View {
     @Binding var draft: String
     let isGenerating: Bool
-    let themeName: String
     let send: () -> Void
     @Environment(\.ginnyTheme) private var theme
 
@@ -615,20 +564,9 @@ private struct ComposerView: View {
                 .accessibilityLabel(isGenerating ? "Stop generating" : "Send message")
             }
 
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(isGenerating ? theme.color("primary") : theme.color("text.muted"))
-                    .frame(width: 6, height: 6)
-                Text(isGenerating ? "Thinking" : "Ready")
-                Text("·")
-                Text(themeName)
-            }
-            .font(.caption)
-            .foregroundStyle(theme.color("text.muted"))
-            .padding(.leading, 54)
         }
         .padding(12)
-        .frame(height: 116, alignment: .top)
+        .frame(height: 88, alignment: .top)
         .ginnyGlass(
             RoundedRectangle(cornerRadius: 28, style: .continuous),
             prominence: .elevated
