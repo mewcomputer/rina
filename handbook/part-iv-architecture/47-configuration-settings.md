@@ -1,7 +1,7 @@
 ---
 status: draft
 confidence: high
-implementation-state: pre-implementation
+implementation-state: partial
 last-reviewed: 2026-07-27
 ---
 
@@ -14,3 +14,5 @@ Non-secret durable settings use a typed settings repository. Secrets remain in K
 Provider configuration contains provider type, display name, endpoint, credential reference, permitted custom headers, and model preferences. Endpoint and model validation occur before use.
 
 Settings keys are versioned and migrated through typed transformations.
+
+The current provider settings screen stores endpoint and model preferences in `UserDefaults` and credentials in Keychain. HTTPS is required for remote endpoints; localhost HTTP is allowed for local development.
