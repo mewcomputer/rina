@@ -86,19 +86,22 @@ struct ProviderMessage: Codable, Equatable, Sendable {
     let continuations: [ProviderContinuation]
     let toolCalls: [ProviderToolCall]
     let toolCallID: String?
+    let toolResultIsError: Bool?
 
     init(
         role: ProviderMessageRole,
         content: String,
         continuations: [ProviderContinuation] = [],
         toolCalls: [ProviderToolCall] = [],
-        toolCallID: String? = nil
+        toolCallID: String? = nil,
+        toolResultIsError: Bool? = nil
     ) {
         self.role = role
         self.content = content
         self.continuations = continuations
         self.toolCalls = toolCalls
         self.toolCallID = toolCallID
+        self.toolResultIsError = toolResultIsError
     }
 
     static func user(_ content: String) -> ProviderMessage {
@@ -122,8 +125,13 @@ struct ProviderMessage: Codable, Equatable, Sendable {
         ProviderMessage(role: .system, content: content)
     }
 
-    static func tool(_ content: String, callID: String) -> ProviderMessage {
-        ProviderMessage(role: .tool, content: content, toolCallID: callID)
+    static func tool(_ content: String, callID: String, isError: Bool = false) -> ProviderMessage {
+        ProviderMessage(
+            role: .tool,
+            content: content,
+            toolCallID: callID,
+            toolResultIsError: isError
+        )
     }
 }
 

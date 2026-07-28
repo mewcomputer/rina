@@ -277,7 +277,7 @@ private struct OpenAIToolDefinition: Encodable {
             name: definition.name,
             description: definition.description,
             parameters: try JSONDecoder().decode(
-                JSONValue.self,
+                ProviderJSONValue.self,
                 from: Data(definition.inputSchema.utf8)
             )
         )
@@ -287,12 +287,12 @@ private struct OpenAIToolDefinition: Encodable {
 private struct OpenAIFunctionDefinition: Encodable {
     let name: String
     let description: String
-    let parameters: JSONValue
+    let parameters: ProviderJSONValue
 }
 
-private indirect enum JSONValue: Codable, Equatable, Sendable {
-    case object([String: JSONValue])
-    case array([JSONValue])
+indirect enum ProviderJSONValue: Codable, Equatable, Sendable {
+    case object([String: ProviderJSONValue])
+    case array([ProviderJSONValue])
     case string(String)
     case number(Double)
     case boolean(Bool)
@@ -302,9 +302,9 @@ private indirect enum JSONValue: Codable, Equatable, Sendable {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
             self = .null
-        } else if let value = try? container.decode([String: JSONValue].self) {
+        } else if let value = try? container.decode([String: ProviderJSONValue].self) {
             self = .object(value)
-        } else if let value = try? container.decode([JSONValue].self) {
+        } else if let value = try? container.decode([ProviderJSONValue].self) {
             self = .array(value)
         } else if let value = try? container.decode(Bool.self) {
             self = .boolean(value)

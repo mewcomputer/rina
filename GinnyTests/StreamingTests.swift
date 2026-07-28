@@ -143,7 +143,7 @@ final class StreamingTests: XCTestCase {
     }
 
     func testAnthropicStreamParserMapsMessageEvents() throws {
-        let parser = AnthropicMessagesStreamParser()
+        var parser = AnthropicMessagesStreamParser()
 
         XCTAssertEqual(
             try parser.parse(ServerSentEvent(data: "{\"type\":\"message_start\"}")),
@@ -206,8 +206,58 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(try parser.parse(ServerSentEvent(data: "[DONE]")), [.responseEnded])
     }
 
+    func testAnthropicStreamParserMapsToolUseAndFragmentedArguments() throws {
+        var parser = AnthropicMessagesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"current_time\",\"input\":{}}}"
+                )
+            ),
+            [.toolCallDelta(
+                ProviderToolCallDelta(
+                    provider: .umans,
+                    id: "toolu_1",
+                    name: "current_time",
+                    arguments: nil
+                )
+            )]
+        )
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\"}}"
+                )
+            ),
+            [.toolCallDelta(
+                ProviderToolCallDelta(
+                    provider: .umans,
+                    id: "toolu_1",
+                    name: nil,
+                    arguments: "{"
+                )
+            )]
+        )
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"}\"}}"
+                )
+            ),
+            [.toolCallDelta(
+                ProviderToolCallDelta(
+                    provider: .umans,
+                    id: "toolu_1",
+                    name: nil,
+                    arguments: "}"
+                )
+            )]
+        )
+    }
+
     func testAnthropicStreamParserMapsProviderError() {
-        let parser = AnthropicMessagesStreamParser()
+        var parser = AnthropicMessagesStreamParser()
 
         XCTAssertThrowsError(
             try parser.parse(
@@ -556,6 +606,60 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(content.last?["text"] as? String, "answer")
     }
 
+    func testAnthropicRequestPreservesToolsAndToolResults() throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-coder",
+            credentialID: "umans-api-key"
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+        let tool = ProviderToolDefinition(
+            name: "current_time",
+            description: "Returns the current time.",
+            inputSchema: "{\"type\":\"object\",\"properties\":{}}"
+        )
+        let call = ProviderToolCall(
+            id: "toolu_1",
+            name: "current_time",
+            arguments: "{}",
+            isComplete: true
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(
+                messages: [
+                    .assistant("", toolCalls: [call]),
+                    .tool("1970-01-01T00:00:00Z", callID: "toolu_1"),
+                ],
+                tools: [tool]
+            )
+        )
+
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let tools = try XCTUnwrap(object["tools"] as? [[String: Any]])
+        let toolDefinition = try XCTUnwrap(tools.first)
+        let inputSchema = try XCTUnwrap(toolDefinition["input_schema"] as? [String: Any])
+        XCTAssertEqual(toolDefinition["name"] as? String, "current_time")
+        XCTAssertEqual(inputSchema["type"] as? String, "object")
+
+        let messages = try XCTUnwrap(object["messages"] as? [[String: Any]])
+        let assistantContent = try XCTUnwrap(messages[0]["content"] as? [[String: Any]])
+        XCTAssertEqual(assistantContent.first?["type"] as? String, "tool_use")
+        XCTAssertEqual(assistantContent.first?["id"] as? String, "toolu_1")
+        XCTAssertEqual(assistantContent.first?["name"] as? String, "current_time")
+        let resultContent = try XCTUnwrap(messages[1]["content"] as? [[String: Any]])
+        XCTAssertEqual(messages[1]["role"] as? String, "user")
+        XCTAssertEqual(resultContent.first?["type"] as? String, "tool_result")
+        XCTAssertEqual(resultContent.first?["tool_use_id"] as? String, "toolu_1")
+        XCTAssertEqual(resultContent.first?["content"] as? String, "1970-01-01T00:00:00Z")
+    }
+
     func testAnthropicAdapterTranslatesStreamingEvents() async throws {
         let configuration = ProviderConfiguration(
             provider: .umans,
@@ -578,6 +682,61 @@ final class StreamingTests: XCTestCase {
         }
 
         XCTAssertEqual(events, [.responseStarted, .textDelta("Hi"), .responseEnded])
+    }
+
+    func testAnthropicAdapterTranslatesStreamedToolUse() async throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-coder",
+            credentialID: "umans-api-key"
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: FixtureStreamingTransport(
+                statusCode: 200,
+                body: "data: {\"type\":\"message_start\"}\n\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"current_time\",\"input\":{}}}\n\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\"}}\n\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"}\"}}\n\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"}}\n\ndata: {\"type\":\"message_stop\"}\n\n"
+            )
+        )
+
+        var events: [ProviderStreamEvent] = []
+        for try await event in adapter.stream(for: ProviderRequest(messages: [.user("What time is it?")])) {
+            events.append(event)
+        }
+
+        XCTAssertEqual(
+            events,
+            [
+                .responseStarted,
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .umans,
+                        id: "toolu_1",
+                        name: "current_time",
+                        arguments: nil
+                    )
+                ),
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .umans,
+                        id: "toolu_1",
+                        name: nil,
+                        arguments: "{"
+                    )
+                ),
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .umans,
+                        id: "toolu_1",
+                        name: nil,
+                        arguments: "}"
+                    )
+                ),
+                .finish(reason: "tool_use"),
+                .responseEnded,
+            ]
+        )
     }
 
     func testAnthropicAdapterCompletesWhenStreamClosesAfterText() async throws {

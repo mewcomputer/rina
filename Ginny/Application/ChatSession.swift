@@ -239,6 +239,8 @@ final class ChatSession: ObservableObject {
                 }
                 let toolCallID = message.blocks.first(where: { $0.kind == .toolResult })?
                     .attributes["callID"]
+                let toolResultIsError = message.blocks.first(where: { $0.kind == .toolResult })?
+                    .attributes["isError"] == "true"
                 return ProviderMessage(
                     role: ProviderMessageRole(rawValue: message.role.rawValue) ?? .user,
                     content: message.blocks
@@ -247,7 +249,8 @@ final class ChatSession: ObservableObject {
                         .joined(),
                     continuations: message.providerContinuations,
                     toolCalls: toolCalls,
-                    toolCallID: toolCallID
+                    toolCallID: toolCallID,
+                    toolResultIsError: toolCallID == nil ? nil : toolResultIsError
                 )
             },
             tools: provider?.supportsTools == true ? toolRegistry.definitions : []

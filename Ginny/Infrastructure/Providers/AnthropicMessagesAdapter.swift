@@ -2,12 +2,13 @@ import Foundation
 
 struct AnthropicMessagesStreamParser: Sendable {
     let provider: ProviderID
+    private var toolCallIDs: [Int: String] = [:]
 
     init(provider: ProviderID = .umans) {
         self.provider = provider
     }
 
-    func parse(_ event: ServerSentEvent) throws -> [ProviderStreamEvent] {
+    mutating func parse(_ event: ServerSentEvent) throws -> [ProviderStreamEvent] {
         if event.data == "[DONE]" {
             return [.responseEnded]
         }
@@ -45,22 +46,39 @@ struct AnthropicMessagesStreamParser: Sendable {
             }
             let index = dictionary["index"] as? Int ?? 0
 
-            guard block["type"] as? String == "redacted_thinking",
-                  let data = block["data"] as? String
-            else {
+            switch block["type"] as? String {
+            case "tool_use":
+                guard let id = block["id"] as? String,
+                      let name = block["name"] as? String
+                else {
+                    throw ProviderError.malformedEvent
+                }
+                toolCallIDs[index] = id
+                return [.toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: provider,
+                        id: id,
+                        name: name,
+                        arguments: nil
+                    )
+                )]
+            case "redacted_thinking":
+                guard let data = block["data"] as? String else {
+                    return []
+                }
+                return [.continuationDelta(
+                    ProviderContinuationDelta(
+                        provider: provider,
+                        id: "block-\(index)",
+                        kind: "reasoning",
+                        field: "data",
+                        value: data,
+                        operation: .replace
+                    )
+                )]
+            default:
                 return []
             }
-
-            return [.continuationDelta(
-                ProviderContinuationDelta(
-                    provider: provider,
-                    id: "block-\(index)",
-                    kind: "reasoning",
-                    field: "data",
-                    value: data,
-                    operation: .replace
-                )
-            )]
         case "content_block_delta":
             guard let delta = dictionary["delta"] as? [String: Any],
                   let deltaType = delta["type"] as? String
@@ -69,7 +87,6 @@ struct AnthropicMessagesStreamParser: Sendable {
             }
 
             let index = dictionary["index"] as? Int ?? 0
-            let id = "block-\(index)"
             switch deltaType {
             case "thinking_delta":
                 guard let thinking = delta["thinking"] as? String, !thinking.isEmpty else {
@@ -78,7 +95,7 @@ struct AnthropicMessagesStreamParser: Sendable {
                 return [.continuationDelta(
                     ProviderContinuationDelta(
                         provider: provider,
-                        id: id,
+                        id: "block-\(index)",
                         kind: "reasoning",
                         field: "thinking",
                         value: thinking,
@@ -92,7 +109,7 @@ struct AnthropicMessagesStreamParser: Sendable {
                 return [.continuationDelta(
                     ProviderContinuationDelta(
                         provider: provider,
-                        id: id,
+                        id: "block-\(index)",
                         kind: "reasoning",
                         field: "signature",
                         value: signature,
@@ -104,6 +121,20 @@ struct AnthropicMessagesStreamParser: Sendable {
                     return []
                 }
                 return [.textDelta(text)]
+            case "input_json_delta":
+                guard let id = toolCallIDs[index],
+                      let arguments = delta["partial_json"] as? String
+                else {
+                    throw ProviderError.malformedEvent
+                }
+                return [.toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: provider,
+                        id: id,
+                        name: nil,
+                        arguments: arguments
+                    )
+                )]
             default:
                 return []
             }
@@ -129,7 +160,7 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
     let credentialStore: any CredentialStore
     let transport: any StreamingTransport
 
-    var supportsTools: Bool { false }
+    var supportsTools: Bool { true }
 
     init(
         configuration: ProviderConfiguration,
@@ -161,16 +192,16 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
         let systemMessages = request.messages
             .filter { $0.role == .system }
             .map(\.content)
-        let messages = request.messages.compactMap { message -> AnthropicMessage? in
+        let messages = try request.messages.compactMap { message -> AnthropicMessage? in
             switch message.role {
             case .user:
-                AnthropicMessage(message: message, provider: configuration.provider)
+                try AnthropicMessage(message: message, provider: configuration.provider)
             case .assistant:
-                AnthropicMessage(message: message, provider: configuration.provider)
+                try AnthropicMessage(message: message, provider: configuration.provider)
             case .system:
                 nil
             case .tool:
-                nil
+                try AnthropicMessage(message: message, provider: configuration.provider)
             }
         }
         guard !messages.isEmpty else {
@@ -184,11 +215,15 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
         urlRequest.setValue(credential, forHTTPHeaderField: "x-api-key")
         urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
+        let toolDefinitions = try request.tools.isEmpty
+            ? nil
+            : request.tools.map(AnthropicToolDefinition.init)
         let body = AnthropicMessagesRequestBody(
             model: configuration.model,
             maxTokens: 8_192,
             system: systemMessages.isEmpty ? nil : systemMessages.joined(separator: "\n"),
             messages: messages,
+            tools: toolDefinitions,
             stream: true
         )
         urlRequest.httpBody = try JSONEncoder().encode(body)
@@ -210,13 +245,13 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
                     }
 
                     var sseParser = ServerSentEventParser()
-                    let streamParser = AnthropicMessagesStreamParser(provider: configuration.provider)
+                    var streamParser = AnthropicMessagesStreamParser(provider: configuration.provider)
                     var didStartResponse = false
                     var didEndResponse = false
                     for try await byte in response.bytes {
                         for event in sseParser.append([byte]) {
                             for mappedEvent in try streamParser.parse(event) {
-                                if mappedEvent == .responseStarted || mappedEvent.isTextDelta {
+                                if mappedEvent == .responseStarted || mappedEvent.startsResponse {
                                     didStartResponse = true
                                 }
                                 if mappedEvent == .responseEnded {
@@ -229,7 +264,7 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
 
                     for event in sseParser.finish() {
                         for mappedEvent in try streamParser.parse(event) {
-                            if mappedEvent == .responseStarted || mappedEvent.isTextDelta {
+                            if mappedEvent == .responseStarted || mappedEvent.startsResponse {
                                 didStartResponse = true
                             }
                             if mappedEvent == .responseEnded {
@@ -262,6 +297,7 @@ private struct AnthropicMessagesRequestBody: Encodable {
     let maxTokens: Int
     let system: String?
     let messages: [AnthropicMessage]
+    let tools: [AnthropicToolDefinition]?
     let stream: Bool
 
     private enum CodingKeys: String, CodingKey {
@@ -269,6 +305,7 @@ private struct AnthropicMessagesRequestBody: Encodable {
         case maxTokens = "max_tokens"
         case system
         case messages
+        case tools
         case stream
     }
 }
@@ -277,19 +314,34 @@ private struct AnthropicMessage: Encodable {
     let role: String
     let content: AnthropicMessageContent
 
-    init(message: ProviderMessage, provider: ProviderID) {
-        role = message.role.rawValue
-        let reasoningBlocks = message.continuations
-            .filter { $0.provider == provider && $0.kind == "reasoning" }
-            .map(AnthropicContentBlock.init(continuation:))
-        if reasoningBlocks.isEmpty {
+    init(message: ProviderMessage, provider: ProviderID) throws {
+        switch message.role {
+        case .user:
+            role = "user"
             content = .text(message.content)
-        } else {
-            var blocks = reasoningBlocks
+        case .assistant:
+            role = "assistant"
+            var blocks = message.continuations
+                .filter { $0.provider == provider && $0.kind == "reasoning" }
+                .map(AnthropicContentBlock.init(continuation:))
             if !message.content.isEmpty {
                 blocks.append(.text(message.content))
             }
-            content = .blocks(blocks)
+            for toolCall in message.toolCalls {
+                blocks.append(try AnthropicContentBlock.toolUse(call: toolCall))
+            }
+            content = blocks.isEmpty ? .text("") : .blocks(blocks)
+        case .tool:
+            role = "user"
+            content = .blocks([
+                .toolResult(
+                    content: message.content,
+                    callID: message.toolCallID ?? "",
+                    isError: message.toolResultIsError == true
+                )
+            ])
+        case .system:
+            throw ProviderError.invalidConfiguration("System messages must be sent through the system field.")
         }
     }
 }
@@ -318,19 +370,51 @@ private struct AnthropicContentBlock: Encodable {
     let signature: String?
     let data: String?
     let text: String?
+    let id: String?
+    let name: String?
+    let input: ProviderJSONValue?
+    let toolUseID: String?
+    let content: String?
+    let isError: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case thinking
+        case signature
+        case data
+        case text
+        case id
+        case name
+        case input
+        case toolUseID = "tool_use_id"
+        case content
+        case isError = "is_error"
+    }
 
     private init(
         type: String,
         thinking: String?,
         signature: String?,
         data: String?,
-        text: String?
+        text: String?,
+        id: String? = nil,
+        name: String? = nil,
+        input: ProviderJSONValue? = nil,
+        toolUseID: String? = nil,
+        content: String? = nil,
+        isError: Bool? = nil
     ) {
         self.type = type
         self.thinking = thinking
         self.signature = signature
         self.data = data
         self.text = text
+        self.id = id
+        self.name = name
+        self.input = input
+        self.toolUseID = toolUseID
+        self.content = content
+        self.isError = isError
     }
 
     static func text(_ text: String) -> AnthropicContentBlock {
@@ -343,6 +427,41 @@ private struct AnthropicContentBlock: Encodable {
         )
     }
 
+    static func toolUse(call: ProviderToolCall) throws -> AnthropicContentBlock {
+        guard let data = call.arguments.data(using: .utf8) else {
+            throw ProviderError.invalidConfiguration("Tool arguments were not valid UTF-8.")
+        }
+        let input: ProviderJSONValue
+        do {
+            input = try JSONDecoder().decode(ProviderJSONValue.self, from: data)
+        } catch {
+            throw ProviderError.invalidConfiguration("Tool arguments were not valid JSON.")
+        }
+        return AnthropicContentBlock(
+            type: "tool_use",
+            thinking: nil,
+            signature: nil,
+            data: nil,
+            text: nil,
+            id: call.id,
+            name: call.name,
+            input: input
+        )
+    }
+
+    static func toolResult(content: String, callID: String, isError: Bool) -> AnthropicContentBlock {
+        AnthropicContentBlock(
+            type: "tool_result",
+            thinking: nil,
+            signature: nil,
+            data: nil,
+            text: nil,
+            toolUseID: callID,
+            content: content,
+            isError: isError ? true : nil
+        )
+    }
+
     init(continuation: ProviderContinuation) {
         if let data = continuation.fields["data"] {
             type = "redacted_thinking"
@@ -350,21 +469,60 @@ private struct AnthropicContentBlock: Encodable {
             signature = nil
             self.data = data
             text = nil
+            id = nil
+            name = nil
+            input = nil
+            toolUseID = nil
+            content = nil
+            isError = nil
         } else {
             type = "thinking"
             thinking = continuation.fields["thinking"] ?? ""
             signature = continuation.fields["signature"]
             data = nil
             text = nil
+            id = nil
+            name = nil
+            input = nil
+            toolUseID = nil
+            content = nil
+            isError = nil
+        }
+    }
+}
+
+private struct AnthropicToolDefinition: Encodable {
+    let name: String
+    let description: String
+    let inputSchema: ProviderJSONValue
+
+    private enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case inputSchema = "input_schema"
+    }
+
+    init(_ definition: ProviderToolDefinition) throws {
+        name = definition.name
+        description = definition.description
+        do {
+            inputSchema = try JSONDecoder().decode(
+                ProviderJSONValue.self,
+                from: Data(definition.inputSchema.utf8)
+            )
+        } catch {
+            throw ProviderError.invalidConfiguration("Tool input schema was not valid JSON.")
         }
     }
 }
 
 private extension ProviderStreamEvent {
-    var isTextDelta: Bool {
-        if case .textDelta = self {
-            return true
+    var startsResponse: Bool {
+        switch self {
+        case .textDelta, .continuationDelta, .toolCallDelta:
+            true
+        default:
+            false
         }
-        return false
     }
 }
