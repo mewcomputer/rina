@@ -608,44 +608,8 @@ private struct ServiceModelMenu: View {
     }
 
     var body: some View {
-        Menu {
-            Section("Service") {
-                ForEach(ProviderID.allCases, id: \.self) { provider in
-                    Button {
-                        Task { await settings.selectProviderAndRefresh(provider) }
-                    } label: {
-                        Label(
-                            provider.displayName,
-                            systemImage: settings.provider == provider ? "checkmark" : "circle"
-                        )
-                    }
-                }
-            }
-
-            Button {
-                showsModelPicker = true
-            } label: {
-                Label("Choose model", systemImage: "list.bullet")
-            }
-
-            if !settings.thinkingOptions.isEmpty {
-                Section("Thinking") {
-                    ForEach(settings.thinkingOptions, id: \.self) { level in
-                        Button {
-                            settings.selectThinkingLevel(level)
-                        } label: {
-                            Label(
-                                level.displayName,
-                                systemImage: settings.thinkingLevel == level ? "checkmark" : "circle"
-                            )
-                        }
-                    }
-                }
-            }
-
-            Divider()
-
-            Button("Configure service", action: openSettings)
+        Button {
+            showsModelPicker = true
         } label: {
             HStack(spacing: 5) {
                 Text(modelLabel)
@@ -659,9 +623,11 @@ private struct ServiceModelMenu: View {
             .frame(height: 36)
             .ginnyGlass(Capsule(), prominence: .subtle)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("Choose service and model")
+        .accessibilityValue(modelLabel)
         .sheet(isPresented: $showsModelPicker) {
-            ModelPickerSheet(settings: settings)
+            ModelPickerSheet(settings: settings, openSettings: openSettings)
                 .environment(\.ginnyTheme, theme)
                 .preferredColorScheme(theme.mode.colorScheme)
         }
@@ -670,6 +636,7 @@ private struct ServiceModelMenu: View {
 
 private struct ModelPickerSheet: View {
     @ObservedObject var settings: ProviderSettings
+    let openSettings: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.ginnyTheme) private var theme
     @State private var searchText = ""
@@ -687,7 +654,9 @@ private struct ModelPickerSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 8) {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    servicePicker
+
                     if settings.isLoadingModels {
                         ProgressView("Loading models…")
                             .frame(maxWidth: .infinity)
@@ -738,12 +707,28 @@ private struct ModelPickerSheet: View {
                             .buttonStyle(.plain)
                         }
                     }
+
+                    if !settings.thinkingOptions.isEmpty {
+                        thinkingPicker
+                    }
+
+                    Button {
+                        dismiss()
+                        openSettings()
+                    } label: {
+                        Text("Configure service")
+                    }
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(theme.color("primary"))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
                 }
                 .padding(16)
             }
             .scrollIndicators(.hidden)
             .searchable(text: $searchText, prompt: "Search models")
-            .navigationTitle(settings.provider.displayName)
+            .navigationTitle("Select model")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -773,6 +758,65 @@ private struct ModelPickerSheet: View {
         }
         .presentationDetents([.medium, .large], selection: $selectedDetent)
         .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
+    }
+
+    private var servicePicker: some View {
+        Menu {
+            ForEach(ProviderID.allCases, id: \.self) { provider in
+                Button {
+                    Task { await settings.selectProviderAndRefresh(provider) }
+                } label: {
+                    Label(
+                        provider.displayName,
+                        systemImage: settings.provider == provider ? "checkmark" : "circle"
+                    )
+                }
+            }
+        } label: {
+            HStack {
+                Label("Service", systemImage: "square.stack.3d.up")
+                Spacer(minLength: 12)
+                Text(settings.provider.displayName)
+                    .foregroundStyle(theme.color("text.muted"))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.color("text.muted"))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .ginnyGlass(
+                RoundedRectangle(cornerRadius: 18, style: .continuous),
+                prominence: .subtle
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Service")
+        .accessibilityValue(settings.provider.displayName)
+    }
+
+    private var thinkingPicker: some View {
+        Picker(
+            "Thinking",
+            selection: Binding(
+                get: { settings.thinkingLevel },
+                set: { settings.selectThinkingLevel($0) }
+            )
+        ) {
+            ForEach(settings.thinkingOptions, id: \.self) { level in
+                Text(level.displayName).tag(level)
+            }
+        }
+        .pickerStyle(.menu)
+        .tint(theme.color("text.muted"))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .ginnyGlass(
+            RoundedRectangle(cornerRadius: 18, style: .continuous),
+            prominence: .subtle
+        )
     }
 }
 
