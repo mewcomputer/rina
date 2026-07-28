@@ -120,9 +120,14 @@ protocol ModelCatalogProviding: Sendable {
 
 struct URLSessionModelCatalog: ModelCatalogProviding {
     private let session: URLSession
+    private let cache: ModelCatalogCache
 
-    init(session: URLSession = .shared) {
+    init(
+        session: URLSession = .shared,
+        cacheDefaults: UserDefaults = .standard
+    ) {
         self.session = session
+        self.cache = ModelCatalogCache(defaults: cacheDefaults)
     }
 
     func models(
@@ -145,12 +150,37 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
             request.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization")
         }
 
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if provider == .umans,
+               let cachedModels = cachedUmansModels()
+            {
+                return cachedModels
+            }
+            throw error
+        }
+
         guard let httpResponse = response as? HTTPURLResponse else {
+            if provider == .umans,
+               let cachedModels = cachedUmansModels()
+            {
+                return cachedModels
+            }
             throw ProviderError.invalidResponse
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
-            throw ProviderError.httpStatus(httpResponse.statusCode, message: nil)
+            let error = ProviderError.httpStatus(httpResponse.statusCode, message: nil)
+            if provider == .umans,
+               let cachedModels = cachedUmansModels()
+            {
+                return cachedModels
+            }
+            throw error
         }
 
         do {
@@ -158,6 +188,7 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
             let models: [ProviderModel]
             if provider == .umans {
                 models = Array(try decoder.decode([String: ProviderModel].self, from: data).values)
+                cache.defaults.set(data, forKey: Self.umansCacheKey)
             } else {
                 let response = try decoder.decode(OpenAIModelListResponse.self, from: data)
                 models = response.data.map {
@@ -168,8 +199,35 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
                 $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
             }
         } catch {
+            if provider == .umans,
+               let cachedModels = cachedUmansModels()
+            {
+                return cachedModels
+            }
             throw ProviderError.invalidResponse
         }
+    }
+
+    private func cachedUmansModels() -> [ProviderModel]? {
+        guard let data = cache.defaults.data(forKey: Self.umansCacheKey) else {
+            return nil
+        }
+        return try? JSONDecoder()
+            .decode([String: ProviderModel].self, from: data)
+            .values
+            .sorted {
+                $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
+            }
+    }
+
+    private static let umansCacheKey = "provider.umans.modelCatalog"
+}
+
+private final class ModelCatalogCache: @unchecked Sendable {
+    let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
     }
 }
 
@@ -186,7 +244,7 @@ extension ProviderID {
     func catalogURL(for baseURL: URL) -> URL {
         switch self {
         case .umans:
-            baseURL.appendingProviderPath("v1/models/info")
+            Self.umansModelCatalogURL
         case .kimi, .kimiCode, .openAICompatible:
             baseURL.appendingProviderPath("v1/models")
         }
@@ -208,6 +266,10 @@ extension ProviderID {
             nil
         }
     }
+
+    private static let umansModelCatalogURL = URL(
+        string: "https://api.code.umans.ai/v1/models/info"
+    )!
 }
 
 private struct OpenAIModelListResponse: Decodable {
