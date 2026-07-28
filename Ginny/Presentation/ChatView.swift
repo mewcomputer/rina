@@ -61,8 +61,7 @@ struct ChatView: View {
                         currentConversationID: session.conversation.id,
                         onSelect: selectConversation,
                         onNewConversation: startNewConversation,
-                        onSettings: { showsSettings = true },
-                        onClose: { setSidebarPresented(false) }
+                        onSettings: { showsSettings = true }
                     )
                     .frame(width: sidebarWidth)
                     .offset(x: drawerOffset(for: sidebarWidth))
@@ -360,28 +359,12 @@ private struct SessionSidebar: View {
     let onSelect: (Conversation) -> Void
     let onNewConversation: () -> Void
     let onSettings: () -> Void
-    let onClose: () -> Void
     @Environment(\.ginnyTheme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Sessions")
-                        .font(.system(.title2, design: .serif, weight: .medium))
-                }
-
-                Spacer()
-
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 44, height: 44)
-                        .foregroundStyle(theme.color("text.body"))
-                        .background(theme.color("sidebar_accent"), in: Circle())
-                }
-                .accessibilityLabel("Close session history")
-            }
+            Text("Sessions")
+                .font(.system(.title2, design: .serif, weight: .medium))
 
             Button(action: onNewConversation) {
                 Label("New session", systemImage: "plus")
