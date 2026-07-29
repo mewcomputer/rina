@@ -170,6 +170,29 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(last.payload, "After")
     }
 
+    func testToolActivityLabelUsesLifecycleCopyForArtefactWrites() {
+        let pendingCall = ContentBlock.toolCall(
+            callID: "call-1",
+            name: "create_artefact",
+            arguments: "{}"
+        )
+        let pending = ToolActivityGroup(calls: [pendingCall], results: [])
+        XCTAssertEqual(toolActivityLabel(for: pending), "Writing artefact")
+
+        let completedCall = ContentBlock.toolCall(
+            callID: "call-1",
+            name: "create_artefact",
+            arguments: "{}",
+            isComplete: true
+        )
+        let result = ContentBlock.toolResult(
+            callID: "call-1",
+            result: "saved"
+        )
+        let completed = ToolActivityGroup(calls: [completedCall], results: [result])
+        XCTAssertEqual(toolActivityLabel(for: completed), "Wrote artefact")
+    }
+
     func testGenerationFollowsTheDocumentedLifecycle() throws {
         var conversation = Conversation()
 

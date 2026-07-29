@@ -165,6 +165,71 @@ struct ToolActivityGroup: Equatable, Sendable {
     }
 }
 
+struct ToolActivityCopy: Sendable {
+    let inProgress: String
+    let completed: String
+    let failed: String
+}
+
+let toolActivityCopies: [String: ToolActivityCopy] = [
+    "create_artefact": ToolActivityCopy(
+        inProgress: "Writing artefact",
+        completed: "Wrote artefact",
+        failed: "Couldn’t write artefact"
+    ),
+    "update_artefact": ToolActivityCopy(
+        inProgress: "Updating artefact",
+        completed: "Updated artefact",
+        failed: "Couldn’t update artefact"
+    ),
+    "read_artefact": ToolActivityCopy(
+        inProgress: "Reading artefact",
+        completed: "Read artefact",
+        failed: "Couldn’t read artefact"
+    ),
+    "list_artefacts": ToolActivityCopy(
+        inProgress: "Searching artefacts",
+        completed: "Searched artefacts",
+        failed: "Couldn’t search artefacts"
+    ),
+    "discover_skills": ToolActivityCopy(
+        inProgress: "Finding skills",
+        completed: "Found skills",
+        failed: "Couldn’t find skills"
+    ),
+    "read_skill": ToolActivityCopy(
+        inProgress: "Reading skill",
+        completed: "Read skill",
+        failed: "Couldn’t read skill"
+    ),
+    "current_time": ToolActivityCopy(
+        inProgress: "Checking time",
+        completed: "Checked time",
+        failed: "Couldn’t check time"
+    )
+]
+
+func toolActivityLabel(for group: ToolActivityGroup) -> String {
+    guard group.activities.count == 1,
+          let name = group.activities.first?.call.attributes["name"],
+          let copy = toolActivityCopies[name]
+    else {
+        return group.activities.count == 1
+            ? "Tool activity"
+            : "\(group.activities.count) tool activities"
+    }
+
+    let isPending = group.activities.contains { !$0.call.isComplete || $0.result == nil }
+    guard !isPending else { return copy.inProgress }
+
+    let containsError = group.activities.contains {
+        $0.result?.attributes["isError"] == "true"
+    } || group.unmatchedResults.contains {
+        $0.attributes["isError"] == "true"
+    }
+    return containsError ? copy.failed : copy.completed
+}
+
 struct Message: Codable, Equatable, Sendable {
     let id: MessageID
     let role: MessageRole

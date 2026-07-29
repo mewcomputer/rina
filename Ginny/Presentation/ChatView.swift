@@ -1433,32 +1433,87 @@ private struct LiveThinkingDisclosureView: View {
 
 private struct ThinkingIndicator: View {
     let isAnimating: Bool
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.ginnyTheme) private var theme
+
     @State private var symbol: ThinkingIndicatorSymbol = .sparkle
-    @State private var rotation: Double = 0
+
+    @State private var rotationAnchor = Date.now
+    @State private var rotationAtAnchor: Double = 0
+    @State private var degreesPerSecond: Double = 0
+
+    private let slowSpeed: Double = 18
+    private let burstSpeed: Double = 280
 
     var body: some View {
-        Image(systemName: symbol.rawValue)
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(theme.color("text.muted"))
-            .frame(width: 20, height: 20)
-            .contentTransition(.symbolEffect(.replace))
-            .rotationEffect(.degrees(reduceMotion ? 0 : rotation))
-            .accessibilityHidden(true)
-            .task(id: isAnimating) {
-                guard isAnimating, !reduceMotion else { return }
+        TimelineView(
+            .animation(
+                minimumInterval: 1.0 / 60.0,
+                paused: !isAnimating || reduceMotion
+            )
+        ) { timeline in
+            Image(systemName: symbol.rawValue)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(theme.color("text.muted"))
+                .frame(width: 20, height: 20)
+                .contentTransition(.symbolEffect(.replace))
+                .rotationEffect(
+                    .degrees(
+                        reduceMotion
+                            ? 0
+                            : rotation(at: timeline.date)
+                    )
+                )
+        }
+        .accessibilityHidden(true)
+        .onChange(of: isAnimating, initial: true) { _, isAnimating in
+            updateRotationSpeed(
+                to: isAnimating && !reduceMotion ? slowSpeed : 0
+            )
+        }
+        .onChange(of: reduceMotion) { _, reduceMotion in
+            updateRotationSpeed(
+                to: isAnimating && !reduceMotion ? slowSpeed : 0
+            )
+        }
+        .task(id: isAnimating && !reduceMotion) {
+            guard isAnimating, !reduceMotion else { return }
 
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .milliseconds(2100))
-                    guard !Task.isCancelled else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(2100))
+                guard !Task.isCancelled else { return }
 
-                    withAnimation(.easeInOut(duration: 0.42)) {
-                        symbol = .next(after: symbol)
-                        rotation += 120
-                    }
+                updateRotationSpeed(to: burstSpeed)
+
+                withAnimation(.easeInOut(duration: 0.42)) {
+                    symbol = .next(after: symbol)
                 }
+
+                try? await Task.sleep(for: .milliseconds(420))
+                guard !Task.isCancelled else { return }
+
+                updateRotationSpeed(to: slowSpeed)
             }
+        }
+    }
+
+    private func rotation(at date: Date) -> Double {
+        let elapsed = date.timeIntervalSince(rotationAnchor)
+
+        return (
+            rotationAtAnchor +
+            elapsed * degreesPerSecond
+        )
+        .truncatingRemainder(dividingBy: 360)
+    }
+
+    private func updateRotationSpeed(to newSpeed: Double) {
+        let now = Date.now
+
+        rotationAtAnchor = rotation(at: now)
+        rotationAnchor = now
+        degreesPerSecond = newSpeed
     }
 }
 
@@ -1491,11 +1546,7 @@ private struct ToolActivityGroupView: View {
             HStack(spacing: 8) {
                 Image(systemName: "wrench.and.screwdriver")
                     .font(.subheadline.weight(.medium))
-                Text(
-                    group.activities.count == 1
-                        ? "Tool activity"
-                        : "\(group.activities.count) tool activities"
-                )
+                Text(toolActivityLabel(for: group))
                     .font(.subheadline.weight(.medium))
                 Spacer()
                 if isPending {
