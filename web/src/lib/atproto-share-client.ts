@@ -50,11 +50,11 @@ export class AtprotoShareClient {
 
   async fetchRecord(reference: ShareReference | string): Promise<ShareSnapshot> {
     const parsed = typeof reference === 'string' ? parseAtUri(reference) : reference
-    const response = await this.client.get('com.atproto.repo.getRecord', {
+    const reassembled = `at://${parsed.repo}/${parsed.collection}/${parsed.rkey}`
+    // TODO: add proper lexicon
+    const response = await this.client.get('com.bad-example.repo.getUriRecord' as any, {
       params: {
-        repo: parsed.repo as ActorIdentifier,
-        collection: parsed.collection,
-        rkey: parsed.rkey,
+        at_uri: reassembled
       },
     })
 

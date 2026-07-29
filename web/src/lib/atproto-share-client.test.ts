@@ -7,7 +7,7 @@ import {
 const reference = {
   repo: 'did:plc:example123',
   collection: 'computer.mew.rina.share' as const,
-  rkey: '3mabc123xyz',
+  rkey: '3mabc234xyzab',
 }
 
 const record = {
