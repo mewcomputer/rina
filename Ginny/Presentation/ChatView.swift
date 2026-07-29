@@ -682,7 +682,7 @@ private struct ChatHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: onOpenSidebar) {
-                HeaderIconButton(systemImage: "line.3.horizontal")
+                HeaderIconButton(systemImage: "text.menu")
             }
             .accessibilityLabel("Open session history")
 
