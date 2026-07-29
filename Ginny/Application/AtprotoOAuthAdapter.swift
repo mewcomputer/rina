@@ -32,7 +32,11 @@ struct GinnyAtprotoOAuthResolver: Atproto.Resolver, Sendable {
 struct GinnyAtprotoOAuthConfiguration: Sendable {
     static let defaultClientID = "https://rina.mew.computer/oauth-client-metadata.json"
     static let defaultRedirectURI = URL(string: "computer.mew.rina:/oauth/callback")!
-    static let defaultScopes = ["atproto"]
+    static let defaultScopes = [
+        "atproto",
+        "repo:computer.mew.rina.conversation",
+        "repo:computer.mew.rina.artefact",
+    ]
 
     let clientInfo: OAuth.ClientInfo
 

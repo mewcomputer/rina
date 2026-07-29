@@ -62,7 +62,14 @@ final class AtprotoAuthTests: XCTestCase {
             configuration.clientInfo.redirectURI,
             URL(string: "computer.mew.rina:/oauth/callback")
         )
-        XCTAssertEqual(configuration.clientInfo.scopes, ["atproto"])
+        XCTAssertEqual(
+            configuration.clientInfo.scopes,
+            [
+                "atproto",
+                "repo:computer.mew.rina.conversation",
+                "repo:computer.mew.rina.artefact",
+            ]
+        )
     }
 
     func testIdentityResolverUsesAtprotoHandleResolutionService() async throws {
