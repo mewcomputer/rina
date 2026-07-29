@@ -3,6 +3,130 @@ import XCTest
 @testable import Ginny
 
 final class SearchTests: XCTestCase {
+    func testTavilyProviderMapsResponseAndRequest() async throws {
+        let recorder = SearchRequestRecorder()
+        let transport = StubWebSearchTransport(
+            recorder: recorder,
+            data: Data("""
+            {
+              "answer": "Swift is a programming language.",
+              "results": [
+                {
+                  "title": "Swift",
+                  "url": "https://swift.org",
+                  "content": "Swift is powerful and approachable.",
+                  "score": 0.91,
+                  "published_date": "2026-07-28T12:00:00Z"
+                }
+              ]
+            }
+            """.utf8)
+        )
+        let provider = TavilyWebSearchProvider(transport: transport)
+        let request = WebSearchRequest(
+            query: "swift concurrency",
+            maxResults: 7,
+            includeDomains: ["swift.org"],
+            recency: .week,
+            includeAnswer: true
+        )
+
+        let response = try await provider.search(
+            request: request,
+            baseURL: URL(string: "https://api.tavily.com")!,
+            credential: "tavily-key"
+        )
+
+        let sentRequest = try await recorder.request()
+        XCTAssertEqual(sentRequest.url?.absoluteString, "https://api.tavily.com/search")
+        XCTAssertEqual(sentRequest.value(forHTTPHeaderField: "Authorization"), "Bearer tavily-key")
+        let body = try XCTUnwrap(sentRequest.httpBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(json["query"] as? String, "swift concurrency")
+        XCTAssertEqual(json["max_results"] as? Int, 7)
+        XCTAssertEqual(json["time_range"] as? String, "week")
+        XCTAssertEqual(json["include_domains"] as? [String], ["swift.org"])
+        XCTAssertEqual(response.provider, .tavily)
+        XCTAssertEqual(response.answer, "Swift is a programming language.")
+        XCTAssertEqual(response.results.first?.title, "Swift")
+        XCTAssertEqual(response.results.first?.snippet, "Swift is powerful and approachable.")
+        XCTAssertEqual(response.results.first?.url, "https://swift.org")
+    }
+
+    func testExaProviderMapsHighlightsAndUsesItsRequestVocabulary() async throws {
+        let recorder = SearchRequestRecorder()
+        let transport = StubWebSearchTransport(
+            recorder: recorder,
+            data: Data("""
+            {
+              "results": [
+                {
+                  "title": "Swift concurrency",
+                  "url": "https://example.com/swift",
+                  "author": "Apple",
+                  "publishedDate": "2026-07-27T12:00:00Z",
+                  "highlights": ["Actors protect mutable state.", "Async code stays readable."]
+                }
+              ]
+            }
+            """.utf8)
+        )
+        let provider = ExaWebSearchProvider(transport: transport)
+        let request = WebSearchRequest(
+            query: "swift concurrency",
+            maxResults: 4,
+            excludeDomains: ["example.org"]
+        )
+
+        let response = try await provider.search(
+            request: request,
+            baseURL: URL(string: "https://api.exa.ai")!,
+            credential: "exa-key"
+        )
+
+        let sentRequest = try await recorder.request()
+        XCTAssertEqual(sentRequest.url?.absoluteString, "https://api.exa.ai/search")
+        XCTAssertEqual(sentRequest.value(forHTTPHeaderField: "x-api-key"), "exa-key")
+        let body = try XCTUnwrap(sentRequest.httpBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(json["query"] as? String, "swift concurrency")
+        XCTAssertEqual(json["numResults"] as? Int, 4)
+        XCTAssertEqual(json["excludeDomains"] as? [String], ["example.org"])
+        XCTAssertEqual(
+            ((json["contents"] as? [String: Any])?["highlights"] as? Bool),
+            true
+        )
+        XCTAssertEqual(response.provider, .exa)
+        XCTAssertEqual(response.results.first?.snippet, "Actors protect mutable state.\nAsync code stays readable.")
+        XCTAssertEqual(response.results.first?.author, "Apple")
+    }
+
+    func testSearchWebToolExposesCitationsWithoutProviderSpecificArguments() async throws {
+        let response = WebSearchResponse(
+            query: "swift",
+            provider: .tavily,
+            answer: "A language.",
+            results: [WebSearchResult(
+                title: "Swift",
+                url: "https://swift.org",
+                snippet: "A programming language.",
+                provider: .tavily
+            )]
+        )
+        let tool = SearchWebTool(service: StubWebSearchService(response: response))
+
+        XCTAssertEqual(tool.approvalRequirement, .automatic)
+        XCTAssertEqual(tool.definition.name, "search_web")
+        XCTAssertEqual(tool.definition.inputSchema.required, ["query"])
+        XCTAssertNil(tool.definition.inputSchema.properties?["provider"])
+
+        let output = try await tool.execute(arguments: """
+        {"query":"swift","max_results":3,"include_answer":true}
+        """)
+        let decoded = try JSONDecoder().decode(WebSearchResponse.self, from: Data(output.utf8))
+        XCTAssertEqual(decoded, response)
+    }
+
     func testIndexIsEventuallyConsistentAndCoalescesDocumentUpdates() async {
         let index = LocalSearchIndex()
         let node = GraphNodeID.source(SourceID())
@@ -145,5 +269,38 @@ final class SearchTests: XCTestCase {
         XCTAssertTrue(documents.contains { $0.id == .message(conversation.messages[0].id) })
         XCTAssertTrue(documents.contains { $0.content.contains("Important research") })
         XCTAssertTrue(documents.contains { $0.title == "supportedBy" })
+    }
+}
+
+private actor SearchRequestRecorder {
+    private var recordedRequest: URLRequest?
+
+    func record(_ request: URLRequest) {
+        recordedRequest = request
+    }
+
+    func request() throws -> URLRequest {
+        guard let recordedRequest else {
+            throw NSError(domain: "SearchTests", code: 1)
+        }
+        return recordedRequest
+    }
+}
+
+private struct StubWebSearchTransport: WebSearchTransport {
+    let recorder: SearchRequestRecorder
+    let data: Data
+
+    func response(for request: URLRequest) async throws -> WebSearchHTTPResponse {
+        await recorder.record(request)
+        return WebSearchHTTPResponse(statusCode: 200, data: data)
+    }
+}
+
+private struct StubWebSearchService: WebSearchProviding {
+    let response: WebSearchResponse
+
+    func search(_ request: WebSearchRequest) async throws -> WebSearchResponse {
+        response
     }
 }

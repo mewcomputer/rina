@@ -33,7 +33,7 @@ struct ChatView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
-        dependencies: AppDependencies = .live,
+        dependencies: AppDependencies,
         themeStore: ThemeStore = ThemeStore()
     ) {
         self.dependencies = dependencies
@@ -118,13 +118,24 @@ struct ChatView: View {
                 activeResponse?.thinkingSource.yield(snapshot)
             }
         }
+        .onChange(of: session.conversation.messages.count) { _, _ in
+            artefacts.refresh()
+        }
         .onChange(of: artefacts.skills) { _, _ in
             session.configure(skillCatalog: artefacts.skillCatalog)
+        }
+        .onChange(of: settings.autoApproveArtefactWrites) { _, value in
+            session.configure(autoApproveArtefactWrites: value)
+            settings.persistArtefactPreferences()
+        }
+        .onChange(of: settings.allowAllArtefactWebRequests) { _, _ in
+            settings.persistArtefactPreferences()
         }
         .onDisappear {
             generationTask?.cancel()
         }
         .task {
+            session.configure(autoApproveArtefactWrites: settings.autoApproveArtefactWrites)
             await settings.refreshModels()
         }
         .sheet(isPresented: $showsSettings) {
@@ -552,9 +563,34 @@ struct ChatView: View {
         activeResponse = response
 
         generationTask = Task { @MainActor in
+            await LiveActivityController.shared.start(
+                conversationID: session.conversation.id.rawValue,
+                model: settings.modelText,
+                thinkingLevel: settings.thinkingLevel.displayName
+            )
             await session.send(prompt)
             artefacts.refresh()
             let completedConversation = session.conversation
+            let activityStatus: GinnyLiveActivityAttributes.ContentState.Status
+            let activityDetail: String
+            switch completedConversation.generationState {
+            case .completed:
+                activityStatus = .completed
+                activityDetail = "Done"
+            case .cancelled:
+                activityStatus = .cancelled
+                activityDetail = "Cancelled"
+            case .failed:
+                activityStatus = .failed
+                activityDetail = session.errorMessage ?? "Generation failed"
+            case .idle, .preparing, .streaming:
+                activityStatus = .failed
+                activityDetail = "Generation ended"
+            }
+            await LiveActivityController.shared.end(
+                status: activityStatus,
+                detail: activityDetail
+            )
             if [.completed, .cancelled, .failed].contains(completedConversation.generationState) {
                 history.save(completedConversation)
                 if completedConversation.generationState == .completed {
@@ -604,13 +640,13 @@ private enum ChatDisplayItem: Identifiable {
 }
 
 enum AssistantContentSegment: Equatable, Identifiable {
-    case text(ContentBlock)
+    case text(ContentBlock, rendererKind: ContentBlockRendererKind)
     case toolActivity(id: ContentBlockID, group: ToolActivityGroup)
     case artefactReference(id: ContentBlockID, reference: ArtefactReference)
 
     var id: ContentBlockID {
         switch self {
-        case .text(let block):
+        case .text(let block, _):
             block.id
         case .toolActivity(let id, _), .artefactReference(let id, _):
             id
@@ -628,6 +664,7 @@ func assistantContentSegments(
         group.activities.compactMap(\.result) + group.unmatchedResults
     } ?? []
     var segments: [AssistantContentSegment] = []
+    let rendererRegistry = ContentBlockRendererRegistry()
     var index = 0
 
     while index < message.blocks.count {
@@ -635,12 +672,22 @@ func assistantContentSegments(
         switch block.kind {
         case .text:
             if !block.payload.isEmpty {
-                segments.append(.text(block))
+                segments.append(
+                    .text(
+                        block,
+                        rendererKind: rendererRegistry.rendererKind(for: block.kind)
+                    )
+                )
             }
             index += 1
         case .markdown, .code, .table, .mermaid, .image, .fileReference, .citationGroup, .providerNotice, .unknown:
             if !block.payload.isEmpty || block.kind == .fileReference {
-                segments.append(.text(block))
+                segments.append(
+                    .text(
+                        block,
+                        rendererKind: rendererRegistry.rendererKind(for: block.kind)
+                    )
+                )
             }
             index += 1
         case .toolCall:
@@ -894,9 +941,10 @@ private struct ComposerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Start a message", text: $draft)
+            TextField("Start a message", text: $draft, axis: .vertical)
                 .font(.body)
-                .frame(height: 34)
+                .lineLimit(1...5)
+                .frame(minHeight: 34, maxHeight: 120, alignment: .top)
                 .textFieldStyle(.plain)
                 .focused($isInputFocused)
                 .submitLabel(.send)
@@ -929,7 +977,7 @@ private struct ComposerView: View {
             }
         }
         .padding(12)
-        .frame(height: 100, alignment: .top)
+        .frame(minHeight: 100, alignment: .top)
         .ginnyGlass(
             RoundedRectangle(cornerRadius: 28, style: .continuous),
             prominence: .elevated
@@ -1231,13 +1279,16 @@ private struct ChatMessageView: View {
                     }
                     ForEach(assistantContentSegments(for: message, toolActivity: toolActivity)) { segment in
                         switch segment {
-                        case .text(let block):
-                            MarkdownView(text: block.payload, config: markdownConfig)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                        case .text(let block, let rendererKind):
+                            contentView(block, rendererKind: rendererKind)
                         case .toolActivity(_, let group):
                             ToolActivityGroupView(group: group)
                         case .artefactReference(_, let reference):
-                            ArtefactReferenceView(reference: reference, store: artefactStore)
+                            ArtefactReferenceView(
+                                reference: reference,
+                                store: artefactStore,
+                                markdownConfig: markdownConfig
+                            )
                         }
                     }
                 }
@@ -1268,6 +1319,24 @@ private struct ChatMessageView: View {
             .joined()
     }
 
+    @ViewBuilder
+    private func contentView(
+        _ block: ContentBlock,
+        rendererKind: ContentBlockRendererKind
+    ) -> some View {
+        switch rendererKind {
+        case .markdown, .code, .table, .mermaid, .image, .fileReference,
+             .citationGroup, .providerNotice:
+            MarkdownView(text: block.payload, config: markdownConfig)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .unsupported:
+            Text(block.payload)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .toolCall, .toolResult, .artefactReference:
+            EmptyView()
+        }
+    }
+
     private var toolResults: [ContentBlock] {
         message.blocks.filter { $0.kind == .toolResult }
     }
@@ -1296,27 +1365,68 @@ private struct ChatMessageView: View {
 private struct ArtefactReferenceView: View {
     let reference: ArtefactReference
     @ObservedObject var store: ArtefactStore
+    let markdownConfig: MarkdownRenderConfig
     @Environment(\.ginnyTheme) private var theme
     @State private var inlineHeight: CGFloat = 180
+    @State private var approvedNetworkOrigins: [String] = []
+    @State private var pendingNetworkOrigin: String?
+    @AppStorage(ArtefactPreferences.allowAllNetworkRequestsKey) private var allowAllNetworkRequests = false
 
     var body: some View {
         if let artefact = store.artefacts.first(where: { $0.id == reference.artefactID }),
            let revision = artefact.revision(id: reference.revisionID) {
             if reference.presentation == .inline {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(artefact.title)
-                        .font(.headline.weight(.semibold))
-                        .lineLimit(2)
-                        .accessibilityAddTraits(.isHeader)
+                if artefact.kind == .web || artefact.kind == .inlineWeb {
+                    let declaredNetworkOrigins = ArtefactNetworkPolicy(metadata: revision.metadata).origins
+                    let networkOrigins = Array(Set(declaredNetworkOrigins + approvedNetworkOrigins)).sorted()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(artefact.title)
+                            .font(.headline.weight(.semibold))
+                            .lineLimit(2)
+                            .accessibilityAddTraits(.isHeader)
 
-                    WebArtefactPreview(
-                        html: revision.renderedContent ?? revision.source,
-                        isInline: true,
-                        networkOrigins: ArtefactNetworkPolicy(metadata: revision.metadata).origins,
-                        contentHeight: $inlineHeight
+                        WebArtefactPreview(
+                            html: revision.renderedContent ?? revision.source,
+                            isInline: true,
+                            networkOrigins: networkOrigins,
+                            contentHeight: $inlineHeight,
+                            allowAllNetworkRequests: allowAllNetworkRequests,
+                            onNetworkOriginRequest: { origin in
+                                guard !networkOrigins.contains(origin), pendingNetworkOrigin == nil else { return }
+                                pendingNetworkOrigin = origin
+                            }
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: min(inlineHeight, WebArtefactPreview.maxInlineHeight))
+                    }
+                    .alert(
+                        "Allow network access?",
+                        isPresented: Binding(
+                            get: { pendingNetworkOrigin != nil },
+                            set: { isPresented in
+                                if !isPresented { pendingNetworkOrigin = nil }
+                            }
+                        )
+                    ) {
+                        Button("Allow") {
+                            if let origin = pendingNetworkOrigin,
+                               !approvedNetworkOrigins.contains(origin) {
+                                approvedNetworkOrigins.append(origin)
+                            }
+                            pendingNetworkOrigin = nil
+                        }
+                        Button("Don’t Allow", role: .cancel) {
+                            pendingNetworkOrigin = nil
+                        }
+                    } message: {
+                        Text("This artefact wants to connect to \(pendingNetworkOrigin ?? "a new site").")
+                    }
+                } else {
+                    InlineArtefactContentView(
+                        artefact: artefact,
+                        revision: revision,
+                        markdownConfig: markdownConfig
                     )
-                    .frame(maxWidth: .infinity)
-                    .frame(height: inlineHeight)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
@@ -1347,6 +1457,59 @@ private struct ArtefactReferenceView: View {
             Label("Artefact unavailable", systemImage: "exclamationmark.triangle")
                 .font(.footnote)
                 .foregroundStyle(theme.color("text.muted"))
+        }
+    }
+}
+
+private struct InlineArtefactContentView: View {
+    let artefact: Artefact
+    let revision: ArtefactRevision
+    let markdownConfig: MarkdownRenderConfig
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                Text(artefact.title)
+                    .font(.headline.weight(.semibold))
+                    .lineLimit(2)
+            }
+            .accessibilityAddTraits(.isHeader)
+
+            Divider()
+
+            switch artefact.kind {
+            case .document:
+                MarkdownView(
+                    text: revision.renderedContent ?? revision.source,
+                    config: markdownConfig
+                )
+            case .code:
+                ScrollView(.horizontal) {
+                    Text(revision.source)
+                        .font(.system(.body, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollIndicators(.hidden)
+            case .web, .inlineWeb:
+                EmptyView()
+            }
+        }
+        .padding(14)
+        .background(
+            theme.color("card").opacity(0.22),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
+    }
+
+    private var systemImage: String {
+        switch artefact.kind {
+        case .document: "doc.text"
+        case .code: "chevron.left.forwardslash.chevron.right"
+        case .web: "globe"
+        case .inlineWeb: "rectangle.on.rectangle"
         }
     }
 }
@@ -1768,6 +1931,39 @@ private struct ProviderSettingsView: View {
                 SecureField("API key", text: $settings.credentialText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+            }
+
+            Section("Artefacts") {
+                Toggle("Allow all HTTPS requests", isOn: $settings.allowAllArtefactWebRequests)
+                Toggle("Auto-approve artefact writes", isOn: $settings.autoApproveArtefactWrites)
+
+                Text("These relax artefact-only safeguards. Requests still require HTTPS and local or private addresses remain blocked.")
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
+            }
+
+            Section("Web search") {
+                Picker("Provider", selection: $settings.webSearchProvider) {
+                    ForEach(WebSearchProviderID.allCases, id: \.self) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                .onChange(of: settings.webSearchProvider) { _, provider in
+                    settings.selectWebSearchProvider(provider)
+                }
+
+                TextField("Base URL", text: $settings.webSearchEndpointText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+
+                SecureField("API key", text: $settings.webSearchCredentialText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                Text("Search results include citation metadata. Use an HTTPS endpoint for the selected provider.")
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
             }
 
             Text("Credentials are stored in the system Keychain. Localhost HTTP endpoints are supported for local providers.")

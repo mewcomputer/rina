@@ -63,4 +63,27 @@ final class ImportExportTests: XCTestCase {
             XCTAssertEqual(error as? ArtefactExportError, .noCurrentRevision)
         }
     }
+
+    func testSourceImportRejectsFilesOverTheConfiguredLimit() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GinnyImportTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = try FileAttachmentStore(rootURL: root)
+        let repository = try SourceRepository(isStoredInMemoryOnly: true)
+        let importer = SourceImporter(
+            attachmentStore: store,
+            repository: repository,
+            maximumBytes: 10
+        )
+        let fileURL = root.appendingPathComponent("large.txt")
+        try Data(repeating: 0x61, count: 11).write(to: fileURL)
+
+        do {
+            _ = try await importer.importFile(at: fileURL)
+            XCTFail("Expected the importer to reject an oversized file")
+        } catch let error as SourceImportError {
+            XCTAssertEqual(error, .tooLarge(maximumBytes: 10))
+        }
+    }
 }

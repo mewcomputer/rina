@@ -11,6 +11,11 @@ enum ArtefactError: Error, Equatable, Sendable {
     case revisionNotFound(RevisionID)
 }
 
+enum ArtefactPreferences {
+    static let allowAllNetworkRequestsKey = "artefacts.allowAllNetworkRequests"
+    static let autoApproveWritesKey = "artefacts.autoApproveWrites"
+}
+
 struct ArtefactNetworkPolicy: Equatable, Sendable {
     static let metadataKey = "networkOrigins"
 
@@ -88,6 +93,23 @@ struct ArtefactNetworkPolicy: Equatable, Sendable {
             || compact.contains("href='https://")
             || compact.contains("url(http://")
             || compact.contains("url(https://")
+    }
+
+    static func origin(from url: URL) -> String? {
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "https",
+              let host = url.host?.lowercased(),
+              !host.isEmpty,
+              url.user == nil,
+              url.password == nil,
+              url.port == nil || url.port == 443,
+              !Self.isBlockedHost(host)
+        else {
+            return nil
+        }
+
+        let port = url.port.map { ":\($0)" } ?? ""
+        return "https://\(host)\(port)"
     }
 
     private static func normalizedOrigin(_ value: String) -> String? {

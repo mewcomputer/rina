@@ -12,8 +12,8 @@ struct AppDependencies: Sendable {
     let attachmentStore: any AttachmentStore
     let relationshipRepository: RelationshipRepository
 
-    static let live: AppDependencies = {
-        let container = try! GinnyPersistence.makeContainer()
+    static func makeLive() throws -> AppDependencies {
+        let container = try GinnyPersistence.makeContainer()
         let applicationSupport = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
@@ -28,10 +28,10 @@ struct AppDependencies: Sendable {
             conversationRepository: ConversationRepository(container: container),
             artefactRepository: ArtefactRepository(container: container),
             sourceRepository: SourceRepository(container: container),
-            attachmentStore: try! FileAttachmentStore(rootURL: attachmentURL),
+            attachmentStore: try FileAttachmentStore(rootURL: attachmentURL),
             relationshipRepository: RelationshipRepository(container: container)
         )
-    }()
+    }
 
     func makeSourceImporter() -> SourceImporter {
         SourceImporter(
@@ -52,11 +52,13 @@ struct AppDependencies: Sendable {
     func makeToolRegistry() -> ToolRegistry {
         let catalog = makeSkillCatalog()
         let artefactTools = ArtefactToolSet(repository: artefactRepository).tools
+        let webSearch = WebSearchService(credentialStore: credentialStore)
 
         return ToolRegistry(tools: [
             CurrentTimeTool(),
             DiscoverSkillsTool(catalog: catalog),
-            ReadSkillTool(catalog: catalog)
+            ReadSkillTool(catalog: catalog),
+            SearchWebTool(service: webSearch)
         ] + artefactTools)
     }
 

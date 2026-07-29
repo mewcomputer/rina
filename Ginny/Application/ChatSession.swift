@@ -16,6 +16,8 @@ final class ChatSession: ObservableObject {
     private var toolRegistry: ToolRegistry
     private let persistence: ((Conversation) throws -> Void)?
     private var toolApprovalContinuation: CheckedContinuation<Bool, Never>?
+    private var responseFinishReason: String? = nil
+    private var autoApproveArtefactWrites = false
 
     init(
         provider: (any ProviderAdapter)? = nil,
@@ -37,6 +39,10 @@ final class ChatSession: ObservableObject {
         toolRegistry.updateSkillCatalog(skillCatalog)
     }
 
+    func configure(autoApproveArtefactWrites: Bool) {
+        self.autoApproveArtefactWrites = autoApproveArtefactWrites
+    }
+
     func load(conversation: Conversation) {
         guard !isGenerating else { return }
         self.conversation = conversation
@@ -45,6 +51,7 @@ final class ChatSession: ObservableObject {
         errorMessage = nil
         persistenceError = nil
         pendingToolApproval = nil
+        responseFinishReason = nil
     }
 
     func reset() {
@@ -157,6 +164,7 @@ final class ChatSession: ObservableObject {
             persistConversation()
 
             while true {
+                responseFinishReason = nil
                 let request = makeRequest()
                 for try await event in provider.stream(for: request) {
                     try handle(event: event)
@@ -164,7 +172,21 @@ final class ChatSession: ObservableObject {
                 }
 
                 guard conversation.generationState == .streaming else { return }
-                let toolCalls = completedToolCalls(in: conversation.messages.last)
+                let pendingToolCalls = conversation.messages.last?.blocks.filter {
+                    $0.kind == .toolCall
+                } ?? []
+                if !pendingToolCalls.isEmpty,
+                   !Self.isToolCallFinishReason(responseFinishReason)
+                {
+                    errorMessage = "The provider ended before completing a tool call."
+                    try conversation.failGeneration()
+                    persistConversation()
+                    return
+                }
+                let toolCalls = completedToolCalls(
+                    in: conversation.messages.last,
+                    finishReason: responseFinishReason
+                )
                 if toolCalls.isEmpty {
                     try finishGeneration()
                     return
@@ -204,16 +226,18 @@ final class ChatSession: ObservableObject {
             }
             guard conversation.generationState == .streaming else { return }
             guard var assistant = conversation.messages.last,
-                  assistant.role == .assistant,
-                  var block = assistant.blocks.first
+                  assistant.role == .assistant
             else {
                 return
             }
 
             streamingText.append(delta)
-            block.payload = streamingText
-            block.isComplete = false
-            assistant.blocks = [block]
+            if let textIndex = assistant.blocks.firstIndex(where: { $0.kind == .text }) {
+                assistant.blocks[textIndex].payload = streamingText
+                assistant.blocks[textIndex].isComplete = false
+            } else {
+                assistant.blocks.insert(.text(streamingText, isComplete: false), at: 0)
+            }
             try conversation.updateMessage(assistant)
         case .continuationDelta(let delta):
             if conversation.generationState == .preparing {
@@ -286,8 +310,8 @@ final class ChatSession: ObservableObject {
                 )
             }
             try conversation.updateMessage(assistant)
-        case .finish:
-            break
+        case .finish(let reason):
+            responseFinishReason = reason
         case .responseEnded:
             break
         }
@@ -332,8 +356,16 @@ final class ChatSession: ObservableObject {
         )
     }
 
-    private func completedToolCalls(in message: Message?) -> [ContentBlock] {
-        message?.blocks.filter { $0.kind == .toolCall } ?? []
+    private func completedToolCalls(
+        in message: Message?,
+        finishReason: String?
+    ) -> [ContentBlock] {
+        guard Self.isToolCallFinishReason(finishReason) else { return [] }
+        return message?.blocks.filter { $0.kind == .toolCall } ?? []
+    }
+
+    private static func isToolCallFinishReason(_ reason: String?) -> Bool {
+        reason == "tool_calls" || reason == "tool_use"
     }
 
     private func finalizeAssistantForToolCalls() throws {
@@ -364,7 +396,11 @@ final class ChatSession: ObservableObject {
 
             do {
                 let approvalState: ToolApprovalState
-                switch toolRegistry.approvalRequirement(for: name, arguments: call.payload) {
+                let approvalRequirement = autoApproveArtefactWrites
+                    && (name == "create_artefact" || name == "update_artefact")
+                    ? .automatic
+                    : toolRegistry.approvalRequirement(for: name, arguments: call.payload)
+                switch approvalRequirement {
                 case .automatic:
                     approvalState = .automatic
                 case .requiresApproval:
@@ -396,6 +432,8 @@ final class ChatSession: ObservableObject {
                     approvalState: approvalState,
                     to: assistantMessageID
                 )
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 try appendToolResult(
                     callID: callID,
@@ -435,7 +473,7 @@ final class ChatSession: ObservableObject {
                   ArtefactToolDetails.self,
                   from: Data(result.utf8)
               ),
-              details.kind == .inlineWeb,
+              details.displayImmediately || details.kind == .inlineWeb,
               let artefactUUID = UUID(uuidString: details.id),
               let revisionUUID = UUID(uuidString: details.revisionID),
               var assistant = conversation.messages.first(where: {

@@ -129,6 +129,40 @@ final class ToolTests: XCTestCase {
         XCTAssertEqual(registry.approvalRequirement(for: "update_artefact"), .requiresApproval)
     }
 
+    func testCreateArtefactCanRequestImmediateDisplay() async throws {
+        let repository = try ArtefactRepository(isStoredInMemoryOnly: true)
+        let registry = ToolRegistry(tools: ArtefactToolSet(repository: repository).tools)
+
+        let result = try await registry.execute(
+            name: "create_artefact",
+            arguments: """
+            {"title":"Notes","kind":"document","source":"# Notes","display_immediately":true}
+            """
+        )
+        let details = try JSONDecoder().decode(ArtefactToolDetails.self, from: Data(result.utf8))
+
+        XCTAssertTrue(details.displayImmediately)
+    }
+
+    func testDisplayArtefactReturnsAnImmediateDisplayDirective() async throws {
+        let repository = try ArtefactRepository(isStoredInMemoryOnly: true)
+        var artefact = Artefact(title: "Snippet", kind: .code)
+        let revisionID = artefact.checkpoint(source: "print(\"hello\")")
+        try repository.upsert(artefact)
+        let registry = ToolRegistry(tools: ArtefactToolSet(repository: repository).tools)
+
+        let result = try await registry.execute(
+            name: "display_artefact",
+            arguments: "{\"id\":\"" + artefact.id.rawValue.uuidString + "\"}"
+        )
+        let details = try JSONDecoder().decode(ArtefactToolDetails.self, from: Data(result.utf8))
+
+        XCTAssertEqual(details.revisionID, revisionID.rawValue.uuidString)
+        XCTAssertEqual(details.kind, .code)
+        XCTAssertTrue(details.displayImmediately)
+        XCTAssertEqual(registry.approvalRequirement(for: "display_artefact"), .automatic)
+    }
+
     func testInlineWebCreationIsAutomaticButDurableDocumentCreationRequiresApproval() throws {
         let repository = try ArtefactRepository(isStoredInMemoryOnly: true)
         let registry = ToolRegistry(tools: ArtefactToolSet(repository: repository).tools)

@@ -66,6 +66,16 @@ final class SkillTests: XCTestCase {
         XCTAssertTrue(frontend?.currentRevision?.instructions.contains("React/Tailwind-style") == true)
     }
 
+    func testCuratedSkillsContainDiagramCraftForInlineWebArtefacts() throws {
+        let diagram = try XCTUnwrap(CuratedSkills.all.first { $0.id == "ginny.diagram-craft" })
+
+        XCTAssertTrue(diagram.isBuiltIn)
+        XCTAssertTrue(diagram.targetKinds.contains(.inlineWeb))
+        XCTAssertTrue(diagram.keywords.contains("diagram"))
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("make the widget seamless") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("fill-*") == true)
+    }
+
     func testDiscoveryToolReturnsMatchingSkillDescriptors() async throws {
         let tool = DiscoverSkillsTool()
 
@@ -74,7 +84,7 @@ final class SkillTests: XCTestCase {
         )
         let descriptors = try JSONDecoder().decode([SkillDescriptor].self, from: Data(result.utf8))
 
-        XCTAssertEqual(descriptors.map(\.name), ["Frontend design"])
+        XCTAssertEqual(descriptors.map(\.name), ["Frontend design", "Diagram craft"])
         XCTAssertEqual(tool.approvalRequirement, .automatic)
     }
 
@@ -88,5 +98,14 @@ final class SkillTests: XCTestCase {
 
         XCTAssertEqual(details.id, "ginny.frontend-design")
         XCTAssertTrue(details.instructions.contains("semantic color tokens"))
+    }
+
+    @MainActor
+    func testCreateArtefactDescriptionRequiresDiagramSkillForInlineWeb() throws {
+        let repository = try ArtefactRepository(isStoredInMemoryOnly: true)
+        let tool = CreateArtefactTool(store: ArtefactToolStore(repository: repository))
+
+        XCTAssertTrue(tool.definition.description.contains("ginny.diagram-craft"))
+        XCTAssertTrue(tool.definition.description.contains("read_skill"))
     }
 }

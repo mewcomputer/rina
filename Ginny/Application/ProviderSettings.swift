@@ -5,12 +5,18 @@ import Foundation
 final class ProviderSettings: ObservableObject {
     static let defaultEndpoint = "https://api.code.umans.ai"
     static let credentialID = "umans-api-key"
+    private static let legacyCredentialID = "openai-compatible-primary"
 
     @Published var provider: ProviderID
     @Published var endpointText: String
     @Published var modelText: String
     @Published var credentialText: String
+    @Published var webSearchProvider: WebSearchProviderID
+    @Published var webSearchEndpointText: String
+    @Published var webSearchCredentialText: String
     @Published var thinkingLevel: ThinkingLevel = .high
+    @Published var allowAllArtefactWebRequests: Bool
+    @Published var autoApproveArtefactWrites: Bool
     @Published private(set) var availableModels: [ProviderModel] = []
     @Published private(set) var isLoadingModels = false
     @Published private(set) var catalogMessage: String?
@@ -28,17 +34,36 @@ final class ProviderSettings: ObservableObject {
         self.defaults = defaults
         self.credentialStore = credentialStore
         self.modelCatalog = modelCatalog
+        allowAllArtefactWebRequests = defaults.bool(forKey: ArtefactPreferences.allowAllNetworkRequestsKey)
+        autoApproveArtefactWrites = defaults.bool(forKey: ArtefactPreferences.autoApproveWritesKey)
         let storedProvider = defaults.string(forKey: "provider.id")
-        let selectedProvider = ProviderID(rawValue: storedProvider ?? "") ?? .umans
+        let legacyEndpoint = defaults.string(forKey: "provider.endpoint")
+        let selectedProvider = ProviderID(rawValue: storedProvider ?? "")
+            ?? Self.legacyProvider(for: legacyEndpoint)
+            ?? .umans
         provider = selectedProvider
         let storedBaseURL = defaults.string(forKey: selectedProvider.baseURLKey)
             ?? (storedProvider == nil ? nil : defaults.string(forKey: "provider.endpoint"))
         let storedModel = defaults.string(forKey: selectedProvider.modelKey)
-            ?? (storedProvider == nil ? nil : defaults.string(forKey: "provider.model"))
+            ?? defaults.string(forKey: "provider.model")
         endpointText = Self.normalizedBaseURLText(storedBaseURL, provider: selectedProvider)
             ?? selectedProvider.defaultBaseURL
         modelText = storedModel ?? selectedProvider.defaultModel
-        credentialText = (try? credentialStore.credential(for: selectedProvider.credentialID)) ?? ""
+        credentialText = (try? credentialStore.credential(for: selectedProvider.credentialID))
+            ?? (storedProvider == nil
+                ? (try? credentialStore.credential(for: Self.legacyCredentialID))
+                : nil)
+            ?? ""
+        let selectedWebSearchProvider = WebSearchProviderID(
+            rawValue: defaults.string(forKey: WebSearchPreferences.providerKey) ?? ""
+        ) ?? .tavily
+        webSearchProvider = selectedWebSearchProvider
+        webSearchEndpointText = defaults.string(
+            forKey: WebSearchPreferences.baseURLKeyPrefix + selectedWebSearchProvider.rawValue
+        ) ?? selectedWebSearchProvider.defaultBaseURL
+        webSearchCredentialText = (try? credentialStore.credential(
+            for: selectedWebSearchProvider.credentialID
+        )) ?? ""
         thinkingLevel = Self.storedThinkingLevel(
             defaults: defaults,
             provider: selectedProvider,
@@ -118,6 +143,14 @@ final class ProviderSettings: ObservableObject {
     func selectProviderAndRefresh(_ provider: ProviderID) async {
         selectProvider(provider)
         await refreshModels()
+    }
+
+    func selectWebSearchProvider(_ provider: WebSearchProviderID) {
+        webSearchProvider = provider
+        webSearchEndpointText = defaults.string(
+            forKey: WebSearchPreferences.baseURLKeyPrefix + provider.rawValue
+        ) ?? provider.defaultBaseURL
+        webSearchCredentialText = (try? credentialStore.credential(for: provider.credentialID)) ?? ""
     }
 
     func refreshModels() async {
@@ -204,11 +237,37 @@ final class ProviderSettings: ObservableObject {
         defaults.set(model, forKey: provider.modelKey)
         defaults.set(endpoint, forKey: "provider.endpoint")
         defaults.set(model, forKey: "provider.model")
+        persistArtefactPreferences()
+        persistWebSearchPreferences()
         endpointText = endpoint
         modelText = model
         credentialText = credential
         validationMessage = nil
         return true
+    }
+
+    func persistArtefactPreferences() {
+        defaults.set(allowAllArtefactWebRequests, forKey: ArtefactPreferences.allowAllNetworkRequestsKey)
+        defaults.set(autoApproveArtefactWrites, forKey: ArtefactPreferences.autoApproveWritesKey)
+    }
+
+    func persistWebSearchPreferences() {
+        let endpoint = webSearchEndpointText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: endpoint), url.scheme == "https", url.host != nil else {
+            return
+        }
+
+        defaults.set(webSearchProvider.rawValue, forKey: WebSearchPreferences.providerKey)
+        defaults.set(
+            url.absoluteString,
+            forKey: WebSearchPreferences.baseURLKeyPrefix + webSearchProvider.rawValue
+        )
+        let credential = webSearchCredentialText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !credential.isEmpty {
+            try? credentialStore.save(credential, for: webSearchProvider.credentialID)
+        }
+        webSearchEndpointText = url.absoluteString
+        webSearchCredentialText = credential
     }
 
     private static func normalizedBaseURLText(
@@ -221,6 +280,22 @@ final class ProviderSettings: ObservableObject {
             return nil
         }
         return normalizedBaseURL(url, provider: provider).absoluteString
+    }
+
+    private static func legacyProvider(for endpoint: String?) -> ProviderID? {
+        guard let endpoint, let url = URL(string: endpoint), let host = url.host else {
+            return nil
+        }
+        switch host {
+        case "api.code.umans.ai":
+            return .umans
+        case "api.moonshot.ai":
+            return .kimi
+        case "api.kimi.com":
+            return .kimiCode
+        default:
+            return .openAICompatible
+        }
     }
 
     private static func normalizedBaseURL(_ url: URL, provider: ProviderID) -> URL {

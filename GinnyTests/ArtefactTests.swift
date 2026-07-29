@@ -102,6 +102,26 @@ final class ArtefactTests: XCTestCase {
         XCTAssertTrue(document.contains("connect-src 'none'"))
     }
 
+    func testWebPreviewReportsBlockedNetworkOrigins() {
+        let document = WebArtefactPreview.document(
+            for: "<script>fetch('https://new.example.com')</script>",
+            isInline: true
+        )
+
+        XCTAssertTrue(document.contains("securitypolicyviolation"))
+        XCTAssertTrue(document.contains("ginnyNetworkPolicy"))
+        XCTAssertTrue(document.contains("connect-src"))
+    }
+
+    func testNetworkPolicyExtractsOnlySafeHTTPSOrigins() {
+        XCTAssertEqual(
+            ArtefactNetworkPolicy.origin(from: URL(string: "https://API.example.com/path")!),
+            "https://api.example.com"
+        )
+        XCTAssertNil(ArtefactNetworkPolicy.origin(from: URL(string: "http://example.com")!))
+        XCTAssertNil(ArtefactNetworkPolicy.origin(from: URL(string: "https://192.168.1.10")!))
+    }
+
     func testWebPreviewAllowsOnlyDeclaredHTTPSOrigins() {
         let document = WebArtefactPreview.document(
             for: "<script>fetch('https://api.example.com')</script>",
@@ -116,6 +136,30 @@ final class ArtefactTests: XCTestCase {
         XCTAssertTrue(document.contains("connect-src https://api.example.com;"))
         XCTAssertFalse(document.contains("http://insecure.example.com"))
         XCTAssertFalse(document.contains("https://api.example.com/v1"))
+    }
+
+    func testWebPreviewCanAllowAllSafeHTTPSOrigins() {
+        let document = WebArtefactPreview.document(
+            for: "<script>fetch('https://api.example.com')</script>",
+            isInline: true,
+            allowAllNetworkRequests: true
+        )
+
+        XCTAssertTrue(document.contains("connect-src https:;"))
+    }
+
+    func testInlineWebPreviewHasAUsableScrollableHeightCap() {
+        XCTAssertEqual(WebArtefactPreview.maxInlineHeight, 520)
+    }
+
+    func testWebPreviewViewUsesDeclaredNetworkOrigins() {
+        let preview = WebArtefactPreview(
+            html: "<script>fetch('https://api.example.com')</script>",
+            isInline: true,
+            networkOrigins: ["https://api.example.com"]
+        )
+
+        XCTAssertTrue(preview.renderedDocument.contains("connect-src https://api.example.com;"))
     }
 
     func testNetworkCapabilityMetadataUsesExactHTTPSOrigins() throws {

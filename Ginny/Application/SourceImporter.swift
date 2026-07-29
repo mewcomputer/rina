@@ -23,6 +23,11 @@ struct SourceImporter {
     func importFile(at url: URL) async throws -> Source {
         let contentTypeIdentifier = UTType(filenameExtension: url.pathExtension)?.identifier
             ?? UTType.data.identifier
+        if let fileSize = try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber,
+           fileSize.intValue > maximumBytes
+        {
+            throw SourceImportError.tooLarge(maximumBytes: maximumBytes)
+        }
         return try await importData(
             Data(contentsOf: url),
             displayName: url.lastPathComponent,

@@ -27,6 +27,22 @@ final class ProviderSettingsTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
+    func testArtefactPreferencesPersistAndRestore() throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let settings = ProviderSettings(defaults: defaults, credentialStore: TestCredentialStore())
+
+        settings.allowAllArtefactWebRequests = true
+        settings.autoApproveArtefactWrites = true
+        settings.persistArtefactPreferences()
+
+        let restored = ProviderSettings(defaults: defaults, credentialStore: TestCredentialStore())
+        XCTAssertTrue(restored.allowAllArtefactWebRequests)
+        XCTAssertTrue(restored.autoApproveArtefactWrites)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
     func testSavingRemoteHTTPEndpointIsRejected() throws {
         let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -91,6 +107,37 @@ final class ProviderSettingsTests: XCTestCase {
         settings.selectProvider(.kimi)
         XCTAssertEqual(settings.modelText, "kimi-k2.5")
         XCTAssertEqual(settings.credentialText, "kimi-secret")
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    func testSavingWebSearchSettingsPersistsProviderEndpointAndCredentialSeparately() throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let credentials = TestCredentialStore()
+        let settings = ProviderSettings(defaults: defaults, credentialStore: credentials)
+
+        settings.modelText = "umans-coder"
+        settings.credentialText = "chat-secret"
+        settings.webSearchProvider = .exa
+        settings.webSearchEndpointText = "https://search.example.test"
+        settings.webSearchCredentialText = "exa-secret"
+
+        XCTAssertTrue(settings.save())
+        XCTAssertEqual(
+            defaults.string(forKey: WebSearchPreferences.providerKey),
+            WebSearchProviderID.exa.rawValue
+        )
+        XCTAssertEqual(
+            defaults.string(forKey: WebSearchPreferences.baseURLKeyPrefix + "exa"),
+            "https://search.example.test"
+        )
+        XCTAssertEqual(credentials.values[WebSearchProviderID.exa.credentialID], "exa-secret")
+
+        let restored = ProviderSettings(defaults: defaults, credentialStore: credentials)
+        XCTAssertEqual(restored.webSearchProvider, .exa)
+        XCTAssertEqual(restored.webSearchEndpointText, "https://search.example.test")
+        XCTAssertEqual(restored.webSearchCredentialText, "exa-secret")
 
         defaults.removePersistentDomain(forName: suiteName)
     }
@@ -260,6 +307,27 @@ final class ProviderSettingsTests: XCTestCase {
             settings.configuration?.endpoint.absoluteString,
             "https://api.code.umans.ai/v1/messages"
         )
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    func testMigratesLegacyOpenAIConfigurationAndCredential() throws {
+        let suiteName = "GinnyTests.ProviderSettings.LegacyOpenAI.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let credentials = TestCredentialStore()
+        credentials.values["openai-compatible-primary"] = "legacy-secret"
+        defaults.set(
+            "https://api.openai.com/v1/chat/completions",
+            forKey: "provider.endpoint"
+        )
+        defaults.set("legacy-model", forKey: "provider.model")
+
+        let settings = ProviderSettings(defaults: defaults, credentialStore: credentials)
+
+        XCTAssertEqual(settings.provider, .openAICompatible)
+        XCTAssertEqual(settings.endpointText, "https://api.openai.com/v1")
+        XCTAssertEqual(settings.modelText, "legacy-model")
+        XCTAssertEqual(settings.credentialText, "legacy-secret")
 
         defaults.removePersistentDomain(forName: suiteName)
     }

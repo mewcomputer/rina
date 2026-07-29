@@ -641,6 +641,7 @@ final class StreamingTests: XCTestCase {
         let body = try XCTUnwrap(request.httpBody)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(object["model"] as? String, "umans-coder")
+        XCTAssertEqual(object["max_tokens"] as? Int, 32_768)
         XCTAssertEqual(object["system"] as? String, "Be concise.")
         XCTAssertEqual(object["stream"] as? Bool, true)
         XCTAssertEqual((object["messages"] as? [[String: Any]])?.count, 1)
@@ -829,6 +830,37 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(resultContent.first?["type"] as? String, "tool_result")
         XCTAssertEqual(resultContent.first?["tool_use_id"] as? String, "toolu_1")
         XCTAssertEqual(resultContent.first?["content"] as? String, "1970-01-01T00:00:00Z")
+    }
+
+    func testAnthropicRequestRecoversFromMalformedToolArguments() throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-coder",
+            credentialID: "umans-api-key"
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+        let call = ProviderToolCall(
+            id: "toolu-malformed",
+            name: "current_time",
+            arguments: "{not-json",
+            isComplete: true
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.assistant("", toolCalls: [call])])
+        )
+
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let messages = try XCTUnwrap(object["messages"] as? [[String: Any]])
+        let content = try XCTUnwrap(messages.first?["content"] as? [[String: Any]])
+        XCTAssertEqual(content.first?["type"] as? String, "tool_use")
+        XCTAssertTrue((content.first?["input"] as? [String: Any])?.isEmpty == true)
     }
 
     func testAnthropicAdapterTranslatesStreamingEvents() async throws {

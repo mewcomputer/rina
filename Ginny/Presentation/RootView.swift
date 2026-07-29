@@ -12,5 +12,9 @@ struct RootView: View {
 }
 
 #Preview {
-    RootView(dependencies: .live, themeStore: ThemeStore())
+    if let dependencies = try? AppDependencies.makeLive() {
+        RootView(dependencies: dependencies, themeStore: ThemeStore())
+    } else {
+        Text("Ginny could not start")
+    }
 }

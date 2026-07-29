@@ -195,5 +195,26 @@ enum CuratedSkills {
         isBuiltIn: true
     )
 
-    static let all: [Skill] = [frontendDesign]
+    static let diagramCraft = Skill(
+        id: "ginny.diagram-craft",
+        name: "Diagram craft",
+        summary: "Create clear, seamless diagrams and interactive visuals for web artefacts.",
+        instructions: DiagramCraftSkill.instructions,
+        targetKinds: [.web, .inlineWeb],
+        keywords: [
+            "diagram",
+            "visualize",
+            "chart",
+            "SVG",
+            "flowchart",
+            "architecture",
+            "Tailwind",
+            "shadcn",
+            "accessibility"
+        ],
+        isDiscoverable: true,
+        isBuiltIn: true
+    )
+
+    static let all: [Skill] = [frontendDesign, diagramCraft]
 }

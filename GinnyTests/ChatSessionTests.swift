@@ -18,6 +18,8 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertTrue(systemMessage.content.contains("inlineWeb"))
         XCTAssertTrue(systemMessage.content.contains("discover_skills"))
         XCTAssertTrue(systemMessage.content.contains("create_artefact"))
+        XCTAssertTrue(systemMessage.content.contains("display_artefact"))
+        XCTAssertTrue(systemMessage.content.contains("display_immediately"))
         XCTAssertTrue(systemMessage.content.contains("pinned Tailwind browser runtime"))
         XCTAssertTrue(systemMessage.content.contains("Do not provide a duplicate shadcn stylesheet"))
         XCTAssertTrue(systemMessage.content.contains("connect-src 'none'"))
@@ -118,6 +120,67 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertEqual(reference.attributes["artefactID"], InlineArtefactLoopProvider.artefactID)
         XCTAssertEqual(reference.attributes["revisionID"], InlineArtefactLoopProvider.revisionID)
         XCTAssertEqual(reference.attributes["presentation"], ArtefactReferencePresentation.inline.rawValue)
+    }
+
+    func testSessionEmbedsNonWebArtefactWhenToolRequestsImmediateDisplay() async throws {
+        let provider = DisplayArtefactLoopProvider()
+        let session = ChatSession(
+            provider: provider,
+            toolRegistry: ToolRegistry(tools: [DisplayCodeArtefactFixtureTool()])
+        )
+
+        await session.send("Show me the code.")
+
+        let assistant = try XCTUnwrap(session.conversation.messages[1])
+        let reference = try XCTUnwrap(
+            assistant.blocks.first(where: { $0.kind == .artefactReference })
+        )
+        XCTAssertEqual(reference.attributes["artefactID"], DisplayArtefactLoopProvider.artefactID)
+        XCTAssertEqual(reference.attributes["presentation"], ArtefactReferencePresentation.inline.rawValue)
+    }
+
+    func testSessionPreservesTextAndToolCallsWhenDeltasInterleave() async throws {
+        let session = ChatSession(
+            provider: InterleavedToolProvider(),
+            toolRegistry: ToolRegistry(tools: [CurrentTimeTool(now: { Date(timeIntervalSince1970: 0) })])
+        )
+
+        await session.send("Use the clock, then answer.")
+
+        XCTAssertEqual(session.conversation.generationState, .completed)
+        let firstAssistant = try XCTUnwrap(session.conversation.messages[1])
+        XCTAssertEqual(firstAssistant.blocks.first?.payload, "Before  after")
+        XCTAssertTrue(firstAssistant.blocks.contains { $0.kind == .toolCall })
+        XCTAssertTrue(session.conversation.messages.contains { message in
+            message.role == .tool && message.blocks.contains { $0.kind == .toolResult }
+        })
+    }
+
+    func testSessionStopsToolLoopWhenToolIsCancelled() async {
+        let session = ChatSession(
+            provider: CancellationToolProvider(),
+            toolRegistry: ToolRegistry(tools: [CancellationSessionTool()])
+        )
+
+        await session.send("Run the cancellable tool.")
+
+        XCTAssertEqual(session.conversation.generationState, .cancelled)
+        XCTAssertFalse(session.conversation.messages.contains { message in
+            message.blocks.contains { $0.payload == "This answer should never arrive." }
+        })
+    }
+
+    func testSessionFailsInsteadOfExecutingAnIncompleteToolCall() async {
+        let session = ChatSession(
+            provider: IncompleteToolProvider(),
+            toolRegistry: ToolRegistry(tools: [CurrentTimeTool()])
+        )
+
+        await session.send("Run the incomplete tool.")
+
+        XCTAssertEqual(session.conversation.generationState, .failed)
+        XCTAssertEqual(session.errorMessage, "The provider ended before completing a tool call.")
+        XCTAssertFalse(session.conversation.messages.contains { $0.role == .tool })
     }
 
     func testSessionPreservesPartialContentWhenProviderFails() async {
@@ -453,6 +516,104 @@ private final class ToolLoopProvider: ProviderAdapter, @unchecked Sendable {
     }
 }
 
+private final class InterleavedToolProvider: ProviderAdapter, @unchecked Sendable {
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        let isFirstResponse = request.messages.last?.role == .user
+        let events: [ProviderStreamEvent] = isFirstResponse
+            ? [
+                .responseStarted,
+                .textDelta("Before "),
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "clock-call",
+                        name: "current_time",
+                        arguments: "{}"
+                    )
+                ),
+                .textDelta(" after"),
+                .finish(reason: "tool_calls"),
+                .responseEnded,
+            ]
+            : [.responseStarted, .textDelta("Done."), .responseEnded]
+
+        return AsyncThrowingStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
+        }
+    }
+}
+
+private struct CancellationSessionTool: GinnyTool {
+    let definition = ProviderToolDefinition(
+        name: "cancelled_tool",
+        description: "A test tool that cancels.",
+        inputSchema: .object(properties: [:])
+    )
+
+    let approvalRequirement: ToolApprovalRequirement = .automatic
+
+    func execute(arguments: String) async throws -> String {
+        throw CancellationError()
+    }
+}
+
+private final class CancellationToolProvider: ProviderAdapter, @unchecked Sendable {
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        let isFirstResponse = request.messages.last?.role == .user
+        let events: [ProviderStreamEvent] = isFirstResponse
+            ? [
+                .responseStarted,
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "cancelled-call",
+                        name: "cancelled_tool",
+                        arguments: "{}"
+                    )
+                ),
+                .finish(reason: "tool_calls"),
+                .responseEnded,
+            ]
+            : [.responseStarted, .textDelta("This answer should never arrive."), .responseEnded]
+
+        return AsyncThrowingStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
+        }
+    }
+}
+
+private final class IncompleteToolProvider: ProviderAdapter, @unchecked Sendable {
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield(.responseStarted)
+            continuation.yield(
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "incomplete-call",
+                        name: "current_time",
+                        arguments: "{"
+                    )
+                )
+            )
+            continuation.yield(.responseEnded)
+            continuation.finish()
+        }
+    }
+}
+
 private struct CreateInlineArtefactFixtureTool: GinnyTool {
     let definition = ProviderToolDefinition(
         name: "create_artefact",
@@ -499,6 +660,58 @@ private final class InlineArtefactLoopProvider: ProviderAdapter, @unchecked Send
                 .responseEnded,
             ]
             : [.responseStarted, .textDelta("Here it is."), .responseEnded]
+
+        return AsyncThrowingStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
+        }
+    }
+}
+
+private struct DisplayCodeArtefactFixtureTool: GinnyTool {
+    let definition = ProviderToolDefinition(
+        name: "display_artefact",
+        description: "Displays a code artefact.",
+        inputSchema: .object(
+            properties: ["id": JSONSchema(type: .string)],
+            required: ["id"]
+        )
+    )
+
+    let approvalRequirement: ToolApprovalRequirement = .automatic
+
+    func execute(arguments: String) async throws -> String {
+        """
+        {"id":"\(DisplayArtefactLoopProvider.artefactID)","title":"Snippet","kind":"code","createdAt":"2026-01-01T00:00:00Z","revisionID":"\(DisplayArtefactLoopProvider.revisionID)","parentRevisionID":null,"source":"print(\\\"hello\\\")","renderedContent":null,"metadata":{},"displayImmediately":true}
+        """
+    }
+}
+
+private final class DisplayArtefactLoopProvider: ProviderAdapter, @unchecked Sendable {
+    static let artefactID = "33333333-3333-3333-3333-333333333333"
+    static let revisionID = "44444444-4444-4444-4444-444444444444"
+
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        let isFirstResponse = request.messages.last?.role == .user
+        let events: [ProviderStreamEvent] = isFirstResponse
+            ? [
+                .responseStarted,
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "display-call",
+                        name: "display_artefact",
+                        arguments: "{}"
+                    )
+                ),
+                .finish(reason: "tool_calls"),
+                .responseEnded,
+            ]
+            : [.responseStarted, .textDelta("Here is the code."), .responseEnded]
 
         return AsyncThrowingStream { continuation in
             for event in events {

@@ -198,6 +198,7 @@ private struct ArtefactEditorView: View {
     @State private var source: String
     @State private var mode: ArtefactEditorMode
     @State private var networkOriginsText: String
+    @AppStorage(ArtefactPreferences.allowAllNetworkRequestsKey) private var allowAllNetworkRequests = false
 
     init(artefact: Artefact, onSave: @escaping (Artefact) -> Void) {
         self.initialArtefact = artefact
@@ -257,7 +258,8 @@ private struct ArtefactEditorView: View {
             WebArtefactPreview(
                 html: source,
                 isInline: initialArtefact.kind == .inlineWeb,
-                networkOrigins: networkPolicy.origins
+                networkOrigins: networkPolicy.origins,
+                allowAllNetworkRequests: allowAllNetworkRequests
             )
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .padding(16)
@@ -441,9 +443,13 @@ private struct SkillEditorView: View {
 }
 
 struct WebArtefactPreview: UIViewRepresentable {
+    static let maxInlineHeight: CGFloat = 520
+
     let html: String
     let isInline: Bool
     let networkOrigins: [String]
+    let allowAllNetworkRequests: Bool
+    let onNetworkOriginRequest: ((String) -> Void)?
     @Binding private var contentHeight: CGFloat
     @Environment(\.ginnyTheme) private var theme
 
@@ -451,11 +457,15 @@ struct WebArtefactPreview: UIViewRepresentable {
         html: String,
         isInline: Bool,
         networkOrigins: [String] = [],
-        contentHeight: Binding<CGFloat> = .constant(220)
+        contentHeight: Binding<CGFloat> = .constant(220),
+        allowAllNetworkRequests: Bool = false,
+        onNetworkOriginRequest: ((String) -> Void)? = nil
     ) {
         self.html = html
         self.isInline = isInline
         self.networkOrigins = ArtefactNetworkPolicy(origins: networkOrigins).origins
+        self.allowAllNetworkRequests = allowAllNetworkRequests
+        self.onNetworkOriginRequest = onNetworkOriginRequest
         _contentHeight = contentHeight
     }
 
@@ -467,11 +477,12 @@ struct WebArtefactPreview: UIViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.websiteDataStore = .nonPersistent()
+        configuration.userContentController.add(context.coordinator, name: "ginnyNetworkPolicy")
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
-        view.scrollView.isScrollEnabled = !isInline
+        view.scrollView.isScrollEnabled = true
         view.navigationDelegate = context.coordinator
         return view
     }
@@ -485,17 +496,23 @@ struct WebArtefactPreview: UIViewRepresentable {
             guard abs(contentHeight.wrappedValue - height) > 1 else { return }
             contentHeight.wrappedValue = height
         }
-        let renderKey = "\(theme.id)|\(isInline)|\(networkOrigins)|\(html)"
+        context.coordinator.onNetworkOriginRequest = onNetworkOriginRequest
+        context.coordinator.networkOrigins = networkOrigins
+        context.coordinator.allowAllNetworkRequests = allowAllNetworkRequests
+        let renderKey = "\(theme.id)|\(isInline)|\(networkOrigins)|\(allowAllNetworkRequests)|\(html)"
         guard context.coordinator.lastRenderKey != renderKey else { return }
         context.coordinator.lastRenderKey = renderKey
-        webView.loadHTMLString(
-            Self.document(
-                for: html,
-                isInline: isInline,
-                cssVariables: theme.cssVariables,
-                isDark: theme.mode == .dark
-            ),
-            baseURL: nil
+        webView.loadHTMLString(renderedDocument, baseURL: nil)
+    }
+
+    var renderedDocument: String {
+        Self.document(
+            for: html,
+            isInline: isInline,
+            networkOrigins: networkOrigins,
+            cssVariables: theme.cssVariables,
+            isDark: theme.mode == .dark,
+            allowAllNetworkRequests: allowAllNetworkRequests
         )
     }
 
@@ -504,13 +521,27 @@ struct WebArtefactPreview: UIViewRepresentable {
         isInline: Bool,
         networkOrigins: [String] = [],
         cssVariables: [String: String] = GinnyThemeKeyDefaults.cssVariables,
-        isDark: Bool = true
+        isDark: Bool = true,
+        allowAllNetworkRequests: Bool = false
     ) -> String {
         let viewport = "width=device-width, initial-scale=1.0, viewport-fit=cover"
-        let connectSource = ArtefactNetworkPolicy(origins: networkOrigins).cspConnectSource
+        let connectSource = allowAllNetworkRequests
+            ? "https:"
+            : ArtefactNetworkPolicy(origins: networkOrigins).cspConnectSource
         let head = """
         <meta name="viewport" content="\(viewport)">
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; img-src data: blob:; font-src data:; connect-src \(connectSource); frame-src 'none';">
+        <script>
+        (() => {
+            document.addEventListener("securitypolicyviolation", event => {
+                if (event.effectiveDirective !== "connect-src") { return; }
+                try {
+                    const origin = new URL(event.blockedURI, window.location.href).origin;
+                    window.webkit?.messageHandlers?.ginnyNetworkPolicy?.postMessage({ origin });
+                } catch (_) {}
+            });
+        })();
+        </script>
         <script src="\(tailwindBrowserURL)"></script>
         <style type="text/tailwindcss">\(styleSheet(cssVariables: cssVariables, isInline: isInline, isDark: isDark))</style>
         """
@@ -706,13 +737,33 @@ struct WebArtefactPreview: UIViewRepresentable {
         """
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var lastRenderKey: String?
         var onContentHeightChange: ((CGFloat) -> Void)?
+        var onNetworkOriginRequest: ((String) -> Void)?
+        var networkOrigins: [String] = []
+        var allowAllNetworkRequests = false
+
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
+            guard message.name == "ginnyNetworkPolicy",
+                  let payload = message.body as? [String: Any],
+                  let originValue = payload["origin"] as? String,
+                  let url = URL(string: originValue),
+                  let origin = ArtefactNetworkPolicy.origin(from: url),
+                  !allowAllNetworkRequests,
+                  !networkOrigins.contains(origin)
+            else { return }
+
+            Task { @MainActor [weak self] in
+                self?.onNetworkOriginRequest?(origin)
+            }
+        }
 
         @MainActor
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            guard webView.scrollView.isScrollEnabled == false else { return }
             webView.evaluateJavaScript(
                 "Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)"
             ) { [weak self] result, _ in
@@ -727,7 +778,31 @@ struct WebArtefactPreview: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
         ) {
-            decisionHandler(navigationAction.navigationType == .other ? .allow : .cancel)
+            guard navigationAction.navigationType != .other else {
+                decisionHandler(.allow)
+                return
+            }
+
+            if allowAllNetworkRequests,
+               let url = navigationAction.request.url,
+               ArtefactNetworkPolicy.origin(from: url) != nil {
+                decisionHandler(.allow)
+                return
+            }
+
+            guard let url = navigationAction.request.url,
+                  let origin = ArtefactNetworkPolicy.origin(from: url),
+                  networkOrigins.contains(origin)
+            else {
+                if let url = navigationAction.request.url,
+                   let origin = ArtefactNetworkPolicy.origin(from: url) {
+                    onNetworkOriginRequest?(origin)
+                }
+                decisionHandler(.cancel)
+                return
+            }
+
+            decisionHandler(.allow)
         }
     }
 }

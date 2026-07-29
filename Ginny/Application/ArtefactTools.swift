@@ -8,6 +8,7 @@ private let artefactWriteSchemaProperties: [String: JSONSchema] = [
     ),
     "source": JSONSchema(type: .string),
     "renderedContent": JSONSchema(type: .string),
+    "display_immediately": JSONSchema(type: .boolean),
     "metadata": JSONSchema.object(
         properties: [:],
         additionalProperties: .schema(JSONSchema(type: .string))
@@ -24,6 +25,58 @@ struct ArtefactToolDetails: Codable, Equatable, Sendable {
     let source: String
     let renderedContent: String?
     let metadata: [String: String]
+    let displayImmediately: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case kind
+        case createdAt
+        case revisionID
+        case parentRevisionID
+        case source
+        case renderedContent
+        case metadata
+        case displayImmediately
+    }
+
+    init(
+        id: String,
+        title: String,
+        kind: ArtefactKind,
+        createdAt: String,
+        revisionID: String,
+        parentRevisionID: String?,
+        source: String,
+        renderedContent: String?,
+        metadata: [String: String],
+        displayImmediately: Bool
+    ) {
+        self.id = id
+        self.title = title
+        self.kind = kind
+        self.createdAt = createdAt
+        self.revisionID = revisionID
+        self.parentRevisionID = parentRevisionID
+        self.source = source
+        self.renderedContent = renderedContent
+        self.metadata = metadata
+        self.displayImmediately = displayImmediately
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        kind = try container.decode(ArtefactKind.self, forKey: .kind)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        revisionID = try container.decode(String.self, forKey: .revisionID)
+        parentRevisionID = try container.decodeIfPresent(String.self, forKey: .parentRevisionID)
+        source = try container.decode(String.self, forKey: .source)
+        renderedContent = try container.decodeIfPresent(String.self, forKey: .renderedContent)
+        metadata = try container.decode([String: String].self, forKey: .metadata)
+        displayImmediately = try container.decodeIfPresent(Bool.self, forKey: .displayImmediately) ?? false
+    }
 }
 
 struct ArtefactToolSummary: Codable, Equatable, Sendable {
@@ -59,7 +112,8 @@ struct ArtefactToolSet: Sendable {
             ListArtefactsTool(store: store),
             ReadArtefactTool(store: store),
             CreateArtefactTool(store: store),
-            UpdateArtefactTool(store: store)
+            UpdateArtefactTool(store: store),
+            DisplayArtefactTool(store: store)
         ]
     }
 }
@@ -153,7 +207,7 @@ struct ReadArtefactTool: GinnyTool {
             from: arguments,
             message: "read_artefact expects an artefact ID and an optional revision ID."
         )
-        let artefact = try await findArtefact(id: decoded.id)
+        let artefact = try await findArtefact(id: decoded.id, using: store)
         let revision: ArtefactRevision
         if let revisionID = decoded.revisionID {
             revision = try findRevision(id: revisionID, in: artefact)
@@ -166,16 +220,6 @@ struct ReadArtefactTool: GinnyTool {
         return try encode(details(for: artefact, revision: revision))
     }
 
-    private func findArtefact(id: String) async throws -> Artefact {
-        guard let uuid = UUID(uuidString: id) else {
-            throw ToolExecutionError.invalidArguments("read_artefact expects a valid artefact ID.")
-        }
-        let artefactID = ArtefactID(rawValue: uuid)
-        guard let artefact = try await store.fetchArtefacts().first(where: { $0.id == artefactID }) else {
-            throw ToolExecutionError.invalidArguments("No artefact exists with ID \(id).")
-        }
-        return artefact
-    }
 }
 
 struct CreateArtefactTool: GinnyTool {
@@ -184,7 +228,7 @@ struct CreateArtefactTool: GinnyTool {
     var definition: ProviderToolDefinition {
         ProviderToolDefinition(
             name: "create_artefact",
-            description: "Creates and persists a new durable artefact with its first immutable revision.",
+            description: "Creates and persists a new durable artefact with its first immutable revision. Before creating an inlineWeb artefact, always call read_skill with id ginny.diagram-craft and follow its instructions.",
             inputSchema: .object(
                 properties: artefactWriteSchemaProperties,
                 required: ["title", "kind", "source"]
@@ -198,7 +242,17 @@ struct CreateArtefactTool: GinnyTool {
             let kind: ArtefactKind
             let source: String
             let renderedContent: String?
+            let displayImmediately: Bool?
             let metadata: [String: String]?
+
+            private enum CodingKeys: String, CodingKey {
+                case title
+                case kind
+                case source
+                case renderedContent
+                case displayImmediately = "display_immediately"
+                case metadata
+            }
         }
 
         let decoded = try decodeArguments(
@@ -231,7 +285,13 @@ struct CreateArtefactTool: GinnyTool {
             metadata: decoded.metadata ?? [:]
         )
         try await store.saveArtefact(artefact)
-        return try encode(details(for: artefact, revision: artefact.revision(id: revisionID)!))
+        return try encode(
+            details(
+                for: artefact,
+                revision: artefact.revision(id: revisionID)!,
+                displayImmediately: decoded.displayImmediately ?? false
+            )
+        )
     }
 
     var approvalRequirement: ToolApprovalRequirement { .requiresApproval }
@@ -255,6 +315,50 @@ struct CreateArtefactTool: GinnyTool {
         return decoded.kind == .inlineWeb && !requestsNetwork
             ? .automatic
             : approvalRequirement
+    }
+}
+
+struct DisplayArtefactTool: GinnyTool {
+    let store: ArtefactToolStore
+
+    var definition: ProviderToolDefinition {
+        ProviderToolDefinition(
+            name: "display_artefact",
+            description: "Displays an existing artefact inline in the current conversation. Use this when the user should see a durable document or code artefact now.",
+            inputSchema: .object(
+                properties: [
+                    "id": JSONSchema(type: .string),
+                    "revisionID": JSONSchema(type: .string)
+                ],
+                required: ["id"]
+            )
+        )
+    }
+
+    var approvalRequirement: ToolApprovalRequirement { .automatic }
+
+    func execute(arguments: String) async throws -> String {
+        struct Arguments: Decodable {
+            let id: String
+            let revisionID: String?
+        }
+
+        let decoded = try decodeArguments(
+            Arguments.self,
+            from: arguments,
+            message: "display_artefact expects an artefact ID and an optional revision ID."
+        )
+        let artefact = try await findArtefact(id: decoded.id, using: store)
+        let revision: ArtefactRevision
+        if let revisionID = decoded.revisionID {
+            revision = try findRevision(id: revisionID, in: artefact)
+        } else if let currentRevision = artefact.currentRevision {
+            revision = currentRevision
+        } else {
+            throw ToolExecutionError.invalidArguments("The artefact has no revisions.")
+        }
+
+        return try encode(details(for: artefact, revision: revision, displayImmediately: true))
     }
 }
 
@@ -338,7 +442,22 @@ private func findRevision(id: String, in artefact: Artefact) throws -> ArtefactR
     return revision
 }
 
-private func details(for artefact: Artefact, revision: ArtefactRevision) -> ArtefactToolDetails {
+private func findArtefact(id: String, using store: ArtefactToolStore) async throws -> Artefact {
+    guard let uuid = UUID(uuidString: id) else {
+        throw ToolExecutionError.invalidArguments("Expected a valid artefact ID.")
+    }
+    let artefactID = ArtefactID(rawValue: uuid)
+    guard let artefact = try await store.fetchArtefacts().first(where: { $0.id == artefactID }) else {
+        throw ToolExecutionError.invalidArguments("No artefact exists with ID \(id).")
+    }
+    return artefact
+}
+
+private func details(
+    for artefact: Artefact,
+    revision: ArtefactRevision,
+    displayImmediately: Bool = false
+) -> ArtefactToolDetails {
     ArtefactToolDetails(
         id: artefact.id.rawValue.uuidString,
         title: artefact.title,
@@ -348,7 +467,8 @@ private func details(for artefact: Artefact, revision: ArtefactRevision) -> Arte
         parentRevisionID: revision.parentID?.rawValue.uuidString,
         source: revision.source,
         renderedContent: revision.renderedContent,
-        metadata: revision.metadata
+        metadata: revision.metadata,
+        displayImmediately: displayImmediately
     )
 }
 

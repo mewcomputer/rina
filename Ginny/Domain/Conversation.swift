@@ -357,6 +357,11 @@ let toolActivityCopies: [String: ToolActivityCopy] = [
         completed: "Updated artefact",
         failed: "Couldn’t update artefact"
     ),
+    "display_artefact": ToolActivityCopy(
+        inProgress: "Displaying artefact",
+        completed: "Displayed artefact",
+        failed: "Couldn’t display artefact"
+    ),
     "read_artefact": ToolActivityCopy(
         inProgress: "Reading artefact",
         completed: "Read artefact",

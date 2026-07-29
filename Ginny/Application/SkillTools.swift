@@ -20,7 +20,7 @@ struct DiscoverSkillsTool: GinnyTool {
     var definition: ProviderToolDefinition {
         ProviderToolDefinition(
             name: "discover_skills",
-            description: "Finds relevant local skills for an artefact task.",
+            description: "Finds relevant local skills. E.g. if you want to find a web search skill, or a web design skill.",
             inputSchema: .object(
                 properties: [
                     "query": JSONSchema(type: .string),

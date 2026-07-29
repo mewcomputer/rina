@@ -407,3 +407,117 @@ actor LocalSearchIndex {
         }
     }
 }
+
+enum WebSearchProviderID: String, CaseIterable, Codable, Equatable, Sendable {
+    case tavily
+    case exa
+
+    var displayName: String {
+        switch self {
+        case .tavily: "Tavily"
+        case .exa: "Exa"
+        }
+    }
+
+    var defaultBaseURL: String {
+        switch self {
+        case .tavily: "https://api.tavily.com"
+        case .exa: "https://api.exa.ai"
+        }
+    }
+
+    var credentialID: String {
+        "\(rawValue)-search-api-key"
+    }
+}
+
+enum WebSearchRecency: String, CaseIterable, Codable, Equatable, Sendable {
+    case day
+    case week
+    case month
+    case year
+}
+
+struct WebSearchRequest: Codable, Equatable, Sendable {
+    let query: String
+    let maxResults: Int
+    let includeDomains: [String]
+    let excludeDomains: [String]
+    let recency: WebSearchRecency?
+    let includeAnswer: Bool
+
+    init(
+        query: String,
+        maxResults: Int = 5,
+        includeDomains: [String] = [],
+        excludeDomains: [String] = [],
+        recency: WebSearchRecency? = nil,
+        includeAnswer: Bool = false
+    ) {
+        self.query = query
+        self.maxResults = min(max(maxResults, 1), 100)
+        self.includeDomains = includeDomains
+        self.excludeDomains = excludeDomains
+        self.recency = recency
+        self.includeAnswer = includeAnswer
+    }
+}
+
+struct WebSearchResult: Codable, Equatable, Sendable {
+    let citationID: String
+    let title: String
+    let url: String
+    let snippet: String
+    let publishedAt: String?
+    let author: String?
+    let score: Double?
+    let provider: WebSearchProviderID
+
+    init(
+        citationID: String? = nil,
+        title: String,
+        url: String,
+        snippet: String,
+        publishedAt: String? = nil,
+        author: String? = nil,
+        score: Double? = nil,
+        provider: WebSearchProviderID
+    ) {
+        self.citationID = citationID ?? "\(provider.rawValue):\(url)"
+        self.title = title
+        self.url = url
+        self.snippet = snippet
+        self.publishedAt = publishedAt
+        self.author = author
+        self.score = score
+        self.provider = provider
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case citationID = "citation_id"
+        case title
+        case url
+        case snippet
+        case publishedAt = "published_at"
+        case author
+        case score
+        case provider
+    }
+}
+
+struct WebSearchResponse: Codable, Equatable, Sendable {
+    let query: String
+    let provider: WebSearchProviderID
+    let answer: String?
+    let results: [WebSearchResult]
+}
+
+struct WebSearchConfiguration: Equatable, Sendable {
+    let provider: WebSearchProviderID
+    let baseURL: URL
+}
+
+enum WebSearchPreferences {
+    static let providerKey = "webSearch.provider"
+    static let baseURLKeyPrefix = "webSearch.baseURL."
+}

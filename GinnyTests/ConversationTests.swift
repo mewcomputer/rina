@@ -159,9 +159,9 @@ final class ConversationTests: XCTestCase {
         let segments = assistantContentSegments(for: message, toolActivity: nil)
 
         XCTAssertEqual(segments.count, 3)
-        guard case .text(let first) = segments[0],
+        guard case .text(let first, _) = segments[0],
               case .toolActivity(_, let activity) = segments[1],
-              case .text(let last) = segments[2]
+              case .text(let last, _) = segments[2]
         else {
             return XCTFail("Assistant content should preserve block order.")
         }
@@ -191,6 +191,16 @@ final class ConversationTests: XCTestCase {
         )
         let completed = ToolActivityGroup(calls: [completedCall], results: [result])
         XCTAssertEqual(toolActivityLabel(for: completed), "Wrote artefact")
+
+        let displayCall = ContentBlock.toolCall(
+            callID: "call-2",
+            name: "display_artefact",
+            arguments: "{}"
+        )
+        XCTAssertEqual(
+            toolActivityLabel(for: ToolActivityGroup(calls: [displayCall], results: [])),
+            "Displaying artefact"
+        )
     }
 
     func testGenerationFollowsTheDocumentedLifecycle() throws {

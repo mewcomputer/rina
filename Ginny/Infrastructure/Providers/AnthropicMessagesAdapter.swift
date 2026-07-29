@@ -238,7 +238,7 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
             : request.tools.map(AnthropicToolDefinition.init)
         let body = AnthropicMessagesRequestBody(
             model: configuration.model,
-            maxTokens: 8_192,
+            maxTokens: 32_768,
             system: systemMessages.isEmpty ? nil : systemMessages.joined(separator: "\n"),
             messages: messages,
             tools: toolDefinitions,
@@ -460,14 +460,13 @@ private struct AnthropicContentBlock: Encodable {
     }
 
     static func toolUse(call: ProviderToolCall) throws -> AnthropicContentBlock {
-        guard let data = call.arguments.data(using: .utf8) else {
-            throw ProviderError.invalidConfiguration("Tool arguments were not valid UTF-8.")
-        }
         let input: ProviderJSONValue
-        do {
-            input = try JSONDecoder().decode(ProviderJSONValue.self, from: data)
-        } catch {
-            throw ProviderError.invalidConfiguration("Tool arguments were not valid JSON.")
+        if let data = call.arguments.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode(ProviderJSONValue.self, from: data)
+        {
+            input = decoded
+        } else {
+            input = .object([:])
         }
         return AnthropicContentBlock(
             type: "tool_use",

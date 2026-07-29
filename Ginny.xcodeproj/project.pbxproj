@@ -63,6 +63,7 @@
 		CFD2820648D9A8933EA72451 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604F428D68F76A14BCE9A5F5 /* RootView.swift */; };
 		D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5B56B84488FBF598916DDB /* Conversation.swift */; };
 		D58E385144AC57D91049E636 /* ContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B805DE7BA30FB3F2455025C1 /* ContextTests.swift */; };
+		D60072509CB892EDD6D1F83A /* DiagramCraftSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DFD9A01E29499FED37F1DA2 /* DiagramCraftSkill.swift */; };
 		D770B6E0CC668F94B3E39034 /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EB399BEEEDC2B36FB06B201 /* Skill.swift */; };
 		D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */; };
 		D9BEB6E6A505D06E41A6B43D /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FA948BCF63CC7B840A03A1 /* Glass.swift */; };
@@ -71,6 +72,13 @@
 		F074A2C094D69AAD05EDF3F2 /* ArtefactRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */; };
 		F0DE5293B1A15136EED8AC3E /* ProviderSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C8F3956963A5DBB935220F /* ProviderSettingsTests.swift */; };
 		F71A84DAAC1E6004B0BF2BE4 /* Search.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3350EE57DD17E55714512F7 /* Search.swift */; };
+		A10000000000000000000001 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
+		A10000000000000000000002 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* LiveActivityController.swift */; };
+		A10000000000000000000003 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
+		A10000000000000000000004 /* GinnyLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* GinnyLiveActivityWidget.swift */; };
+		A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* GinnyLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A20000000000000000000001 /* WebSearchTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* WebSearchTools.swift */; };
+		A20000000000000000000002 /* WebSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* WebSearch.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +89,13 @@
 			remoteGlobalIDString = 0AEBED158889DE2A3984B81A;
 			remoteInfo = Ginny;
 		};
+		110000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 623794BEDAB75D309DC84F2C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E10000000000000000000001;
+			remoteInfo = GinnyLiveActivity;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -89,6 +104,7 @@
 		08C8F3956963A5DBB935220F /* ProviderSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettingsTests.swift; sourceTree = "<group>"; };
 		0A29CDA78FB9A8DA89D6C38C /* RelationshipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipTests.swift; sourceTree = "<group>"; };
 		0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettings.swift; sourceTree = "<group>"; };
+		0DFD9A01E29499FED37F1DA2 /* DiagramCraftSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagramCraftSkill.swift; sourceTree = "<group>"; };
 		15C80E07053B6C5F27ED28C6 /* Context.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Context.swift; sourceTree = "<group>"; };
 		1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactRepositoryTests.swift; sourceTree = "<group>"; };
 		18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactPromoter.swift; sourceTree = "<group>"; };
@@ -150,6 +166,13 @@
 		DC2D3D50F5F50ABAC6DD772D /* theme_manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = theme_manifest.json; sourceTree = "<group>"; };
 		ED5B56B84488FBF598916DDB /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
 		FE47BB9A631374B3EDB80A39 /* StreamingTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTransport.swift; sourceTree = "<group>"; };
+		B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		B10000000000000000000003 /* GinnyLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityWidget.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B10000000000000000000005 /* GinnyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = GinnyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000000000000000000001 /* WebSearchTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchTools.swift; sourceTree = "<group>"; };
+		B20000000000000000000002 /* WebSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearch.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -161,7 +184,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D10000000000000000000004 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXGroup section */
 		1C4AEF37B0F3C72D81911EC2 /* Application */ = {
@@ -173,12 +217,14 @@
 				6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */,
 				20373ABD2111756D7456726E /* ArtefactTools.swift */,
 				D633C99839F2015E2F41F17F /* ChatSession.swift */,
+				B10000000000000000000002 /* LiveActivityController.swift */,
 				BC3BE2A68BF26E51089F0FA0 /* Exporters.swift */,
 				0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */,
 				9C5F3D001DDEDF4A6E841857 /* SessionHistoryStore.swift */,
 				5511EF9430788AD21AC18B4D /* SkillTools.swift */,
 				7A6AB4AB0A1282F6EC908919 /* SourceImporter.swift */,
 				01F16D2B7BFAA0C3A560D9FE /* ToolRegistry.swift */,
+				B20000000000000000000001 /* WebSearchTools.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -202,6 +248,7 @@
 			children = (
 				DC2D3D50F5F50ABAC6DD772D /* theme_manifest.json */,
 				6367FEC595B74A9399415B18 /* Ginny */,
+				C10000000000000000000001 /* GinnyLiveActivity */,
 				DBB2D52842EEE777932F5F26 /* GinnyTests */,
 				B2FEE8F6D7EAB5211AE095BC /* Products */,
 			);
@@ -238,6 +285,7 @@
 				7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */,
 				82BD921B65734CCF8933C9FF /* ModelCatalog.swift */,
 				B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */,
+				B20000000000000000000002 /* WebSearch.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -257,6 +305,8 @@
 				15C80E07053B6C5F27ED28C6 /* Context.swift */,
 				ED5B56B84488FBF598916DDB /* Conversation.swift */,
 				396160192E7309F0F87B1324 /* Diagnostics.swift */,
+				0DFD9A01E29499FED37F1DA2 /* DiagramCraftSkill.swift */,
+				B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */,
 				1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */,
 				56DBDCF5A45A5803E2262232 /* Provider.swift */,
 				AC5EC4A9CD4C888672B6F3F3 /* Relationship.swift */,
@@ -271,6 +321,7 @@
 			isa = PBXGroup;
 			children = (
 				C4622D72389852D888EE9495 /* Ginny.app */,
+				B10000000000000000000005 /* GinnyLiveActivity.appex */,
 				92C5627E3E2ACC39677676CC /* GinnyTests.xctest */,
 			);
 			name = Products;
@@ -324,6 +375,15 @@
 			path = GinnyTests;
 			sourceTree = "<group>";
 		};
+		C10000000000000000000001 /* GinnyLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000003 /* GinnyLiveActivityWidget.swift */,
+				B10000000000000000000004 /* Info.plist */,
+			);
+			path = GinnyLiveActivity;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -334,10 +394,12 @@
 				0A8F43BD9A49FAEC78FFBF4A /* Sources */,
 				90D46DC83C3CF727525A8408 /* Resources */,
 				2705513022430BE01CA0510C /* Frameworks */,
+				D10000000000000000000004 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D10000000000000000000006 /* PBXTargetDependency */,
 			);
 			name = Ginny;
 			packageProductDependencies = (
@@ -346,6 +408,23 @@
 			productName = Ginny;
 			productReference = C4622D72389852D888EE9495 /* Ginny.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E10000000000000000000001 /* GinnyLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000000000000000000003 /* Build configuration list for PBXNativeTarget "GinnyLiveActivity" */;
+			buildPhases = (
+				D10000000000000000000001 /* Sources */,
+				D10000000000000000000002 /* Resources */,
+				D10000000000000000000003 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GinnyLiveActivity;
+			productName = GinnyLiveActivity;
+			productReference = B10000000000000000000005 /* GinnyLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		38639F0C01A9B32D52BBFA47 /* GinnyTests */ = {
 			isa = PBXNativeTarget;
@@ -377,6 +456,9 @@
 					0AEBED158889DE2A3984B81A = {
 						DevelopmentTeam = P2B3GABB6H;
 					};
+					E10000000000000000000001 = {
+						DevelopmentTeam = P2B3GABB6H;
+					};
 				};
 			};
 			buildConfigurationList = 2CBEE4EB06223A9D65AF775C /* Build configuration list for PBXProject "Ginny" */;
@@ -397,6 +479,7 @@
 			projectRoot = "";
 			targets = (
 				0AEBED158889DE2A3984B81A /* Ginny */,
+				E10000000000000000000001 /* GinnyLiveActivity */,
 				38639F0C01A9B32D52BBFA47 /* GinnyTests */,
 			);
 		};
@@ -408,6 +491,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				064FD2EEF2D193565C2F38A3 /* theme_manifest.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,12 +549,15 @@
 				18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */,
 				515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */,
 				931DF029769AF70E2FE471EE /* ChatView.swift in Sources */,
+				A10000000000000000000002 /* LiveActivityController.swift in Sources */,
 				33AED704E1BCE03E6E0E09E0 /* ContentBlockRendering.swift in Sources */,
 				3ACCCA454086C9CF5F82A19C /* Context.swift in Sources */,
 				D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */,
+				A10000000000000000000001 /* GinnyLiveActivityAttributes.swift in Sources */,
 				48581DCD3065254370E583FE /* ConversationRepository.swift in Sources */,
 				B01CFF6ED6A68A558D3CB3FA /* CredentialStore.swift in Sources */,
 				803BD71F77F13C6ED1BD96F0 /* Diagnostics.swift in Sources */,
+				D60072509CB892EDD6D1F83A /* DiagramCraftSkill.swift in Sources */,
 				245B149ADCD9AF4513964DAD /* Exporters.swift in Sources */,
 				66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */,
 				D9BEB6E6A505D06E41A6B43D /* Glass.swift in Sources */,
@@ -487,6 +580,17 @@
 				586A6E3717047F4B33BFDB71 /* StreamingTransport.swift in Sources */,
 				24C1EBB267687B9B38781BB8 /* Theme.swift in Sources */,
 				5CB9D914FFB636615F434EC6 /* ToolRegistry.swift in Sources */,
+				A20000000000000000000001 /* WebSearchTools.swift in Sources */,
+				A20000000000000000000002 /* WebSearch.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000003 /* GinnyLiveActivityAttributes.swift in Sources */,
+				A10000000000000000000004 /* GinnyLiveActivityWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -497,6 +601,11 @@
 			isa = PBXTargetDependency;
 			target = 0AEBED158889DE2A3984B81A /* Ginny */;
 			targetProxy = 07D610BA248542447DCC26AB /* PBXContainerItemProxy */;
+		};
+		D10000000000000000000006 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E10000000000000000000001 /* GinnyLiveActivity */;
+			targetProxy = 110000000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -690,6 +799,42 @@
 			};
 			name = Release;
 		};
+		F10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = P2B3GABB6H;
+				INFOPLIST_FILE = GinnyLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.liveactivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F10000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = P2B3GABB6H;
+				INFOPLIST_FILE = GinnyLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.liveactivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -716,6 +861,15 @@
 			buildConfigurations = (
 				6CA40A043AC51B07CC4ACDD6 /* Debug */,
 				C8368B12E4C6CCCF545086B0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F10000000000000000000003 /* Build configuration list for PBXNativeTarget "GinnyLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F10000000000000000000001 /* Debug */,
+				F10000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
