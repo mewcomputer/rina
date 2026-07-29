@@ -104,10 +104,19 @@ struct ChatView: View {
         .foregroundStyle(theme.color("text.body"))
         .toolbar(.hidden, for: .navigationBar)
         .onChange(of: session.streamingText) { _, snapshot in
-            activeResponse?.source.yield(snapshot)
+            if snapshot.isEmpty {
+                activeResponse?.source.reset()
+            } else {
+                activeResponse?.source.yield(snapshot)
+            }
         }
-        .onChange(of: session.streamingReasoningText) { _, snapshot in
-            activeResponse?.thinkingSource.yield(snapshot)
+        .onChange(of: session.streamingReasoningText) { _, _ in
+            let snapshot = currentStreamingReasoningText
+            if snapshot.isEmpty {
+                activeResponse?.thinkingSource.reset()
+            } else {
+                activeResponse?.thinkingSource.yield(snapshot)
+            }
         }
         .onChange(of: artefacts.skills) { _, _ in
             session.configure(skillCatalog: artefacts.skillCatalog)
@@ -186,13 +195,22 @@ struct ChatView: View {
                                         }
 
                                         if let activeResponse {
-                                            if !session.streamingReasoningText.isEmpty {
-                                                LiveThinkingDisclosureView(
-                                                    source: activeResponse.thinkingSource,
-                                                    markdownConfig: thinkingMarkdownConfig,
-                                                    isComplete: !session.isGenerating
+                                            if showsLiveResponse {
+                                                if !currentStreamingReasoningText.isEmpty,
+                                                   showsLiveThinking {
+                                                    LiveThinkingDisclosureView(
+                                                        source: activeResponse.thinkingSource,
+                                                        markdownConfig: thinkingMarkdownConfig,
+                                                        isComplete: !session.isGenerating
+                                                    )
+                                                    .id("active-thinking")
+                                                }
+                                                StreamedMarkdownView(
+                                                    source: activeResponse.source,
+                                                    config: markdownConfig.withTextAnimation(.fastFade)
                                                 )
-                                                .id("active-thinking")
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .id("active-response")
                                             }
                                             if let approval = session.pendingToolApproval {
                                                 ToolApprovalView(
@@ -202,12 +220,6 @@ struct ChatView: View {
                                                 )
                                                 .id("tool-approval")
                                             }
-                                            StreamedMarkdownView(
-                                                source: activeResponse.source,
-                                                config: markdownConfig.withTextAnimation(.fastFade)
-                                            )
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .id("active-response")
                                         }
 
                                         if let errorMessage = session.errorMessage {
@@ -301,6 +313,37 @@ struct ChatView: View {
             return session.conversation.messages
         }
         return Array(session.conversation.messages.dropLast())
+    }
+
+    private var showsLiveResponse: Bool {
+        guard session.isGenerating,
+              let lastMessage = session.conversation.messages.last,
+              lastMessage.role == .assistant
+        else {
+            return false
+        }
+        return !lastMessage.blocks.contains { $0.kind == .toolCall }
+    }
+
+    private var showsLiveThinking: Bool {
+        guard let lastMessage = session.conversation.messages.last,
+              lastMessage.role == .assistant
+        else {
+            return false
+        }
+        return lastMessage.providerContinuations.contains { $0.kind == "reasoning" }
+    }
+
+    private var currentStreamingReasoningText: String {
+        guard let lastMessage = session.conversation.messages.last,
+              lastMessage.role == .assistant
+        else {
+            return ""
+        }
+        return lastMessage.providerContinuations
+            .filter { $0.kind == "reasoning" }
+            .compactMap { $0.fields["thinking"] ?? $0.fields["text"] }
+            .joined()
     }
 
     private var displayedItems: [ChatDisplayItem] {
@@ -558,6 +601,71 @@ private enum ChatDisplayItem: Identifiable {
             message.id
         }
     }
+}
+
+enum AssistantContentSegment: Equatable, Identifiable {
+    case text(ContentBlock)
+    case toolActivity(id: ContentBlockID, group: ToolActivityGroup)
+    case artefactReference(id: ContentBlockID, reference: ArtefactReference)
+
+    var id: ContentBlockID {
+        switch self {
+        case .text(let block):
+            block.id
+        case .toolActivity(let id, _), .artefactReference(let id, _):
+            id
+        }
+    }
+}
+
+func assistantContentSegments(
+    for message: Message,
+    toolActivity: ToolActivityGroup?
+) -> [AssistantContentSegment] {
+    guard message.role == .assistant else { return [] }
+
+    let results = toolActivity.map { group in
+        group.activities.compactMap(\.result) + group.unmatchedResults
+    } ?? []
+    var segments: [AssistantContentSegment] = []
+    var index = 0
+
+    while index < message.blocks.count {
+        let block = message.blocks[index]
+        switch block.kind {
+        case .text:
+            if !block.payload.isEmpty {
+                segments.append(.text(block))
+            }
+            index += 1
+        case .toolCall:
+            let startIndex = index
+            while index < message.blocks.count, message.blocks[index].kind == .toolCall {
+                index += 1
+            }
+            let calls = Array(message.blocks[startIndex..<index])
+            let callIDs = Set(calls.compactMap { $0.attributes["callID"] })
+            let relatedResults = results.filter {
+                guard let callID = $0.attributes["callID"] else { return false }
+                return callIDs.contains(callID)
+            }
+            segments.append(
+                .toolActivity(
+                    id: calls[0].id,
+                    group: ToolActivityGroup(calls: calls, results: relatedResults)
+                )
+            )
+        case .artefactReference:
+            if let reference = ArtefactReference(block: block) {
+                segments.append(.artefactReference(id: block.id, reference: reference))
+            }
+            index += 1
+        case .toolResult:
+            index += 1
+        }
+    }
+
+    return segments
 }
 
 @MainActor
@@ -1116,18 +1224,16 @@ private struct ChatMessageView: View {
                             markdownConfig: thinkingMarkdownConfig
                         )
                     }
-                    if !toolCalls.isEmpty {
-                        ToolActivityGroupView(
-                            group: toolActivity
-                                ?? ToolActivityGroup(calls: toolCalls, results: [])
-                        )
-                    }
-                    if !text.isEmpty {
-                        MarkdownView(text: text, config: markdownConfig)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    ForEach(artefactReferences) { reference in
-                        ArtefactReferenceView(reference: reference, store: artefactStore)
+                    ForEach(assistantContentSegments(for: message, toolActivity: toolActivity)) { segment in
+                        switch segment {
+                        case .text(let block):
+                            MarkdownView(text: block.payload, config: markdownConfig)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        case .toolActivity(_, let group):
+                            ToolActivityGroupView(group: group)
+                        case .artefactReference(_, let reference):
+                            ArtefactReferenceView(reference: reference, store: artefactStore)
+                        }
                     }
                 }
             }
@@ -1157,16 +1263,8 @@ private struct ChatMessageView: View {
             .joined()
     }
 
-    private var toolCalls: [ContentBlock] {
-        message.blocks.filter { $0.kind == .toolCall }
-    }
-
     private var toolResults: [ContentBlock] {
         message.blocks.filter { $0.kind == .toolResult }
-    }
-
-    private var artefactReferences: [ArtefactReference] {
-        message.blocks.compactMap(ArtefactReference.init(block:))
     }
 
     private var hasReasoning: Bool {

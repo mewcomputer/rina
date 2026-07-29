@@ -48,6 +48,21 @@ final class ChatResponseSource: StreamedMarkdownSource, ObservableObject, @unche
         }
     }
 
+    func reset() {
+        lock.lock()
+        guard !isFinished else {
+            lock.unlock()
+            return
+        }
+        latestSnapshot = ""
+        let activeContinuations = Array(continuations.values)
+        lock.unlock()
+
+        for continuation in activeContinuations {
+            continuation.yield("")
+        }
+    }
+
     func replayLatest() {
         lock.lock()
         let snapshot = latestSnapshot

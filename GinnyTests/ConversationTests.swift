@@ -142,6 +142,34 @@ final class ConversationTests: XCTestCase {
         XCTAssertTrue(group.unmatchedResults.isEmpty)
     }
 
+    func testAssistantContentSegmentsPreserveTextAndToolOrder() {
+        let before = ContentBlock.text("Before")
+        let call = ContentBlock.toolCall(
+            callID: "call-1",
+            name: "read",
+            arguments: "{}",
+            isComplete: true
+        )
+        let after = ContentBlock.text("After")
+        let message = Message(
+            role: .assistant,
+            blocks: [before, call, after]
+        )
+
+        let segments = assistantContentSegments(for: message, toolActivity: nil)
+
+        XCTAssertEqual(segments.count, 3)
+        guard case .text(let first) = segments[0],
+              case .toolActivity(_, let activity) = segments[1],
+              case .text(let last) = segments[2]
+        else {
+            return XCTFail("Assistant content should preserve block order.")
+        }
+        XCTAssertEqual(first.payload, "Before")
+        XCTAssertEqual(activity.activities.first?.call.attributes["callID"], "call-1")
+        XCTAssertEqual(last.payload, "After")
+    }
+
     func testGenerationFollowsTheDocumentedLifecycle() throws {
         var conversation = Conversation()
 
