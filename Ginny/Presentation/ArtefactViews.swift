@@ -639,7 +639,7 @@ private struct ArtefactSharePreviewSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Public snapshot", systemImage: "globe")
                         .font(.headline)
-                    Text("Source, rendered content, and artefact metadata are included in this v0 snapshot.")
+                    Text("Source, rendered content, and artefact metadata are included in this public snapshot.")
                         .font(.footnote)
                         .foregroundStyle(theme.color("text.muted"))
                 }

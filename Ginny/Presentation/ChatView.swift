@@ -890,7 +890,7 @@ private struct ConversationSharePreviewSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Public snapshot", systemImage: "globe")
                         .font(.headline)
-                    Text("Visible messages and referenced artefacts are included. Hidden reasoning and raw tool payloads stay local.")
+                    Text("Messages, thinking disclosures, tool activity, and referenced artefacts are included in this public snapshot.")
                         .font(.footnote)
                         .foregroundStyle(theme.color("text.muted"))
                 }

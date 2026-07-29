@@ -231,6 +231,7 @@ function ShareToolActivityCard({
 export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
   const content = artefact.renderedContent ?? artefact.source
   const isDocument = artefact.kind === 'document'
+  const isWeb = artefact.kind === 'web' || artefact.kind === 'inlineWeb'
 
   return (
     <Card>
@@ -243,6 +244,8 @@ export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
           <div className="typeset typeset-docs max-w-[65ch]">
             <MarkdownContent content={artefact.source} />
           </div>
+        ) : isWeb ? (
+          <InlineWebPreview title={artefact.title} content={content} />
         ) : (
           <div className="not-typeset">
             <pre className="overflow-x-auto whitespace-pre-wrap text-sm leading-6">
@@ -253,6 +256,106 @@ export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
       </CardContent>
     </Card>
   )
+}
+
+function InlineWebPreview({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="-mx-6 overflow-hidden sm:-mx-6">
+      <iframe
+        title={`${title} preview`}
+        srcDoc={sandboxedWebDocument(content)}
+        sandbox="allow-scripts"
+        loading="lazy"
+        className="block h-[min(70vh,32rem)] min-h-64 w-full border-0 bg-background"
+      />
+    </div>
+  )
+}
+
+function sandboxedWebDocument(content: string) {
+  const themeStyles = previewThemeStyles()
+  const head = `
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+    <style type="text/tailwindcss">${themeStyles}</style>
+  `
+
+  if (/<head\b[^>]*>/i.test(content)) {
+    return content.replace(/<head\b[^>]*>/i, (tag) => `${tag}${head}`)
+  }
+
+  return `<!doctype html><html><head>${head}</head><body>${content}</body></html>`
+}
+
+function previewThemeStyles() {
+  const tokenNames = [
+    'background',
+    'foreground',
+    'card',
+    'card-foreground',
+    'primary',
+    'primary-foreground',
+    'secondary',
+    'secondary-foreground',
+    'muted',
+    'muted-foreground',
+    'accent',
+    'accent-foreground',
+    'destructive',
+    'border',
+    'input',
+    'ring',
+  ]
+  const root = typeof document === 'undefined' ? undefined : document.documentElement
+  const computed = root ? getComputedStyle(root) : undefined
+  const declarations = tokenNames
+    .map((name) => {
+      const value = computed?.getPropertyValue(`--${name}`).trim()
+      return value ? `--${name}: ${value};` : ''
+    })
+    .filter(Boolean)
+    .join(' ')
+
+  return `
+    :root {
+      ${declarations}
+      --radius: 0.625rem;
+      color-scheme: ${root?.classList.contains('dark') ? 'dark' : 'light'};
+    }
+    @theme {
+      --color-background: var(--background);
+      --color-foreground: var(--foreground);
+      --color-card: var(--card);
+      --color-card-foreground: var(--card-foreground);
+      --color-primary: var(--primary);
+      --color-primary-foreground: var(--primary-foreground);
+      --color-secondary: var(--secondary);
+      --color-secondary-foreground: var(--secondary-foreground);
+      --color-muted: var(--muted);
+      --color-muted-foreground: var(--muted-foreground);
+      --color-accent: var(--accent);
+      --color-accent-foreground: var(--accent-foreground);
+      --color-destructive: var(--destructive);
+      --color-border: var(--border);
+      --color-input: var(--input);
+      --color-ring: var(--ring);
+      --radius-sm: calc(var(--radius) - 4px);
+      --radius-md: calc(var(--radius) - 2px);
+      --radius-lg: var(--radius);
+    }
+    @layer base {
+      *, ::before, ::after { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        padding: 16px;
+        background: var(--background);
+        color: var(--foreground);
+        overflow-x: hidden;
+      }
+    }
+  `
 }
 
 function ShareBlockView({ block }: { block: ShareBlock }) {
