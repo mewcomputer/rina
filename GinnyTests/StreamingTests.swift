@@ -562,7 +562,8 @@ final class StreamingTests: XCTestCase {
             attachmentStore: try! FileAttachmentStore(
                 rootURL: FileManager.default.temporaryDirectory
                     .appendingPathComponent("GinnyStreamingTests-\(UUID().uuidString)")
-            )
+            ),
+            relationshipRepository: try! RelationshipRepository(isStoredInMemoryOnly: true)
         )
         let configuration = ProviderConfiguration(
             provider: .kimiCode,

@@ -10,6 +10,7 @@ struct AppDependencies: Sendable {
     let artefactRepository: ArtefactRepository
     let sourceRepository: SourceRepository
     let attachmentStore: any AttachmentStore
+    let relationshipRepository: RelationshipRepository
 
     static let live: AppDependencies = {
         let container = try! GinnyPersistence.makeContainer()
@@ -27,7 +28,8 @@ struct AppDependencies: Sendable {
             conversationRepository: ConversationRepository(container: container),
             artefactRepository: ArtefactRepository(container: container),
             sourceRepository: SourceRepository(container: container),
-            attachmentStore: try! FileAttachmentStore(rootURL: attachmentURL)
+            attachmentStore: try! FileAttachmentStore(rootURL: attachmentURL),
+            relationshipRepository: RelationshipRepository(container: container)
         )
     }()
 

@@ -55,3 +55,11 @@ struct ContextID: Hashable, Codable, RawRepresentable, Sendable {
         self.rawValue = rawValue
     }
 }
+
+struct RelationshipID: Hashable, Codable, RawRepresentable, Sendable {
+    let rawValue: UUID
+
+    init(rawValue: UUID = UUID()) {
+        self.rawValue = rawValue
+    }
+}
