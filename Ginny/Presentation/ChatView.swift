@@ -1200,13 +1200,20 @@ private struct ArtefactReferenceView: View {
         if let artefact = store.artefacts.first(where: { $0.id == reference.artefactID }),
            let revision = artefact.revision(id: reference.revisionID) {
             if reference.presentation == .inline {
-                WebArtefactPreview(
-                    html: revision.renderedContent ?? revision.source,
-                    isInline: true,
-                    contentHeight: $inlineHeight
-                )
-                .frame(maxWidth: .infinity)
-                .frame(height: inlineHeight)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(artefact.title)
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(2)
+                        .accessibilityAddTraits(.isHeader)
+
+                    WebArtefactPreview(
+                        html: revision.renderedContent ?? revision.source,
+                        isInline: true,
+                        contentHeight: $inlineHeight
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: inlineHeight)
+                }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
