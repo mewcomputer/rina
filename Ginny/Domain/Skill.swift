@@ -176,7 +176,9 @@ enum CuratedSkills {
         Design the artefact before writing it. Use semantic color tokens, responsive layout,
         accessible contrast, clear hierarchy, and restrained interaction. Prefer shadcn-inspired
         tokens such as background, foreground, muted, accent, primary, destructive, border, input,
-        and ring. Keep inline artefacts self-contained and appropriate to the available space.
+        and ring. For HTML or React/Tailwind-style artefacts, preserve the component intent in the
+        source but provide a self-contained HTML/CSS/JavaScript preview with no dependency downloads.
+        Keep inline artefacts self-contained and appropriate to the available space.
         """,
         targetKinds: [.web, .inlineWeb],
         keywords: ["frontend", "web", "react", "tailwind", "shadcn", "ui", "accessibility"],

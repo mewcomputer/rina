@@ -63,6 +63,7 @@ final class SkillTests: XCTestCase {
         XCTAssertTrue(frontend?.targetKinds.contains(.web) == true)
         XCTAssertTrue(frontend?.targetKinds.contains(.inlineWeb) == true)
         XCTAssertTrue(frontend?.isDiscoverable == true)
+        XCTAssertTrue(frontend?.currentRevision?.instructions.contains("React/Tailwind-style") == true)
     }
 
     func testDiscoveryToolReturnsMatchingSkillDescriptors() async throws {
