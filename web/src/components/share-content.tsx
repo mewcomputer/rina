@@ -98,36 +98,48 @@ export function ShareMessageCard({
   const activityCitationIDs = new Set(
     toolActivity?.citationBlocks.map((block) => block.id).filter(Boolean),
   )
+  const standaloneCitationBlocks = message.blocks.filter(
+    (block) =>
+      block.kind === 'citationGroup' && !activityCitationIDs.has(block.id),
+  )
+
+  const content = (
+    <>
+      <ThinkingDisclosure continuations={message.providerContinuations} />
+      <div className="typeset typeset-docs max-w-[65ch]">
+        {message.blocks.map((block, index) => (
+          block.kind === 'citationGroup' || activityCitationIDs.has(block.id)
+            ? null
+            : (
+              <ShareBlockView
+                key={block.id ?? `${block.kind}-${index}`}
+                block={block}
+              />
+            )
+        ))}
+      </div>
+      {standaloneCitationBlocks.length > 0 && (
+        <ShareCitationGroups blocks={standaloneCitationBlocks} />
+      )}
+      {toolActivity && (
+        <ShareToolActivityCard
+          calls={toolActivity.calls}
+          results={toolActivity.results}
+          citationBlocks={toolActivity.citationBlocks}
+        />
+      )}
+    </>
+  )
 
   return (
     <article className={isUser ? 'ml-auto max-w-[88%]' : 'max-w-[94%]'}>
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {message.role}
-      </p>
-      <Card className={isUser ? 'bg-muted/60' : undefined}>
-        <CardContent className="py-5">
-          <ThinkingDisclosure continuations={message.providerContinuations} />
-          <div className="typeset typeset-docs max-w-[65ch]">
-            {message.blocks.map((block, index) => (
-              activityCitationIDs.has(block.id)
-                ? null
-                : (
-                  <ShareBlockView
-                    key={block.id ?? `${block.kind}-${index}`}
-                    block={block}
-                  />
-                )
-            ))}
-          </div>
-          {toolActivity && (
-            <ShareToolActivityCard
-              calls={toolActivity.calls}
-              results={toolActivity.results}
-              citationBlocks={toolActivity.citationBlocks}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {isUser ? (
+        <Card className="bg-muted/60">
+          <CardContent className="py-5">{content}</CardContent>
+        </Card>
+      ) : (
+        <div className="py-1">{content}</div>
+      )}
     </article>
   )
 }
@@ -251,12 +263,9 @@ function ShareToolActivityCard({
             )}
           </div>
         ))}
-        {citationBlocks.map((block, index) => (
-          <ShareCitationGroup
-            key={block.id ?? `citation-group-${index}`}
-            payload={block.payload}
-          />
-        ))}
+        {citationBlocks.length > 0 && (
+          <ShareCitationGroups blocks={citationBlocks} collapsible={false} />
+        )}
       </div>
     </details>
   )
@@ -407,9 +416,7 @@ function ShareBlockView({ block }: { block: ShareBlock }) {
 
   if (block.kind === 'toolCall' || block.kind === 'toolResult') return null
 
-  if (block.kind === 'citationGroup') {
-    return <ShareCitationGroup payload={block.payload} />
-  }
+  if (block.kind === 'citationGroup') return null
 
   if (block.kind === 'artefactReference' || block.kind === 'fileReference') {
     return null
@@ -465,11 +472,18 @@ function toolActivityLabel(
   return isPending ? phrases[0] : hasError ? phrases[2] : phrases[1]
 }
 
-function ShareCitationGroup({ payload }: { payload: string }) {
-  const citations = parseCitations(payload)
-
-  return (
-    <section className="not-typeset space-y-3 rounded-lg bg-background/60 p-3">
+function ShareCitationGroups({
+  blocks,
+  collapsible = true,
+}: {
+  blocks: ShareBlock[]
+  collapsible?: boolean
+}) {
+  const citations = deduplicateCitations(
+    blocks.flatMap((block) => parseCitations(block.payload)),
+  )
+  const content = (
+    <div className="space-y-3 rounded-lg bg-background/60 p-3">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Link2 className="size-4 text-muted-foreground" />
         Sources
@@ -506,7 +520,19 @@ function ShareCitationGroup({ payload }: { payload: string }) {
           ))}
         </div>
       )}
-    </section>
+    </div>
+  )
+
+  if (!collapsible) return content
+
+  return (
+    <details className="not-typeset mt-4 max-w-[65ch] rounded-xl border border-border bg-muted/30 group">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium marker:hidden">
+        <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
+        {citationActivitySummary(blocks)}
+      </summary>
+      <div className="border-t border-border p-3">{content}</div>
+    </details>
   )
 }
 
@@ -538,6 +564,16 @@ function parseCitations(payload: string): ShareCitation[] {
   } catch {
     return []
   }
+}
+
+function deduplicateCitations(citations: ShareCitation[]) {
+  return citations.filter((citation, index, values) =>
+    values.findIndex(
+      (candidate) =>
+        (citation.id && candidate.id === citation.id)
+        || candidate.url === citation.url,
+    ) === index,
+  )
 }
 
 function isSafeCitationURL(value: string) {
