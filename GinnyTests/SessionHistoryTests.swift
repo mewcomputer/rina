@@ -8,7 +8,10 @@ final class SessionHistoryTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        let history = SessionHistoryStore(defaults: defaults)
+        let history = SessionHistoryStore(
+            repository: try! ConversationRepository(isStoredInMemoryOnly: true),
+            defaults: defaults
+        )
         let conversation = Conversation(
             createdAt: Date(timeIntervalSince1970: 100),
             messages: [Message.user("Plan a quiet weekend"), Message.assistant("Start with one small ritual.")],
@@ -27,7 +30,10 @@ final class SessionHistoryTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        let history = SessionHistoryStore(defaults: defaults)
+        let history = SessionHistoryStore(
+            repository: try! ConversationRepository(isStoredInMemoryOnly: true),
+            defaults: defaults
+        )
         let id = ConversationID()
         let first = Conversation(
             id: id,
@@ -52,7 +58,12 @@ final class SessionHistoryTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let generator = TestConversationTitleGenerator(title: "Weekend Reset")
-        let history = SessionHistoryStore(defaults: defaults, titleGenerator: generator)
+        let repository = try! ConversationRepository(isStoredInMemoryOnly: true)
+        let history = SessionHistoryStore(
+            repository: repository,
+            defaults: defaults,
+            titleGenerator: generator
+        )
         let conversation = Conversation(
             messages: [
                 Message.user("Help me plan a quiet weekend"),
@@ -71,22 +82,120 @@ final class SessionHistoryTests: XCTestCase {
             "Start with one small ritual and leave room for rest."
         )
 
-        let restored = SessionHistoryStore(defaults: defaults, titleGenerator: generator)
+        let restored = SessionHistoryStore(
+            repository: repository,
+            defaults: defaults,
+            titleGenerator: generator
+        )
         XCTAssertEqual(restored.title(for: restored.conversations[0]), "Weekend Reset")
     }
 
-    func testTitleFormatterKeepsFourShortWordsOrThreeLongWords() {
+    func testTitleFormatterAimsForFourWordsWithSixOrEightWordCap() {
         XCTAssertEqual(
-            ConversationTitleFormatter.sanitize("One two three four five"),
-            "One two three four"
+            ConversationTitleFormatter.sanitize("One two three four five six seven eight nine"),
+            "One two three four five six seven eight"
         )
         XCTAssertEqual(
-            ConversationTitleFormatter.sanitize("Conversation Endpoint Configuration Details"),
-            "Conversation Endpoint Configuration"
+            ConversationTitleFormatter.sanitize(
+                "Conversation Endpoint Configuration Details Planning Review Archive"
+            ),
+            "Conversation Endpoint Configuration Details Planning Review"
         )
         XCTAssertEqual(
             ConversationTitleFormatter.sanitize("Title: \"One two\""),
             "One two"
+        )
+        XCTAssertEqual(
+            ConversationTitleFormatter.sanitize("### \"One two\""),
+            "One two"
+        )
+        XCTAssertEqual(
+            ConversationTitleFormatter.sanitize("- One two"),
+            "One two"
+        )
+    }
+
+    func testConversationRepositoryRoundTripsConversationData() throws {
+        let repository = try ConversationRepository(isStoredInMemoryOnly: true)
+        var conversation = Conversation(
+            createdAt: Date(timeIntervalSince1970: 100),
+            title: "A saved session",
+            messages: [
+                Message.user("Hello"),
+                Message(
+                    role: .assistant,
+                    blocks: [
+                        .text("Partial answer", isComplete: false),
+                        .toolCall(
+                            callID: "call-1",
+                            name: "current_time",
+                            arguments: "{}"
+                        )
+                    ],
+                    providerContinuations: [
+                        ProviderContinuation(
+                            provider: .umans,
+                            id: "thinking-1",
+                            kind: "reasoning",
+                            fields: ["thinking": "plan"]
+                        )
+                    ]
+                )
+            ],
+            generationState: .streaming
+        )
+
+        try repository.upsert(conversation)
+
+        let restored = try XCTUnwrap(try repository.fetch().first)
+        XCTAssertEqual(restored, conversation)
+
+        conversation.setTitle("Renamed session")
+        try repository.upsert(conversation)
+
+        XCTAssertEqual(try repository.fetch().first?.title, "Renamed session")
+        XCTAssertEqual(try repository.fetch().count, 1)
+    }
+
+    func testConversationRepositoryImportsLegacyUserDefaultsFixture() throws {
+        let suiteName = "SessionHistoryTests.LegacyMigration-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let legacyConversation = Conversation(
+            messages: [Message.user("Legacy prompt"), Message.assistant("Legacy answer")],
+            generationState: .completed
+        )
+        defaults.set(
+            try JSONEncoder().encode([legacyConversation]),
+            forKey: "session.history"
+        )
+
+        let repository = try ConversationRepository(isStoredInMemoryOnly: true)
+        let importedCount = try repository.importLegacy(from: defaults)
+
+        XCTAssertEqual(importedCount, 1)
+        XCTAssertNil(defaults.data(forKey: "session.history"))
+        XCTAssertEqual(try repository.fetch(), [legacyConversation])
+    }
+
+    func testSessionHistoryRecoversInterruptedGeneration() throws {
+        let repository = try ConversationRepository(isStoredInMemoryOnly: true)
+        let conversation = Conversation(
+            messages: [
+                Message.user("Continue this"),
+                Message.assistant("Partial answer", createdAt: Date(timeIntervalSince1970: 2))
+            ],
+            generationState: .streaming
+        )
+        try repository.upsert(conversation)
+
+        let history = SessionHistoryStore(repository: repository)
+
+        XCTAssertEqual(history.conversations.first?.generationState, .cancelled)
+        XCTAssertEqual(
+            history.conversations.first?.messages.last?.blocks.first?.payload,
+            "Partial answer"
         )
     }
 }

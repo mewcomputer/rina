@@ -1,15 +1,18 @@
 import Foundation
 
 /// Application-lifetime dependencies are constructed at the composition root.
+@MainActor
 struct AppDependencies: Sendable {
     let credentialStore: any CredentialStore
     let transport: any StreamingTransport
     let modelCatalog: any ModelCatalogProviding
+    let conversationRepository: ConversationRepository
 
     static let live = AppDependencies(
         credentialStore: KeychainCredentialStore(),
         transport: URLSessionStreamingTransport(),
-        modelCatalog: URLSessionModelCatalog()
+        modelCatalog: URLSessionModelCatalog(),
+        conversationRepository: try! ConversationRepository()
     )
 
     func makeProvider(for configuration: ProviderConfiguration) -> any ProviderAdapter {

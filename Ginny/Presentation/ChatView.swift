@@ -1,6 +1,18 @@
 import SwiftStreamingMarkdown
 import SwiftUI
 
+enum ThinkingIndicatorSymbol: String, CaseIterable {
+    case sparkle
+    case starFill = "star.fill"
+    case asterisk
+
+    static func next(after symbol: Self) -> Self {
+        let symbols = allCases
+        guard let index = symbols.firstIndex(of: symbol) else { return symbols[0] }
+        return symbols[(index + 1) % symbols.count]
+    }
+}
+
 struct ChatView: View {
     private let dependencies: AppDependencies
     @ObservedObject private var themeStore: ThemeStore
@@ -23,14 +35,24 @@ struct ChatView: View {
     ) {
         self.dependencies = dependencies
         _themeStore = ObservedObject(wrappedValue: themeStore)
-        _session = StateObject(wrappedValue: ChatSession())
+        _session = StateObject(
+            wrappedValue: ChatSession(
+                persistence: { conversation in
+                    try dependencies.conversationRepository.upsert(conversation)
+                }
+            )
+        )
         _settings = StateObject(
             wrappedValue: ProviderSettings(
                 credentialStore: dependencies.credentialStore,
                 modelCatalog: dependencies.modelCatalog
             )
         )
-        _history = StateObject(wrappedValue: SessionHistoryStore())
+        _history = StateObject(
+            wrappedValue: SessionHistoryStore(
+                repository: dependencies.conversationRepository
+            )
+        )
     }
 
     var body: some View {
@@ -76,6 +98,9 @@ struct ChatView: View {
         .onChange(of: session.streamingText) { _, snapshot in
             activeResponse?.source.yield(snapshot)
         }
+        .onChange(of: session.streamingReasoningText) { _, snapshot in
+            activeResponse?.thinkingSource.yield(snapshot)
+        }
         .onDisappear {
             generationTask?.cancel()
         }
@@ -110,20 +135,38 @@ struct ChatView: View {
                                             case .message(let message):
                                                 ChatMessageView(
                                                     message: message,
-                                                    markdownConfig: markdownConfig
+                                                    markdownConfig: markdownConfig,
+                                                    thinkingMarkdownConfig: thinkingMarkdownConfig
                                                 )
                                                 .id(item.id)
                                             case .toolActivity(let message, let group):
                                                 ChatMessageView(
                                                     message: message,
                                                     toolActivity: group,
-                                                    markdownConfig: markdownConfig
+                                                    markdownConfig: markdownConfig,
+                                                    thinkingMarkdownConfig: thinkingMarkdownConfig
                                                 )
                                                 .id(item.id)
                                             }
                                         }
 
                                         if let activeResponse {
+                                            if !session.streamingReasoningText.isEmpty {
+                                                LiveThinkingDisclosureView(
+                                                    source: activeResponse.thinkingSource,
+                                                    markdownConfig: thinkingMarkdownConfig,
+                                                    isComplete: !session.isGenerating
+                                                )
+                                                .id("active-thinking")
+                                            }
+                                            if let approval = session.pendingToolApproval {
+                                                ToolApprovalView(
+                                                    request: approval,
+                                                    approve: session.approvePendingTool,
+                                                    deny: session.denyPendingTool
+                                                )
+                                                .id("tool-approval")
+                                            }
                                             StreamedMarkdownView(
                                                 source: activeResponse.source,
                                                 config: markdownConfig.withTextAnimation(.fastFade)
@@ -178,7 +221,9 @@ struct ChatView: View {
                         LinearGradient(
                             colors: [
                                 theme.color("background").opacity(0.94),
-                                theme.color("background").opacity(0.68),
+                                theme.color("background").opacity(0.93),
+                                theme.color("background").opacity(0.90),
+                                theme.color("background").opacity(0.87),
                                 theme.color("background").opacity(0)
                             ],
                             startPoint: .top,
@@ -372,6 +417,44 @@ struct ChatView: View {
             .withBlockSpacing(value: 16)
     }
 
+    private var thinkingMarkdownConfig: MarkdownRenderConfig {
+        let base = markdownConfig
+        let muted = theme.color("text.muted")
+
+        return base
+            .withParagraphStyle(value: .init(
+                textFonts: base.paragraphStyle.textFonts,
+                textColor: muted
+            ))
+            .withBlockQuoteStyle(value: .init(
+                textFonts: base.blockQuoteStyle.textFonts,
+                textColor: muted
+            ))
+            .withHeadingStyle(value: .init(
+                h1Font: base.headingStyle.h1Font,
+                h2Font: base.headingStyle.h2Font,
+                h3Font: base.headingStyle.h3Font,
+                h4Font: base.headingStyle.h4Font,
+                h5Font: base.headingStyle.h5Font,
+                h6Font: base.headingStyle.h6Font,
+                textColor: muted
+            ))
+            .withOrderedListStyle(value: .init(
+                textFonts: base.orderedListStyle.textFonts,
+                textColor: muted
+            ))
+            .withInlineStyle(value: .init(
+                boldTextColor: muted,
+                linkTextFont: base.inlineStyle.linkTextFont,
+                linkTextColor: muted,
+                codeTextFont: base.inlineStyle.codeTextFont,
+                codeTextColor: muted,
+                codeBackgroundColor: base.inlineStyle.codeBackgroundColor,
+                codeUnderlineColor: muted
+            ))
+            .withThematicBreakColor(value: muted)
+    }
+
     private func send() {
         let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty,
@@ -402,6 +485,7 @@ struct ChatView: View {
                 }
             }
             response.source.finish()
+            response.thinkingSource.finish()
             activeResponse = nil
             generationTask = nil
         }
@@ -434,14 +518,14 @@ private struct ChatHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: onOpenSidebar) {
-                HeaderIconButton(systemImage: "line.3.horizontal")
+                HeaderIconButton(systemImage: "text.menu")
             }
             .accessibilityLabel("Open session history")
 
             Text(title)
                 .font(.headline)
                 .lineLimit(1)
-                .contentTransition(.opacity)
+                .contentTransition(.interpolate)
                 .animation(
                     reduceMotion ? nil : .easeOut(duration: 0.22),
                     value: title
@@ -627,6 +711,7 @@ private struct ComposerView: View {
     let cancel: () -> Void
     let openSettings: () -> Void
     @Environment(\.ginnyTheme) private var theme
+    @FocusState private var isInputFocused: Bool
 
     private var canSubmit: Bool {
         isGenerating || !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -638,8 +723,9 @@ private struct ComposerView: View {
                 .font(.body)
                 .frame(height: 34)
                 .textFieldStyle(.plain)
+                .focused($isInputFocused)
                 .submitLabel(.send)
-                .onSubmit(send)
+                .onSubmit(submit)
 
             HStack(spacing: 8) {
                 Button(action: {}) {
@@ -655,7 +741,7 @@ private struct ComposerView: View {
 
                 Spacer(minLength: 0)
 
-                Button(action: isGenerating ? cancel : send) {
+                Button(action: isGenerating ? cancel : submit) {
                     Image(systemName: isGenerating ? "stop" : "arrow.up")
                         .font(.system(size: 16, weight: .bold))
                         .frame(width: 36, height: 36)
@@ -675,6 +761,11 @@ private struct ComposerView: View {
         )
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
+    }
+
+    private func submit() {
+        isInputFocused = false
+        send()
     }
 }
 
@@ -740,9 +831,13 @@ private struct ModelPickerSheet: View {
                     servicePicker
 
                     if settings.isLoadingModels {
-                        ProgressView("Loading models…")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 48)
+                        HStack(spacing: 8) {
+                            ThinkingIndicator(isAnimating: true)
+                            Text("Loading models…")
+                        }
+                        .foregroundStyle(theme.color("text.muted"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 48)
                     } else if filteredModels.isEmpty {
                         VStack(spacing: 10) {
                             Image(systemName: "cube.transparent")
@@ -825,7 +920,7 @@ private struct ModelPickerSheet: View {
                         Task { await settings.refreshModels() }
                     } label: {
                         if settings.isLoadingModels {
-                            ProgressView()
+                            ThinkingIndicator(isAnimating: true)
                         } else {
                             Image(systemName: "arrow.clockwise")
                         }
@@ -907,22 +1002,26 @@ private struct ModelPickerSheet: View {
 @MainActor
 private struct ActiveResponse {
     let source = ChatResponseSource()
+    let thinkingSource = ChatResponseSource()
 }
 
 private struct ChatMessageView: View {
     let message: Message
     let toolActivity: ToolActivityGroup?
     let markdownConfig: MarkdownRenderConfig
+    let thinkingMarkdownConfig: MarkdownRenderConfig
     @Environment(\.ginnyTheme) private var theme
 
     init(
         message: Message,
         toolActivity: ToolActivityGroup? = nil,
-        markdownConfig: MarkdownRenderConfig
+        markdownConfig: MarkdownRenderConfig,
+        thinkingMarkdownConfig: MarkdownRenderConfig
     ) {
         self.message = message
         self.toolActivity = toolActivity
         self.markdownConfig = markdownConfig
+        self.thinkingMarkdownConfig = thinkingMarkdownConfig
     }
 
     var body: some View {
@@ -942,6 +1041,13 @@ private struct ChatMessageView: View {
                 ToolResultGroupView(results: toolResults)
             } else {
                 VStack(alignment: .leading, spacing: 12) {
+                    if hasReasoning {
+                        ThinkingDisclosureView(
+                            snapshot: reasoningText,
+                            isRedacted: isRedactedReasoning,
+                            markdownConfig: thinkingMarkdownConfig
+                        )
+                    }
                     if !toolCalls.isEmpty {
                         ToolActivityGroupView(
                             group: toolActivity
@@ -970,6 +1076,143 @@ private struct ChatMessageView: View {
 
     private var toolResults: [ContentBlock] {
         message.blocks.filter { $0.kind == .toolResult }
+    }
+
+    private var hasReasoning: Bool {
+        message.providerContinuations.contains { $0.kind == "reasoning" }
+    }
+
+    private var reasoningText: String {
+        message.providerContinuations
+            .filter { $0.kind == "reasoning" }
+            .compactMap { $0.fields["thinking"] ?? $0.fields["text"] }
+            .joined()
+    }
+
+    private var isRedactedReasoning: Bool {
+        message.providerContinuations.contains {
+            $0.kind == "reasoning"
+                && $0.fields["data"] != nil
+                && $0.fields["thinking"] == nil
+                && $0.fields["text"] == nil
+        }
+    }
+}
+
+private struct ThinkingDisclosureView: View {
+    let snapshot: String
+    let isRedacted: Bool
+    let markdownConfig: MarkdownRenderConfig
+    @Environment(\.ginnyTheme) private var theme
+    @State private var isExpanded = false
+    @StateObject private var source = ChatResponseSource()
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            Group {
+                if snapshot.isEmpty, isRedacted {
+                    Text("Reasoning is hidden by the provider.")
+                        .font(.footnote)
+                        .foregroundStyle(theme.color("text.muted"))
+                } else {
+                    StreamedMarkdownView(
+                        source: source,
+                        config: markdownConfig
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.top, 8)
+        } label: {
+            HStack(spacing: 8) {
+                ThinkingIndicator(isAnimating: false)
+                Text("Thinking")
+                    .font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(theme.color("text.muted"))
+        }
+        .tint(theme.color("text.body"))
+        .onAppear {
+            source.yield(snapshot)
+        }
+        .onChange(of: snapshot) { _, snapshot in
+            source.yield(snapshot)
+        }
+        .onChange(of: isExpanded) { _, expanded in
+            if expanded {
+                source.replayLatest()
+            }
+        }
+    }
+}
+
+private struct LiveThinkingDisclosureView: View {
+    let source: ChatResponseSource
+    let markdownConfig: MarkdownRenderConfig
+    let isComplete: Bool
+    @Environment(\.ginnyTheme) private var theme
+    @State private var isExpanded = true
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            StreamedMarkdownView(
+                source: source,
+                config: markdownConfig
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+        } label: {
+            HStack(spacing: 8) {
+                ThinkingIndicator(isAnimating: !isComplete)
+                Text("Thinking")
+                    .font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(theme.color("text.muted"))
+        }
+        .tint(theme.color("text.body"))
+        .onChange(of: isExpanded) { _, expanded in
+            if expanded {
+                source.replayLatest()
+            }
+        }
+        .onChange(of: isComplete) { _, complete in
+            if complete {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    isExpanded = false
+                }
+            }
+        }
+    }
+}
+
+private struct ThinkingIndicator: View {
+    let isAnimating: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.ginnyTheme) private var theme
+    @State private var symbol: ThinkingIndicatorSymbol = .sparkle
+    @State private var rotation: Double = 0
+
+    var body: some View {
+        Image(systemName: symbol.rawValue)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(theme.color("text.muted"))
+            .frame(width: 20, height: 20)
+            .contentTransition(.symbolEffect(.replace))
+            .rotationEffect(.degrees(reduceMotion ? 0 : rotation))
+            .accessibilityHidden(true)
+            .task(id: isAnimating) {
+                guard isAnimating, !reduceMotion else { return }
+
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(1200))
+                    guard !Task.isCancelled else { return }
+
+                    withAnimation(.easeInOut(duration: 0.42)) {
+                        symbol = .next(after: symbol)
+                        rotation += 120
+                    }
+                }
+            }
     }
 }
 
@@ -1010,8 +1253,7 @@ private struct ToolActivityGroupView: View {
                     .font(.subheadline.weight(.medium))
                 Spacer()
                 if isPending {
-                    ProgressView()
-                        .controlSize(.small)
+                    ThinkingIndicator(isAnimating: true)
                 } else if containsError {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(theme.color("text.error"))
@@ -1026,6 +1268,44 @@ private struct ToolActivityGroupView: View {
         .background(
             theme.color("card").opacity(0.3),
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+    }
+}
+
+private struct ToolApprovalView: View {
+    let request: ToolApprovalRequest
+    let approve: () -> Void
+    let deny: () -> Void
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Approve tool", systemImage: "hand.raised")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(theme.color("text.body"))
+
+            Text(request.name)
+                .font(.body.weight(.semibold))
+
+            if !request.arguments.isEmpty {
+                Text(request.arguments)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(theme.color("text.muted"))
+                    .textSelection(.enabled)
+            }
+
+            HStack(spacing: 10) {
+                Button("Deny", action: deny)
+                    .buttonStyle(.bordered)
+                Button("Approve", action: approve)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .ginnyGlass(
+            RoundedRectangle(cornerRadius: 14, style: .continuous),
+            prominence: .subtle
         )
     }
 }
@@ -1173,7 +1453,7 @@ private struct ProviderSettingsView: View {
                 if settings.provider == .umans {
                     HStack {
                         if settings.isLoadingModels {
-                            ProgressView()
+                            ThinkingIndicator(isAnimating: true)
                         }
                         Button("Refresh models") {
                             Task { await settings.refreshModels() }

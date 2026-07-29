@@ -59,7 +59,8 @@ final class ProviderSettings: ObservableObject {
             endpoint: provider.messageEndpoint(for: baseURL),
             model: modelText.trimmingCharacters(in: .whitespacesAndNewlines),
             credentialID: provider.credentialID,
-            thinkingLevel: thinkingOptions.contains(thinkingLevel) ? thinkingLevel : nil
+            thinkingLevel: thinkingOptions.contains(thinkingLevel) ? thinkingLevel : nil,
+            supportsTools: selectedModel?.capabilities.supportsTools
         )
     }
 
@@ -177,6 +178,12 @@ final class ProviderSettings: ObservableObject {
         let model = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !model.isEmpty else {
             validationMessage = "Enter the model name."
+            return false
+        }
+        if !availableModels.isEmpty,
+           !availableModels.contains(where: { $0.id == model })
+        {
+            validationMessage = "Choose a model from the provider catalog."
             return false
         }
         let credential = credentialText.trimmingCharacters(in: .whitespacesAndNewlines)

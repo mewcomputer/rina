@@ -34,4 +34,34 @@ final class ToolTests: XCTestCase {
             XCTAssertEqual(error as? ToolExecutionError, .unknownTool("missing"))
         }
     }
+
+    func testToolRegistryExposesExplicitApprovalRequirements() {
+        let registry = ToolRegistry(tools: [RequiresApprovalTool()])
+
+        XCTAssertEqual(
+            registry.approvalRequirement(for: "requires_approval"),
+            .requiresApproval
+        )
+        XCTAssertEqual(
+            ToolRegistry(tools: [CurrentTimeTool()])
+                .approvalRequirement(for: "current_time"),
+            .automatic
+        )
+    }
+}
+
+private struct RequiresApprovalTool: GinnyTool {
+    var definition: ProviderToolDefinition {
+        ProviderToolDefinition(
+            name: "requires_approval",
+            description: "A fixture tool that requires explicit user approval.",
+            inputSchema: "{\"type\":\"object\"}"
+        )
+    }
+
+    var approvalRequirement: ToolApprovalRequirement { .requiresApproval }
+
+    func execute(arguments: String) async throws -> String {
+        "approved"
+    }
 }

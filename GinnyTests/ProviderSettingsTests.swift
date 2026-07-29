@@ -204,6 +204,48 @@ final class ProviderSettingsTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
+    func testModelCapabilityMetadataControlsToolSupport() async throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let settings = ProviderSettings(
+            defaults: defaults,
+            credentialStore: TestCredentialStore(),
+            modelCatalog: TestModelCatalog(models: [
+                ProviderModel(
+                    id: "text-only",
+                    displayName: "Text only",
+                    capabilities: ModelCapabilities(supportsTools: false)
+                )
+            ])
+        )
+        settings.credentialText = "secret"
+        await settings.refreshModels()
+
+        XCTAssertEqual(settings.configuration?.supportsTools, false)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    func testSavingLoadedCatalogRejectsUnknownModel() async throws {
+        let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let settings = ProviderSettings(
+            defaults: defaults,
+            credentialStore: TestCredentialStore(),
+            modelCatalog: TestModelCatalog(models: [
+                ProviderModel(id: "known-model", displayName: "Known model")
+            ])
+        )
+        settings.credentialText = "secret"
+        await settings.refreshModels()
+        settings.modelText = "unknown-model"
+
+        XCTAssertFalse(settings.save())
+        XCTAssertEqual(settings.validationMessage, "Choose a model from the provider catalog.")
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
     func testMigratesLegacyFullEndpointToProviderBaseURL() throws {
         let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

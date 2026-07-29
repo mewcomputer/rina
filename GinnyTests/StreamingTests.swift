@@ -3,6 +3,40 @@ import XCTest
 @testable import Ginny
 
 final class StreamingTests: XCTestCase {
+    func testThinkingIndicatorCyclesThroughSparkleSymbols() {
+        XCTAssertEqual(
+            ThinkingIndicatorSymbol.allCases.map(\.rawValue),
+            ["sparkle", "star.fill", "asterisk"]
+        )
+        XCTAssertEqual(ThinkingIndicatorSymbol.next(after: .sparkle), .starFill)
+        XCTAssertEqual(ThinkingIndicatorSymbol.next(after: .starFill), .asterisk)
+        XCTAssertEqual(ThinkingIndicatorSymbol.next(after: .asterisk), .sparkle)
+    }
+
+    @MainActor
+    func testChatResponseSourceSeedsLatestSnapshotForNewStream() async {
+        let source = ChatResponseSource()
+        source.yield("**thinking**")
+
+        var iterator = source.text.makeAsyncIterator()
+        let snapshot = await iterator.next()
+
+        XCTAssertEqual(snapshot, "**thinking**")
+    }
+
+    @MainActor
+    func testChatResponseSourceReplaysLatestSnapshotToRestartedStream() async {
+        let source = ChatResponseSource()
+        var firstIterator = source.text.makeAsyncIterator()
+        source.yield("**thinking**")
+        let initialSnapshot = await firstIterator.next()
+        XCTAssertEqual(initialSnapshot, "**thinking**")
+
+        source.replayLatest()
+        let replayedSnapshot = await firstIterator.next()
+        XCTAssertEqual(replayedSnapshot, "**thinking**")
+    }
+
     func testSSEParserHandlesEventsSplitAcrossChunks() throws {
         var parser = ServerSentEventParser()
 
@@ -484,11 +518,45 @@ final class StreamingTests: XCTestCase {
         XCTAssertNil(object["reasoning_effort"])
     }
 
+    func testOpenAIAdapterOmitsToolsWhenModelDisablesToolSupport() throws {
+        let configuration = ProviderConfiguration(
+            provider: .openAICompatible,
+            endpoint: URL(string: "https://example.com/v1/chat/completions")!,
+            model: "text-only",
+            credentialID: "primary",
+            supportsTools: false
+        )
+        let adapter = OpenAICompatibleAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["primary": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(
+                messages: [.user("Hello")],
+                tools: [
+                    ProviderToolDefinition(
+                        name: "current_time",
+                        description: "Returns the time.",
+                        inputSchema: "{\"type\":\"object\"}"
+                    )
+                ]
+            )
+        )
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+
+        XCTAssertNil(object["tools"])
+    }
+
+    @MainActor
     func testKimiCodeCompositionUsesTheOpenAICompatibleAdapter() {
         let dependencies = AppDependencies(
             credentialStore: InMemoryCredentialStore(credentials: [:]),
             transport: UnusedStreamingTransport(),
-            modelCatalog: URLSessionModelCatalog()
+            modelCatalog: URLSessionModelCatalog(),
+            conversationRepository: try! ConversationRepository(isStoredInMemoryOnly: true)
         )
         let configuration = ProviderConfiguration(
             provider: .kimiCode,
@@ -572,6 +640,56 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual((object["messages"] as? [[String: Any]])?.first?["role"] as? String, "user")
     }
 
+    func testAnthropicRequestIncludesAdaptiveThinkingEffort() throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-glm-5.2",
+            credentialID: "umans-api-key",
+            thinkingLevel: .high
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.user("Hello")])
+        )
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let thinking = try XCTUnwrap(object["thinking"] as? [String: Any])
+        let outputConfig = try XCTUnwrap(object["output_config"] as? [String: Any])
+
+        XCTAssertEqual(thinking["type"] as? String, "adaptive")
+        XCTAssertEqual(outputConfig["effort"] as? String, "high")
+    }
+
+    func testAnthropicRequestOmitsThinkingWhenDisabled() throws {
+        let configuration = ProviderConfiguration(
+            provider: .umans,
+            endpoint: URL(string: "https://api.code.umans.ai/v1/messages")!,
+            model: "umans-glm-5.2",
+            credentialID: "umans-api-key",
+            thinkingLevel: .off
+        )
+        let adapter = AnthropicMessagesAdapter(
+            configuration: configuration,
+            credentialStore: InMemoryCredentialStore(credentials: ["umans-api-key": "secret"]),
+            transport: UnusedStreamingTransport()
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.user("Hello")])
+        )
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+
+        XCTAssertNil(object["thinking"])
+        XCTAssertNil(object["output_config"])
+    }
+
     func testAnthropicRequestPreservesThinkingBlockMetadata() throws {
         let configuration = ProviderConfiguration(
             provider: .umans,
@@ -604,6 +722,52 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(content.first?["signature"] as? String, "opaque")
         XCTAssertEqual(content.last?["type"] as? String, "text")
         XCTAssertEqual(content.last?["text"] as? String, "answer")
+    }
+
+    func testAnthropicStreamParserMapsThinkingBlockStart() throws {
+        var parser = AnthropicMessagesStreamParser(provider: .umans)
+
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"plan\"}}"
+                )
+            ),
+            [.continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .umans,
+                    id: "block-0",
+                    kind: "reasoning",
+                    field: "thinking",
+                    value: "plan",
+                    operation: .replace
+                )
+            )
+            ]
+        )
+    }
+
+    func testAnthropicStreamParserAcceptsTextAliasForThinkingDelta() throws {
+        var parser = AnthropicMessagesStreamParser(provider: .umans)
+
+        XCTAssertEqual(
+            try parser.parse(
+                ServerSentEvent(
+                    data: "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"text\":\"plan\"}}"
+                )
+            ),
+            [.continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .umans,
+                    id: "block-0",
+                    kind: "reasoning",
+                    field: "thinking",
+                    value: "plan",
+                    operation: .append
+                )
+            )
+            ]
+        )
     }
 
     func testAnthropicRequestPreservesToolsAndToolResults() throws {

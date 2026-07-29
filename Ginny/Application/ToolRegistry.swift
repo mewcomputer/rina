@@ -1,9 +1,25 @@
 import Foundation
 
+enum ToolApprovalRequirement: String, Codable, Equatable, Sendable {
+    case automatic
+    case requiresApproval
+}
+
+struct ToolApprovalRequest: Equatable, Identifiable, Sendable {
+    let id: String
+    let name: String
+    let arguments: String
+}
+
 protocol GinnyTool: Sendable {
     var definition: ProviderToolDefinition { get }
+    var approvalRequirement: ToolApprovalRequirement { get }
 
     func execute(arguments: String) async throws -> String
+}
+
+extension GinnyTool {
+    var approvalRequirement: ToolApprovalRequirement { .requiresApproval }
 }
 
 enum ToolExecutionError: Error, Equatable, Sendable {
@@ -20,6 +36,10 @@ struct ToolRegistry: Sendable {
 
     var definitions: [ProviderToolDefinition] {
         tools.map(\.definition)
+    }
+
+    func approvalRequirement(for name: String) -> ToolApprovalRequirement? {
+        tools.first(where: { $0.definition.name == name })?.approvalRequirement
     }
 
     func execute(name: String, arguments: String) async throws -> String {
@@ -45,6 +65,8 @@ struct CurrentTimeTool: GinnyTool {
             inputSchema: "{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}"
         )
     }
+
+    var approvalRequirement: ToolApprovalRequirement { .automatic }
 
     func execute(arguments: String) async throws -> String {
         let trimmed = arguments.trimmingCharacters(in: .whitespacesAndNewlines)

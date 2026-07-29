@@ -23,6 +23,39 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertTrue(session.conversation.messages[1].blocks[0].isComplete)
     }
 
+    func testSessionPublishesStreamingReasoningSnapshot() async {
+        let provider = StubProvider(events: [
+            .responseStarted,
+            .continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .kimiCode,
+                    id: "reasoning",
+                    kind: "reasoning",
+                    field: "text",
+                    value: "plan",
+                    operation: .append
+                )
+            ),
+            .continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .kimiCode,
+                    id: "reasoning",
+                    kind: "reasoning",
+                    field: "text",
+                    value: " then answer",
+                    operation: .append
+                )
+            ),
+            .textDelta("Done"),
+            .responseEnded,
+        ])
+        let session = ChatSession(provider: provider)
+
+        await session.send("Hi")
+
+        XCTAssertEqual(session.streamingReasoningText, "plan then answer")
+    }
+
     func testSessionPreservesPartialContentWhenProviderFails() async {
         let provider = StubProvider(
             events: [.responseStarted, .textDelta("Partial")],
@@ -36,6 +69,32 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertEqual(session.conversation.messages[1].blocks[0].payload, "Partial")
         XCTAssertFalse(session.conversation.messages[1].blocks[0].isComplete)
         XCTAssertEqual(session.errorMessage, "connection lost")
+    }
+
+    func testSessionPersistsPartialContentDuringStreaming() async {
+        let provider = BlockingProvider()
+        var snapshots: [Conversation] = []
+        let session = ChatSession(
+            provider: provider,
+            persistence: { snapshots.append($0) }
+        )
+        let task = Task { @MainActor in
+            await session.send("Hi")
+        }
+
+        for _ in 0..<100 where session.streamingText != "Partial" {
+            await Task.yield()
+        }
+
+        XCTAssertTrue(
+            snapshots.contains {
+                $0.generationState == .streaming
+                    && $0.messages.last?.blocks.first?.payload == "Partial"
+            }
+        )
+
+        session.cancel()
+        await task.value
     }
 
     func testCancellingGenerationStopsTheProviderAndPreservesPartialContent() async {
@@ -140,12 +199,42 @@ final class ChatSessionTests: XCTestCase {
             "1970-01-01T00:00:00Z"
         )
         XCTAssertEqual(session.conversation.messages[3].blocks.first?.payload, "Done.")
+        XCTAssertEqual(session.streamingReasoningText, "initial reasoning")
 
         let requests = provider.recorder.requests
         XCTAssertEqual(requests.count, 2)
         XCTAssertEqual(requests[0].tools.first?.name, "current_time")
         XCTAssertEqual(requests[1].messages.last?.role, .tool)
         XCTAssertEqual(requests[1].messages.last?.toolCallID, "call-1")
+    }
+
+    func testSessionPausesForToolApprovalAndResumesAfterApproval() async {
+        let provider = ApprovalLoopProvider()
+        let session = ChatSession(
+            provider: provider,
+            toolRegistry: ToolRegistry(tools: [ApprovalRequiredSessionTool()])
+        )
+        let task = Task { @MainActor in
+            await session.send("Run the approved tool")
+        }
+
+        for _ in 0..<100 where session.pendingToolApproval == nil {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(
+            session.pendingToolApproval,
+            ToolApprovalRequest(id: "approval-call", name: "requires_approval", arguments: "{}")
+        )
+        session.approvePendingTool()
+        await task.value
+
+        XCTAssertEqual(session.conversation.generationState, .completed)
+        XCTAssertEqual(
+            session.conversation.messages[2].blocks.first?.attributes["approvalState"],
+            ToolApprovalState.approved.rawValue
+        )
+        XCTAssertEqual(session.conversation.messages.last?.blocks.first?.payload, "Approved.")
     }
 }
 
@@ -256,6 +345,16 @@ private final class ToolLoopProvider: ProviderAdapter, @unchecked Sendable {
         if isFirstResponse {
             events = [
                 .responseStarted,
+                .continuationDelta(
+                    ProviderContinuationDelta(
+                        provider: .openAICompatible,
+                        id: "reasoning",
+                        kind: "reasoning",
+                        field: "text",
+                        value: "initial reasoning",
+                        operation: .append
+                    )
+                ),
                 .toolCallDelta(
                     ProviderToolCallDelta(
                         provider: .openAICompatible,
@@ -278,6 +377,50 @@ private final class ToolLoopProvider: ProviderAdapter, @unchecked Sendable {
         } else {
             events = [.responseStarted, .textDelta("Done."), .responseEnded]
         }
+
+        return AsyncThrowingStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
+        }
+    }
+}
+
+private struct ApprovalRequiredSessionTool: GinnyTool {
+    let definition = ProviderToolDefinition(
+        name: "requires_approval",
+        description: "A test tool requiring user approval.",
+        inputSchema: "{\"type\":\"object\"}"
+    )
+
+    let approvalRequirement: ToolApprovalRequirement = .requiresApproval
+
+    func execute(arguments: String) async throws -> String {
+        "approved"
+    }
+}
+
+private final class ApprovalLoopProvider: ProviderAdapter, @unchecked Sendable {
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        let isFirstResponse = request.messages.last?.role == .user
+        let events: [ProviderStreamEvent] = isFirstResponse
+            ? [
+                .responseStarted,
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "approval-call",
+                        name: "requires_approval",
+                        arguments: "{}"
+                    )
+                ),
+                .finish(reason: "tool_calls"),
+                .responseEnded,
+            ]
+            : [.responseStarted, .textDelta("Approved."), .responseEnded]
 
         return AsyncThrowingStream { continuation in
             for event in events {

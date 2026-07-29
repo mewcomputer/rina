@@ -14,7 +14,7 @@ struct AppleIntelligenceTitleGenerator: ConversationTitleGenerating {
             Create a concise title for a conversation. Use the first user message and the assistant's answer.
             Do not simply restate or re-ask the user's question. Focus the title on the underlying topic or task.
             Return only the title, with no explanation, quotes, prefix, or punctuation.
-            Use no more than three long words or four short words. Preserve the language of the conversation.
+            Aim for four words. Never exceed eight words. If the title uses unusually long words, keep it to six words or fewer. Preserve the language of the conversation.
             """)
         let request = """
         First user message:
@@ -51,6 +51,21 @@ enum ConversationTitleFormatter {
             in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'`"))
         )
 
+        while title.first == "#" {
+            title.removeFirst()
+            title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        for marker in ["- ", "* ", "• "] where title.hasPrefix(marker) {
+            title = String(title.dropFirst(marker.count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            break
+        }
+
+        title = title.trimmingCharacters(
+            in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'`"))
+        )
+
         if title.lowercased().hasPrefix("title:") {
             title = String(title.dropFirst("title:".count))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -64,7 +79,7 @@ enum ConversationTitleFormatter {
         let hasLongWord = words.prefix(4).contains { word in
             word.filter(\.isLetter).count >= longWordThreshold
         }
-        let maxWordCount = hasLongWord ? 3 : 4
+        let maxWordCount = hasLongWord ? 6 : 8
         let limitedTitle = words.prefix(maxWordCount).joined(separator: " ")
         return limitedTitle.isEmpty ? nil : limitedTitle
     }
@@ -73,39 +88,51 @@ enum ConversationTitleFormatter {
 @MainActor
 final class SessionHistoryStore: ObservableObject {
     @Published private(set) var conversations: [Conversation]
+    @Published private(set) var persistenceError: String?
 
-    private let defaults: UserDefaults
-    private let storageKey = "session.history"
+    private let repository: ConversationRepository
     private let titleGenerator: any ConversationTitleGenerating
     private var titleGenerationIDs: Set<ConversationID> = []
 
     init(
+        repository: ConversationRepository,
         defaults: UserDefaults = .standard,
         titleGenerator: any ConversationTitleGenerating = AppleIntelligenceTitleGenerator()
     ) {
-        self.defaults = defaults
+        self.repository = repository
         self.titleGenerator = titleGenerator
-        if let data = defaults.data(forKey: storageKey),
-           let conversations = try? JSONDecoder().decode([Conversation].self, from: data)
-        {
-            self.conversations = conversations.sorted { Self.lastActivity(of: $0) > Self.lastActivity(of: $1) }
-        } else {
-            self.conversations = []
+        self.conversations = []
+        self.persistenceError = nil
+
+        do {
+            _ = try repository.importLegacy(from: defaults)
+            _ = try repository.recoverInterruptedConversations()
+            self.conversations = try repository.fetch()
+        } catch {
+            self.persistenceError = error.localizedDescription
         }
     }
 
     func save(_ conversation: Conversation) {
         guard !conversation.messages.isEmpty else { return }
 
-        conversations.removeAll { $0.id == conversation.id }
-        conversations.insert(conversation, at: 0)
-        conversations = Array(conversations.prefix(40))
-        persist()
+        do {
+            try repository.upsert(conversation)
+            conversations = try repository.fetch()
+            persistenceError = nil
+        } catch {
+            persistenceError = error.localizedDescription
+        }
     }
 
     func remove(_ conversation: Conversation) {
-        conversations.removeAll { $0.id == conversation.id }
-        persist()
+        do {
+            try repository.delete(conversation)
+            conversations = try repository.fetch()
+            persistenceError = nil
+        } catch {
+            persistenceError = error.localizedDescription
+        }
     }
 
     func title(for conversation: Conversation) -> String {
@@ -138,25 +165,27 @@ final class SessionHistoryStore: ObservableObject {
             answer: answer
         ),
         let title = ConversationTitleFormatter.sanitize(generatedTitle),
-        let index = conversations.firstIndex(where: { $0.id == conversation.id })
+        conversations.contains(where: { $0.id == conversation.id })
         else {
             return
         }
 
-        var updated = conversations[index]
+        guard var updated = conversations.first(where: { $0.id == conversation.id }) else {
+            return
+        }
         guard updated.title == nil else { return }
         updated.setTitle(title)
-        conversations[index] = updated
-        persist()
+        do {
+            try repository.upsert(updated)
+            conversations = try repository.fetch()
+            persistenceError = nil
+        } catch {
+            persistenceError = error.localizedDescription
+        }
     }
 
     func preview(for conversation: Conversation) -> String {
         conversation.messages.last?.blocks.map(\.payload).joined() ?? "No messages yet"
-    }
-
-    private func persist() {
-        guard let data = try? JSONEncoder().encode(conversations) else { return }
-        defaults.set(data, forKey: storageKey)
     }
 
     private static func firstUserMessage(in conversation: Conversation) -> String? {
@@ -184,7 +213,4 @@ final class SessionHistoryStore: ObservableObject {
             .first { !$0.isEmpty }
     }
 
-    private static func lastActivity(of conversation: Conversation) -> Date {
-        conversation.messages.last?.createdAt ?? conversation.createdAt
-    }
 }

@@ -5,21 +5,28 @@ import Foundation
 final class ChatSession: ObservableObject {
     @Published private(set) var conversation: Conversation
     @Published private(set) var streamingText = ""
+    @Published private(set) var streamingReasoningText = ""
     @Published private(set) var errorMessage: String?
+    @Published private(set) var persistenceError: String?
+    @Published private(set) var pendingToolApproval: ToolApprovalRequest?
 
     private var provider: (any ProviderAdapter)?
     private var activeGenerationTask: Task<Void, Never>?
     private var activeGenerationID: UUID?
     private let toolRegistry: ToolRegistry
+    private let persistence: ((Conversation) throws -> Void)?
+    private var toolApprovalContinuation: CheckedContinuation<Bool, Never>?
 
     init(
         provider: (any ProviderAdapter)? = nil,
         conversation: Conversation = Conversation(),
-        toolRegistry: ToolRegistry = ToolRegistry()
+        toolRegistry: ToolRegistry = ToolRegistry(),
+        persistence: ((Conversation) throws -> Void)? = nil
     ) {
         self.provider = provider
         self.conversation = conversation
         self.toolRegistry = toolRegistry
+        self.persistence = persistence
     }
 
     func configure(provider: any ProviderAdapter) {
@@ -30,7 +37,10 @@ final class ChatSession: ObservableObject {
         guard !isGenerating else { return }
         self.conversation = conversation
         streamingText = ""
+        streamingReasoningText = ""
         errorMessage = nil
+        persistenceError = nil
+        pendingToolApproval = nil
     }
 
     func reset() {
@@ -74,13 +84,27 @@ final class ChatSession: ObservableObject {
         guard isGenerating else { return }
 
         activeGenerationTask?.cancel()
+        denyPendingToolApproval()
         try? conversation.cancelGeneration()
+        persistConversation()
+    }
+
+    func approvePendingTool() {
+        toolApprovalContinuation?.resume(returning: true)
+        toolApprovalContinuation = nil
+        pendingToolApproval = nil
+    }
+
+    func denyPendingTool() {
+        denyPendingToolApproval()
     }
 
     private func performSend(_ prompt: String) async {
 
         errorMessage = nil
+        persistenceError = nil
         streamingText = ""
+        streamingReasoningText = ""
 
         do {
             guard let provider else {
@@ -96,11 +120,13 @@ final class ChatSession: ObservableObject {
                     blocks: [.text("", isComplete: false)]
                 )
             )
+            persistConversation()
 
             while true {
                 let request = makeRequest()
                 for try await event in provider.stream(for: request) {
                     try handle(event: event)
+                    persistConversation()
                 }
 
                 guard conversation.generationState == .streaming else { return }
@@ -119,12 +145,17 @@ final class ChatSession: ObservableObject {
                     )
                 )
                 streamingText = ""
+                persistConversation()
             }
         } catch is CancellationError {
+            denyPendingToolApproval()
             try? conversation.cancelGeneration()
+            persistConversation()
         } catch {
+            denyPendingToolApproval()
             errorMessage = message(for: error)
             try? conversation.failGeneration()
+            persistConversation()
         }
     }
 
@@ -181,6 +212,14 @@ final class ChatSession: ObservableObject {
                         fields: [delta.field: delta.value]
                     )
                 )
+            }
+            if delta.field == "thinking" || delta.field == "text" {
+                switch delta.operation {
+                case .append:
+                    streamingReasoningText += delta.value
+                case .replace:
+                    streamingReasoningText = delta.value
+                }
             }
             try conversation.updateMessage(assistant)
         case .toolCallDelta(let delta):
@@ -286,9 +325,44 @@ final class ChatSession: ObservableObject {
             }
 
             do {
+                let approvalState: ToolApprovalState
+                switch toolRegistry.approvalRequirement(for: name) {
+                case .automatic:
+                    approvalState = .automatic
+                case .requiresApproval:
+                    guard await requestToolApproval(for: call) else {
+                        try conversation.appendMessage(
+                            Message(
+                                role: .tool,
+                                blocks: [
+                                    .toolResult(
+                                        callID: callID,
+                                        result: "Tool call denied by the user.",
+                                        isError: true,
+                                        approvalState: .denied
+                                    )
+                                ]
+                            )
+                        )
+                        continue
+                    }
+                    approvalState = .approved
+                case nil:
+                    throw ToolExecutionError.unknownTool(name)
+                }
+
                 let result = try await toolRegistry.execute(name: name, arguments: call.payload)
                 try conversation.appendMessage(
-                    Message(role: .tool, blocks: [.toolResult(callID: callID, result: result)])
+                    Message(
+                        role: .tool,
+                        blocks: [
+                            .toolResult(
+                                callID: callID,
+                                result: result,
+                                approvalState: approvalState
+                            )
+                        ]
+                    )
                 )
             } catch {
                 try conversation.appendMessage(
@@ -328,6 +402,47 @@ final class ChatSession: ObservableObject {
         try conversation.updateMessage(assistant)
 
         try conversation.completeGeneration()
+        persistConversation()
+    }
+
+    private func persistConversation() {
+        guard let persistence else { return }
+
+        do {
+            try persistence(conversation)
+            persistenceError = nil
+        } catch {
+            persistenceError = "Couldn’t save this conversation."
+        }
+    }
+
+    private func requestToolApproval(for call: ContentBlock) async -> Bool {
+        guard let callID = call.attributes["callID"],
+              let name = call.attributes["name"]
+        else {
+            return false
+        }
+
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                pendingToolApproval = ToolApprovalRequest(
+                    id: callID,
+                    name: name,
+                    arguments: call.payload
+                )
+                toolApprovalContinuation = continuation
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.denyPendingToolApproval()
+            }
+        }
+    }
+
+    private func denyPendingToolApproval() {
+        toolApprovalContinuation?.resume(returning: false)
+        toolApprovalContinuation = nil
+        pendingToolApproval = nil
     }
 
     private func message(for error: Error) -> String {

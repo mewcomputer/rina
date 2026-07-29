@@ -152,6 +152,7 @@ struct ProviderConfiguration: Codable, Equatable, Sendable {
     var model: String
     var credentialID: String
     var thinkingLevel: ThinkingLevel?
+    var supportsTools: Bool?
 
     init(endpoint: URL, model: String, credentialID: String) {
         provider = .openAICompatible
@@ -159,6 +160,7 @@ struct ProviderConfiguration: Codable, Equatable, Sendable {
         self.model = model
         self.credentialID = credentialID
         thinkingLevel = nil
+        supportsTools = nil
     }
 
     init(
@@ -166,13 +168,15 @@ struct ProviderConfiguration: Codable, Equatable, Sendable {
         endpoint: URL,
         model: String,
         credentialID: String,
-        thinkingLevel: ThinkingLevel? = nil
+        thinkingLevel: ThinkingLevel? = nil,
+        supportsTools: Bool? = nil
     ) {
         self.provider = provider
         self.endpoint = endpoint
         self.model = model
         self.credentialID = credentialID
         self.thinkingLevel = thinkingLevel
+        self.supportsTools = supportsTools
     }
 }
 

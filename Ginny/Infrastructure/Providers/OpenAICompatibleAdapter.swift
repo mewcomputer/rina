@@ -100,7 +100,7 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
     let credentialStore: any CredentialStore
     let transport: any StreamingTransport
 
-    var supportsTools: Bool { true }
+    var supportsTools: Bool { configuration.supportsTools ?? true }
 
     init(
         configuration: ProviderConfiguration,
@@ -135,7 +135,7 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
         urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         urlRequest.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization")
 
-        let toolDefinitions = try request.tools.isEmpty
+        let toolDefinitions = try request.tools.isEmpty || configuration.supportsTools == false
             ? nil
             : request.tools.map(OpenAIToolDefinition.init)
         let body = OpenAICompatibleRequestBody(

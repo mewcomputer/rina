@@ -62,6 +62,22 @@ struct AnthropicMessagesStreamParser: Sendable {
                         arguments: nil
                     )
                 )]
+            case "thinking":
+                guard let thinking = block["thinking"] as? String,
+                      !thinking.isEmpty
+                else {
+                    return []
+                }
+                return [.continuationDelta(
+                    ProviderContinuationDelta(
+                        provider: provider,
+                        id: "block-\(index)",
+                        kind: "reasoning",
+                        field: "thinking",
+                        value: thinking,
+                        operation: .replace
+                    )
+                )]
             case "redacted_thinking":
                 guard let data = block["data"] as? String else {
                     return []
@@ -89,7 +105,9 @@ struct AnthropicMessagesStreamParser: Sendable {
             let index = dictionary["index"] as? Int ?? 0
             switch deltaType {
             case "thinking_delta":
-                guard let thinking = delta["thinking"] as? String, !thinking.isEmpty else {
+                guard let thinking = (delta["thinking"] as? String ?? delta["text"] as? String),
+                      !thinking.isEmpty
+                else {
                     return []
                 }
                 return [.continuationDelta(
@@ -160,7 +178,7 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
     let credentialStore: any CredentialStore
     let transport: any StreamingTransport
 
-    var supportsTools: Bool { true }
+    var supportsTools: Bool { configuration.supportsTools ?? true }
 
     init(
         configuration: ProviderConfiguration,
@@ -215,7 +233,7 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
         urlRequest.setValue(credential, forHTTPHeaderField: "x-api-key")
         urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
-        let toolDefinitions = try request.tools.isEmpty
+        let toolDefinitions = try request.tools.isEmpty || configuration.supportsTools == false
             ? nil
             : request.tools.map(AnthropicToolDefinition.init)
         let body = AnthropicMessagesRequestBody(
@@ -224,6 +242,8 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
             system: systemMessages.isEmpty ? nil : systemMessages.joined(separator: "\n"),
             messages: messages,
             tools: toolDefinitions,
+            thinking: configuration.thinkingLevel?.anthropicThinking,
+            outputConfig: configuration.thinkingLevel?.anthropicOutputConfig,
             stream: true
         )
         urlRequest.httpBody = try JSONEncoder().encode(body)
@@ -298,6 +318,8 @@ private struct AnthropicMessagesRequestBody: Encodable {
     let system: String?
     let messages: [AnthropicMessage]
     let tools: [AnthropicToolDefinition]?
+    let thinking: AnthropicThinking?
+    let outputConfig: AnthropicOutputConfig?
     let stream: Bool
 
     private enum CodingKeys: String, CodingKey {
@@ -306,8 +328,18 @@ private struct AnthropicMessagesRequestBody: Encodable {
         case system
         case messages
         case tools
+        case thinking
+        case outputConfig = "output_config"
         case stream
     }
+}
+
+private struct AnthropicThinking: Encodable {
+    let type: String
+}
+
+private struct AnthropicOutputConfig: Encodable {
+    let effort: String
 }
 
 private struct AnthropicMessage: Encodable {
@@ -512,6 +544,26 @@ private struct AnthropicToolDefinition: Encodable {
             )
         } catch {
             throw ProviderError.invalidConfiguration("Tool input schema was not valid JSON.")
+        }
+    }
+}
+
+private extension ThinkingLevel {
+    var anthropicThinking: AnthropicThinking? {
+        switch self {
+        case .off:
+            nil
+        case .on, .low, .medium, .high, .max:
+            AnthropicThinking(type: "adaptive")
+        }
+    }
+
+    var anthropicOutputConfig: AnthropicOutputConfig? {
+        switch self {
+        case .off, .on:
+            nil
+        case .low, .medium, .high, .max:
+            AnthropicOutputConfig(effort: rawValue)
         }
     }
 }

@@ -13,6 +13,12 @@ enum ContentBlockKind: String, Codable, Equatable, Sendable {
     case toolResult
 }
 
+enum ToolApprovalState: String, Codable, Equatable, Sendable {
+    case automatic
+    case approved
+    case denied
+}
+
 struct ContentBlock: Codable, Equatable, Sendable {
     let id: ContentBlockID
     let kind: ContentBlockKind
@@ -57,7 +63,7 @@ struct ContentBlock: Codable, Equatable, Sendable {
         attributes: [String: String] = [:],
         isComplete: Bool = true
     ) -> ContentBlock {
-        ContentBlock(
+        return ContentBlock(
             id: id,
             kind: .text,
             payload: payload,
@@ -86,13 +92,18 @@ struct ContentBlock: Codable, Equatable, Sendable {
         id: ContentBlockID = ContentBlockID(),
         callID: String,
         result: String,
-        isError: Bool = false
+        isError: Bool = false,
+        approvalState: ToolApprovalState? = nil
     ) -> ContentBlock {
-        ContentBlock(
+        var attributes = ["callID": callID, "isError": String(isError)]
+        if let approvalState {
+            attributes["approvalState"] = approvalState.rawValue
+        }
+        return ContentBlock(
             id: id,
             kind: .toolResult,
             payload: result,
-            attributes: ["callID": callID, "isError": String(isError)],
+            attributes: attributes,
             isComplete: true
         )
     }
