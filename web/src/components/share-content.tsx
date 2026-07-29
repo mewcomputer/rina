@@ -4,6 +4,8 @@ import {
   AlertTriangle,
   Check,
   ChevronRight,
+  ExternalLink,
+  Link2,
   LoaderCircle,
   Sparkles,
 } from 'lucide-react'
@@ -30,6 +32,9 @@ export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
 
     if (message.role === 'assistant' && calls.length > 0) {
       const results: ShareBlock[] = []
+      const citationBlocks = message.blocks.filter(
+        (block) => block.kind === 'citationGroup',
+      )
       let nextIndex = index + 1
 
       while (nextIndex < messages.length && messages[nextIndex].role === 'tool') {
@@ -45,7 +50,7 @@ export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
         <ShareMessageCard
           key={message.id ?? `${message.role}-${index}`}
           message={message}
-          toolActivity={{ calls, results }}
+          toolActivity={{ calls, results, citationBlocks }}
         />,
       )
       index = nextIndex
@@ -59,6 +64,7 @@ export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
           key={message.id ?? `${message.role}-${index}`}
           calls={[]}
           results={results}
+          citationBlocks={[]}
         />,
       )
       index += 1
@@ -82,9 +88,16 @@ export function ShareMessageCard({
   toolActivity,
 }: {
   message: ShareMessage
-  toolActivity?: { calls: ShareBlock[]; results: ShareBlock[] }
+  toolActivity?: {
+    calls: ShareBlock[]
+    results: ShareBlock[]
+    citationBlocks: ShareBlock[]
+  }
 }) {
   const isUser = message.role === 'user'
+  const activityCitationIDs = new Set(
+    toolActivity?.citationBlocks.map((block) => block.id).filter(Boolean),
+  )
 
   return (
     <article className={isUser ? 'ml-auto max-w-[88%]' : 'max-w-[94%]'}>
@@ -96,16 +109,21 @@ export function ShareMessageCard({
           <ThinkingDisclosure continuations={message.providerContinuations} />
           <div className="typeset typeset-docs max-w-[65ch]">
             {message.blocks.map((block, index) => (
-              <ShareBlockView
-                key={block.id ?? `${block.kind}-${index}`}
-                block={block}
-              />
+              activityCitationIDs.has(block.id)
+                ? null
+                : (
+                  <ShareBlockView
+                    key={block.id ?? `${block.kind}-${index}`}
+                    block={block}
+                  />
+                )
             ))}
           </div>
           {toolActivity && (
             <ShareToolActivityCard
               calls={toolActivity.calls}
               results={toolActivity.results}
+              citationBlocks={toolActivity.citationBlocks}
             />
           )}
         </CardContent>
@@ -160,18 +178,28 @@ function ThinkingDisclosure({
 function ShareToolActivityCard({
   calls,
   results,
+  citationBlocks,
 }: {
   calls: ShareBlock[]
   results: ShareBlock[]
+  citationBlocks: ShareBlock[]
 }) {
-  if (calls.length === 0 && results.length === 0) return null
+  if (calls.length === 0 && results.length === 0 && citationBlocks.length === 0) {
+    return null
+  }
 
   const activities = pairToolActivity(calls, results)
   const hasError = results.some((result) => result.attributes.isError === 'true')
   const isPending =
     calls.some((call) => !call.isComplete)
     || activities.some(({ result }) => !result)
-  const label = toolActivityLabel(calls, results, isPending, hasError)
+  const label = toolActivityLabel(
+    calls,
+    results,
+    citationBlocks,
+    isPending,
+    hasError,
+  )
   const StatusIcon = hasError ? AlertTriangle : isPending ? LoaderCircle : Check
 
   return (
@@ -222,6 +250,12 @@ function ShareToolActivityCard({
               </div>
             )}
           </div>
+        ))}
+        {citationBlocks.map((block, index) => (
+          <ShareCitationGroup
+            key={block.id ?? `citation-group-${index}`}
+            payload={block.payload}
+          />
         ))}
       </div>
     </details>
@@ -373,6 +407,10 @@ function ShareBlockView({ block }: { block: ShareBlock }) {
 
   if (block.kind === 'toolCall' || block.kind === 'toolResult') return null
 
+  if (block.kind === 'citationGroup') {
+    return <ShareCitationGroup payload={block.payload} />
+  }
+
   if (block.kind === 'artefactReference' || block.kind === 'fileReference') {
     return null
   }
@@ -396,9 +434,14 @@ function pairToolActivity(calls: ShareBlock[], results: ShareBlock[]) {
 function toolActivityLabel(
   calls: ShareBlock[],
   results: ShareBlock[],
+  citationBlocks: ShareBlock[],
   isPending: boolean,
   hasError: boolean,
 ) {
+  if (citationBlocks.length > 0 && !isPending && !hasError) {
+    return citationActivitySummary(citationBlocks)
+  }
+
   if (calls.length !== 1) {
     return calls.length === 0
       ? results.length === 1
@@ -420,6 +463,112 @@ function toolActivityLabel(
   const phrases = name ? copy[name] : undefined
   if (!phrases) return 'Tool activity'
   return isPending ? phrases[0] : hasError ? phrases[2] : phrases[1]
+}
+
+function ShareCitationGroup({ payload }: { payload: string }) {
+  const citations = parseCitations(payload)
+
+  return (
+    <section className="not-typeset space-y-3 rounded-lg bg-background/60 p-3">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Link2 className="size-4 text-muted-foreground" />
+        Sources
+      </div>
+      {citations.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sources unavailable</p>
+      ) : (
+        <div className="space-y-2">
+          {citations.map((citation, index) => (
+            <a
+              key={citation.id ?? `${citation.url}-${index}`}
+              href={citation.url}
+              target="_blank"
+              rel="noreferrer"
+              className="group block rounded-md p-2 transition-colors hover:bg-muted/70"
+            >
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 text-sm font-medium">
+                    {citation.title || citation.url}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {citation.url}
+                  </p>
+                  {citation.snippet && (
+                    <p className="mt-2 line-clamp-3 text-xs leading-5 text-muted-foreground">
+                      {citation.snippet}
+                    </p>
+                  )}
+                </div>
+                <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+type ShareCitation = {
+  id?: string
+  title: string
+  url: string
+  snippet: string
+}
+
+function parseCitations(payload: string): ShareCitation[] {
+  try {
+    const value: unknown = JSON.parse(payload)
+    if (!Array.isArray(value)) return []
+
+    return value.flatMap((item): ShareCitation[] => {
+      if (!item || typeof item !== 'object') return []
+      const record = item as Record<string, unknown>
+      if (typeof record.url !== 'string' || !isSafeCitationURL(record.url)) {
+        return []
+      }
+      return [{
+        id: typeof record.id === 'string' ? record.id : undefined,
+        title: typeof record.title === 'string' ? record.title : '',
+        url: record.url,
+        snippet: typeof record.snippet === 'string' ? record.snippet : '',
+      }]
+    })
+  } catch {
+    return []
+  }
+}
+
+function isSafeCitationURL(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+function citationActivitySummary(citationBlocks: ShareBlock[]) {
+  const domains = citationBlocks.flatMap((block) =>
+    parseCitations(block.payload).flatMap((citation) => {
+      try {
+        const host = new URL(citation.url).hostname.replace(/^www\./, '')
+        return host ? [host] : []
+      } catch {
+        return []
+      }
+    }),
+  ).filter((domain, index, values) => values.indexOf(domain) === index)
+
+  if (domains.length === 0) return 'Found items'
+  const visible = domains.slice(0, 3)
+  const domainText = visible.length === 1
+    ? visible[0]
+    : visible.length === 2
+      ? `${visible[0]} and ${visible[1]}`
+      : `${visible.slice(0, -1).join(', ')}, and ${visible.at(-1)}`
+  return `Found items from ${domainText}${domains.length > 3 ? ', and more' : ''}`
 }
 
 function MarkdownContent({ content }: { content: string }) {
