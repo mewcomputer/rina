@@ -197,6 +197,7 @@ private struct ArtefactEditorView: View {
     @State private var title: String
     @State private var source: String
     @State private var mode: ArtefactEditorMode
+    @State private var networkOriginsText: String
 
     init(artefact: Artefact, onSave: @escaping (Artefact) -> Void) {
         self.initialArtefact = artefact
@@ -204,6 +205,11 @@ private struct ArtefactEditorView: View {
         _title = State(initialValue: artefact.title)
         _source = State(initialValue: artefact.currentRevision?.source ?? "")
         _mode = State(initialValue: artefact.kind == .web || artefact.kind == .inlineWeb ? .preview : .source)
+        _networkOriginsText = State(
+            initialValue: ArtefactNetworkPolicy(
+                metadata: artefact.currentRevision?.metadata ?? artefact.metadata
+            ).origins.joined(separator: "\n")
+        )
     }
 
     var body: some View {
@@ -224,6 +230,8 @@ private struct ArtefactEditorView: View {
                     .pickerStyle(.segmented)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
+
+                    networkAccessEditor
                 }
 
                 editorContent
@@ -237,6 +245,7 @@ private struct ArtefactEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .fontWeight(.semibold)
+                        .disabled(isWebArtefact && !networkPolicy.isValid)
                 }
             }
         }
@@ -248,9 +257,7 @@ private struct ArtefactEditorView: View {
             WebArtefactPreview(
                 html: source,
                 isInline: initialArtefact.kind == .inlineWeb,
-                networkOrigins: ArtefactNetworkPolicy(
-                    metadata: initialArtefact.currentRevision?.metadata ?? initialArtefact.metadata
-                ).origins
+                networkOrigins: networkPolicy.origins
             )
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .padding(16)
@@ -269,13 +276,58 @@ private struct ArtefactEditorView: View {
         initialArtefact.kind == .web || initialArtefact.kind == .inlineWeb
     }
 
+    private var networkPolicy: ArtefactNetworkPolicy {
+        ArtefactNetworkPolicy(
+            origins: networkOriginsText
+                .split(whereSeparator: \.isNewline)
+                .map(String.init)
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        )
+    }
+
+    private var networkAccessEditor: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Network access")
+                .font(.subheadline.weight(.semibold))
+
+            TextField(
+                "https://api.example.com",
+                text: $networkOriginsText,
+                axis: .vertical
+            )
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .font(.caption.monospaced())
+            .padding(10)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            Text("one exact HTTPS origin per line. leave empty to keep network access off.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if !networkPolicy.isValid {
+                Text("use HTTPS origins only, without paths, credentials, or local addresses.")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 10)
+    }
+
     private func save() {
         var artefact = initialArtefact
         artefact.setTitle(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled artefact" : title)
+        var metadata = initialArtefact.currentRevision?.metadata ?? initialArtefact.metadata
+        metadata.removeValue(forKey: ArtefactNetworkPolicy.metadataKey)
+        if let networkOrigins = ArtefactNetworkPolicy.metadataValue(for: networkPolicy.origins) {
+            metadata[ArtefactNetworkPolicy.metadataKey] = networkOrigins
+        }
+        metadata["edited"] = "true"
         _ = artefact.checkpoint(
             source: source,
             renderedContent: isWebArtefact ? source : nil,
-            metadata: ["edited": "true"]
+            metadata: metadata
         )
         onSave(artefact)
         dismiss()
