@@ -40,22 +40,22 @@ describe('parseAtUri', () => {
   it('extracts the durable repository, collection, and record key', () => {
     expect(
       parseAtUri(
-        'at://did:plc:example123/computer.mew.rina.share/3mabc123xyz',
+        'at://did:plc:example123/computer.mew.rina.share/3mabc234xyzab',
       ),
     ).toEqual({
       repo: 'did:plc:example123',
       collection: SHARE_COLLECTION,
-      rkey: '3mabc123xyz',
+      rkey: '3mabc234xyzab',
     })
   })
 
   it('rejects handles, queries, and non-share collections that are unsafe to route', () => {
     expect(() => parseAtUri('https://example.com/share')).toThrow(ShareParseError)
     expect(() =>
-      parseAtUri('at://alice.example/computer.mew.rina.share/3mabc123xyz?x=1'),
+      parseAtUri('at://alice.example/computer.mew.rina.share/3mabc234xyzab?x=1'),
     ).toThrow('queries and fragments are not supported')
     expect(() =>
-      parseAtUri('at://did:plc:example123/app.bsky.feed.post/3mabc123xyz'),
+      parseAtUri('at://did:plc:example123/app.bsky.feed.post/3mabc234xyzab'),
     ).toThrow('Unsupported collection')
   })
 })
@@ -95,6 +95,39 @@ describe('parseShareRecord', () => {
       kind: 'conversation',
       messages: [{ role: 'assistant', blocks: [{ kind: 'markdown' }] }],
       artefacts: [],
+    })
+  })
+
+  it('validates typed conversation artefact references', () => {
+    expect(
+      parseShareRecord(
+        {
+          $type: CONVERSATION_COLLECTION,
+          snapshot: {
+            schemaVersion: 1,
+            title: 'Shared preview',
+            createdAt: '2026-07-29T18:00:00.000Z',
+            updatedAt: '2026-07-29T18:01:00.000Z',
+            messages: [],
+            artefacts: [
+              {
+                id: '3aaaaaaaaaaaa',
+                revisionID: '3bbbbbbbbbbbb',
+                uri: 'at://did:plc:example/computer.mew.rina.artefact/3mabc234xyzab',
+              },
+            ],
+          },
+        },
+        CONVERSATION_COLLECTION,
+      ),
+    ).toMatchObject({
+      artefactReferences: [
+        {
+          id: '3aaaaaaaaaaaa',
+          revisionID: '3bbbbbbbbbbbb',
+          uri: 'at://did:plc:example/computer.mew.rina.artefact/3mabc234xyzab',
+        },
+      ],
     })
   })
 
@@ -159,6 +192,7 @@ describe('parseShareRecord', () => {
         },
       ],
       artefacts: [],
+      artefactReferences: [],
       relationships: [],
     })
   })

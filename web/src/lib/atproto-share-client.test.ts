@@ -3,6 +3,7 @@ import {
   AtprotoShareClient,
   AtprotoShareError,
 } from './atproto-share-client'
+import { ARTEFACT_COLLECTION, CONVERSATION_COLLECTION } from './share'
 
 const reference = {
   repo: 'did:plc:example123',
@@ -31,10 +32,11 @@ const record = {
 
 describe('AtprotoShareClient', () => {
   it('fetches and parses a public record through atcute', async () => {
+    const requestedURLs: string[] = []
     const client = new AtprotoShareClient({
-      handler: async (pathname) => {
-        expect(pathname).toContain('com.atproto.repo.getRecord')
-        expect(pathname).toContain('repo=did%3Aplc%3Aexample123')
+      service: 'https://slingshot.firehose.stream',
+      fetch: async (input) => {
+        requestedURLs.push(String(input))
         return Response.json({
           uri: `at://${reference.repo}/${reference.collection}/${reference.rkey}`,
           cid: 'bafyexample',
@@ -50,6 +52,10 @@ describe('AtprotoShareClient', () => {
         expect.objectContaining({ source: 'The source of the shared note.' }),
       ],
     })
+
+    expect(requestedURLs).toEqual([
+      'https://slingshot.firehose.stream/xrpc/com.bad-example.repo.getUriRecord?at_uri=at%3A%2F%2Fdid%3Aplc%3Aexample123%2Fcomputer.mew.rina.share%2F3mabc234xyzab',
+    ])
   })
 
   it('turns an atproto error response into a user-facing typed error', async () => {
@@ -69,5 +75,62 @@ describe('AtprotoShareClient', () => {
         message: 'That share no longer exists.',
       }),
     )
+  })
+
+  it('resolves artefacts referenced by a typed conversation', async () => {
+    const conversationURI = `at://${reference.repo}/${CONVERSATION_COLLECTION}/3mabc234xyzab`
+    const artefactURI = `at://${reference.repo}/${ARTEFACT_COLLECTION}/3nabc234xyzab`
+    const client = new AtprotoShareClient({
+      handler: async (pathname) => {
+        if (!pathname.includes('3nabc234xyzab')) {
+          return Response.json({
+            uri: conversationURI,
+            cid: 'bafyconversation',
+            value: {
+              $type: CONVERSATION_COLLECTION,
+              snapshot: {
+                schemaVersion: 1,
+                title: 'Shared session',
+                createdAt: '2026-07-29T18:00:00.000Z',
+                updatedAt: '2026-07-29T18:01:00.000Z',
+                messages: [],
+                artefacts: [
+                  {
+                    id: '3aaaaaaaaaaaa',
+                    revisionID: '3bbbbbbbbbbbb',
+                    uri: artefactURI,
+                  },
+                ],
+              },
+            },
+          })
+        }
+        return Response.json({
+          uri: artefactURI,
+          cid: 'bafyartefact',
+          value: {
+            $type: ARTEFACT_COLLECTION,
+            snapshot: {
+              schemaVersion: 1,
+              id: '3aaaaaaaaaaaa',
+              revisionID: '3bbbbbbbbbbbb',
+              title: 'Shared preview',
+              kind: 'inlineWeb',
+              createdAt: '2026-07-29T18:00:00.000Z',
+              updatedAt: '2026-07-29T18:01:00.000Z',
+              source: '<button>Open</button>',
+              renderedContent: '<button>Open</button>',
+              metadata: {},
+            },
+          },
+        })
+      },
+    })
+
+    await expect(client.fetchAtUri(conversationURI)).resolves.toMatchObject({
+      artefacts: [
+        expect.objectContaining({ title: 'Shared preview', kind: 'inlineWeb' }),
+      ],
+    })
   })
 })

@@ -6,7 +6,6 @@ import {
   type FetchHandler,
 } from '@atcute/client'
 import type {} from '@atcute/atproto'
-import type { ActorIdentifier } from '@atcute/lexicons'
 import {
   parseAtUri,
   parseShareRecord,
@@ -14,7 +13,8 @@ import {
   type ShareSnapshot,
 } from './share'
 
-const DEFAULT_PUBLIC_SERVICE = 'https://public.api.bsky.app'
+const DEFAULT_PUBLIC_SERVICE = 'https://slingshot.firehose.stream'
+const GET_URI_RECORD = 'com.bad-example.repo.getUriRecord'
 
 export class AtprotoShareError extends Error {
   readonly status?: number
@@ -31,6 +31,7 @@ export class AtprotoShareError extends Error {
 export type AtprotoShareClientOptions = {
   service?: string | URL
   handler?: FetchHandler
+  fetch?: typeof globalThis.fetch
 }
 
 export class AtprotoShareClient {
@@ -42,6 +43,7 @@ export class AtprotoShareClient {
       retryFetchHandler({
         handler: simpleFetchHandler({
           service: options.service ?? DEFAULT_PUBLIC_SERVICE,
+          fetch: options.fetch,
         }),
         maxRetries: 2,
       })
@@ -51,25 +53,26 @@ export class AtprotoShareClient {
   async fetchRecord(reference: ShareReference | string): Promise<ShareSnapshot> {
     const parsed = typeof reference === 'string' ? parseAtUri(reference) : reference
     const reassembled = `at://${parsed.repo}/${parsed.collection}/${parsed.rkey}`
-    // TODO: add proper lexicon
-    const response = await this.client.get('com.bad-example.repo.getUriRecord' as any, {
+    const response = await this.client.get(GET_URI_RECORD as any, {
       params: {
         at_uri: reassembled
       },
     })
 
     if (!response.ok) {
+      const errorData = response.data as { error?: string; message?: string }
       throw new AtprotoShareError(
-        response.data.message ?? `atproto returned ${response.data.error}`,
+        errorData.message ?? `atproto returned ${errorData.error}`,
         {
           status: response.status,
-          errorName: response.data.error,
+          errorName: errorData.error,
         },
       )
     }
 
     try {
-      return parseShareRecord(response.data.value, parsed.collection)
+      const recordData = response.data as { value: unknown }
+      return parseShareRecord(recordData.value, parsed.collection)
     } catch (error) {
       if (error instanceof Error) {
         throw new AtprotoShareError(`Invalid Ginny share record: ${error.message}`)
@@ -79,7 +82,22 @@ export class AtprotoShareClient {
   }
 
   async fetchAtUri(uri: string): Promise<ShareSnapshot> {
-    return this.fetchRecord(parseAtUri(uri))
+    const snapshot = await this.fetchRecord(parseAtUri(uri))
+    if (snapshot.kind !== 'conversation' || snapshot.artefactReferences.length === 0) {
+      return snapshot
+    }
+
+    const referencedSnapshots = await Promise.all(
+      snapshot.artefactReferences.map((reference) => this.fetchRecord(reference.uri)),
+    )
+    const artefacts = referencedSnapshots.flatMap((referenced) => {
+      if (referenced.kind !== 'artefact') {
+        throw new AtprotoShareError('Referenced record is not an artefact.')
+      }
+      return referenced.artefacts
+    })
+
+    return { ...snapshot, artefacts }
   }
 }
 

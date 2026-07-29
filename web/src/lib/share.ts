@@ -40,11 +40,18 @@ export type ShareMessage = {
 
 export type ShareArtefact = {
   id?: string
+  revisionID?: string
   title: string
   kind: 'document' | 'code' | 'web' | 'inlineWeb'
   source: string
   renderedContent?: string
   metadata: Record<string, string>
+}
+
+export type ShareArtefactReference = {
+  id: string
+  revisionID: string
+  uri: string
 }
 
 export type ShareRelationship = {
@@ -66,6 +73,7 @@ export type ShareSnapshot = {
   kind: ShareKind
   messages: ShareMessage[]
   artefacts: ShareArtefact[]
+  artefactReferences: ShareArtefactReference[]
   relationships: ShareRelationship[]
 }
 
@@ -134,7 +142,7 @@ export function parseAtUri(input: string): ShareReference {
       `Unsupported collection: ${collection}`,
     )
   }
-  if (!/^[A-Za-z0-9._~-]{1,512}$/.test(rkey)) {
+  if (!/^[234567a-z]{13}$/.test(rkey)) {
     throw new ShareParseError('invalidReference', 'record key is invalid')
   }
 
@@ -194,6 +202,7 @@ export function parseShareRecord(
     kind,
     messages: parseMessages(snapshot.messages),
     artefacts: parseArtefacts(snapshot.artefacts),
+    artefactReferences: [],
     relationships: parseRelationships(snapshot.relationships),
   }
 }
@@ -215,6 +224,7 @@ function parseConversationRecord(record: Record<string, unknown>): ShareSnapshot
     kind: 'conversation',
     messages: parseMessages(snapshot.messages),
     artefacts: [],
+    artefactReferences: parseArtefactReferences(snapshot.artefacts),
     relationships: [],
   }
 }
@@ -238,6 +248,7 @@ function parseArtefactRecord(record: Record<string, unknown>): ShareSnapshot {
     kind: 'artefact',
     messages: [],
     artefacts: artefact,
+    artefactReferences: [],
     relationships: [],
   }
 }
@@ -330,14 +341,54 @@ function parseArtefacts(input: unknown): ShareArtefact[] {
       ),
     }
     const id = optionalString(artefact.id, `snapshot.artefacts[${index}].id`)
+    const revisionID = optionalString(
+      artefact.revisionID,
+      `snapshot.artefacts[${index}].revisionID`,
+    )
     const renderedContent = optionalString(
       artefact.renderedContent,
       `snapshot.artefacts[${index}].renderedContent`,
       MAX_TEXT_LENGTH,
     )
     if (id !== undefined) parsed.id = id
+    if (revisionID !== undefined) parsed.revisionID = revisionID
     if (renderedContent !== undefined) parsed.renderedContent = renderedContent
     return parsed
+  })
+}
+
+function parseArtefactReferences(input: unknown): ShareArtefactReference[] {
+  const values = optionalArray(input, 'snapshot.artefacts')
+  if (values.length > MAX_ARTEFACTS) {
+    throw new ShareParseError(
+      'tooLarge',
+      `snapshot.artefacts exceeds the limit of ${MAX_ARTEFACTS} items`,
+    )
+  }
+
+  return values.map((value, index) => {
+    const reference = asRecord(value, `snapshot.artefacts[${index}]`)
+    const uri = requiredString(
+      reference.uri,
+      `snapshot.artefacts[${index}].uri`,
+      512,
+    )
+    const parsedURI = parseAtUri(uri)
+    if (parsedURI.collection !== ARTEFACT_COLLECTION) {
+      throw new ShareParseError(
+        'invalidField',
+        `snapshot.artefacts[${index}].uri must reference an artefact record`,
+      )
+    }
+    return {
+      id: requiredString(reference.id, `snapshot.artefacts[${index}].id`, 13),
+      revisionID: requiredString(
+        reference.revisionID,
+        `snapshot.artefacts[${index}].revisionID`,
+        13,
+      ),
+      uri,
+    }
   })
 }
 
