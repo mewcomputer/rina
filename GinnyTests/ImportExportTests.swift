@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import XCTest
 @testable import Ginny
 
@@ -85,5 +86,38 @@ final class ImportExportTests: XCTestCase {
         } catch let error as SourceImportError {
             XCTAssertEqual(error, .tooLarge(maximumBytes: 10))
         }
+    }
+
+    func testSourceImportExtractsPDFTextAndPreservesTheOriginalType() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GinnyPDFImportTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = try FileAttachmentStore(rootURL: root)
+        let repository = try SourceRepository(isStoredInMemoryOnly: true)
+        let importer = SourceImporter(attachmentStore: store, repository: repository)
+        let renderer = UIGraphicsPDFRenderer(
+            bounds: CGRect(x: 0, y: 0, width: 300, height: 300)
+        )
+        let data = renderer.pdfData { context in
+            context.beginPage()
+            ("Ginny PDF fixture" as NSString).draw(
+                at: CGPoint(x: 24, y: 24),
+                withAttributes: [
+                    .font: UIFont.systemFont(ofSize: 18)
+                ]
+            )
+        }
+
+        let source = try await importer.importData(
+            data,
+            displayName: "notes.pdf",
+            contentTypeIdentifier: "com.adobe.pdf"
+        )
+
+        XCTAssertEqual(source.contentTypeIdentifier, "com.adobe.pdf")
+        XCTAssertEqual(source.extractionState, .ready)
+        XCTAssertTrue(source.extractedText?.contains("Ginny PDF fixture") == true)
+        XCTAssertEqual(source.extractorVersion, "pdfkit-text-v1")
     }
 }

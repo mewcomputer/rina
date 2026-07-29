@@ -76,7 +76,9 @@ enum GinnyPersistence {
             SkillRecord.self,
             SkillRevisionRecord.self,
             SourceRecord.self,
-            RelationshipRecord.self
+            RelationshipRecord.self,
+            CitationRecord.self,
+            ContextRecord.self
         ])
         let configuration = ModelConfiguration(
             schema: schema,

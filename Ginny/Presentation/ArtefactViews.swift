@@ -1,5 +1,19 @@
 import SwiftUI
+import UIKit
+import UniformTypeIdentifiers
 import WebKit
+
+private extension SourceExtractionState {
+    var displayName: String {
+        switch self {
+        case .pending: "Pending extraction"
+        case .extracting: "Extracting"
+        case .ready: "Ready"
+        case .partiallyReady: "Partially extracted"
+        case .failed: "Extraction failed"
+        }
+    }
+}
 
 private extension ArtefactKind {
     var displayName: String {
@@ -24,11 +38,16 @@ private extension ArtefactKind {
 @MainActor
 struct WorkspaceLibraryView: View {
     @ObservedObject var store: ArtefactStore
+    let sourceImporter: SourceImporter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.ginnyTheme) private var theme
     @State private var section: WorkspaceSection = .artefacts
     @State private var selectedArtefact: Artefact?
     @State private var selectedSkill: Skill?
+    @State private var sources: [Source] = []
+    @State private var sharedFile: ExportedFile?
+    @State private var isImportingSource = false
+    @State private var importMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -45,6 +64,8 @@ struct WorkspaceLibraryView: View {
                 List {
                     if section == .artefacts {
                         artefactRows
+                    } else if section == .sources {
+                        sourceRows
                     } else {
                         skillRows
                     }
@@ -58,16 +79,21 @@ struct WorkspaceLibraryView: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        if section == .artefacts {
+                    Menu {
+                        Button("New artefact", systemImage: "square.and.pencil") {
                             createArtefact()
-                        } else {
+                        }
+                        Button("New skill", systemImage: "wand.and.stars") {
                             createSkill()
+                        }
+                        Divider()
+                        Button("Import source", systemImage: "square.and.arrow.down") {
+                            isImportingSource = true
                         }
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel(section == .artefacts ? "New artefact" : "New skill")
+                    .accessibilityLabel("Workspace actions")
                 }
             }
         }
@@ -81,7 +107,35 @@ struct WorkspaceLibraryView: View {
                 store.save(updated)
             }
         }
+        .fileImporter(
+            isPresented: $isImportingSource,
+            allowedContentTypes: SourceImporter.supportedContentTypes,
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result, let url = urls.first else {
+                return
+            }
+            importSource(from: url)
+        }
+        .alert(
+            "Source import",
+            isPresented: Binding(
+                get: { importMessage != nil },
+                set: { if !$0 { importMessage = nil } }
+            )
+        ) {
+            Button("Done") { importMessage = nil }
+        } message: {
+            Text(importMessage ?? "")
+        }
+        .sheet(item: $sharedFile) { file in
+            FileShareSheet(file: file)
+                .presentationDetents([.medium])
+        }
         .tint(theme.color("primary"))
+        .task {
+            reloadSources()
+        }
     }
 
     @ViewBuilder
@@ -112,10 +166,52 @@ struct WorkspaceLibraryView: View {
                             .foregroundStyle(theme.color("primary"))
                     }
                 }
+                .contextMenu {
+                    Menu("Export", systemImage: "square.and.arrow.up") {
+                        ForEach(ArtefactExportFormat.allCases, id: \.self) { format in
+                            Button(format.fileExtension.uppercased()) {
+                                export(artefact, as: format)
+                            }
+                        }
+                    }
+                }
             }
             .onDelete { offsets in
                 for offset in offsets {
                     store.remove(store.artefacts[offset])
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sourceRows: some View {
+        if sources.isEmpty {
+            ContentUnavailableView(
+                "No sources yet",
+                systemImage: "doc.on.doc",
+                description: Text("Import a document to make it available to Ginny.")
+            )
+            .listRowSeparator(.hidden)
+        } else {
+            ForEach(sources) { source in
+                Label {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(source.displayName)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Text(source.extractionState.displayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(theme.color("primary"))
+                }
+                .contextMenu {
+                    Button("Export", systemImage: "square.and.arrow.up") {
+                        export(source)
+                    }
                 }
             }
         }
@@ -175,15 +271,116 @@ struct WorkspaceLibraryView: View {
         ) else { return }
         selectedSkill = skill
     }
+
+    private func importSource(from url: URL) {
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        Task { @MainActor in
+            defer {
+                if hasAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            do {
+                let source = try await sourceImporter.importFile(at: url)
+                reloadSources()
+                importMessage = "Imported \(source.displayName)."
+            } catch let error as SourceImportError {
+                importMessage = error.localizedDescription
+            } catch {
+                importMessage = "Ginny couldn’t import that source."
+            }
+        }
+    }
+
+    private func export(_ artefact: Artefact, as format: ArtefactExportFormat) {
+        do {
+            sharedFile = try ArtefactExporter().export(artefact, as: format)
+        } catch {
+            importMessage = "Ginny couldn’t export that artefact."
+        }
+    }
+
+    private func export(_ source: Source) {
+        Task { @MainActor in
+            do {
+                sharedFile = try await SourceExporter(
+                    attachmentStore: sourceImporter.attachmentStore
+                ).export(source)
+            } catch {
+                importMessage = "Ginny couldn’t export that source."
+            }
+        }
+    }
+
+    private func reloadSources() {
+        sources = (try? sourceImporter.repository.fetch()) ?? []
+    }
+}
+
+@MainActor
+private struct FileShareSheet: UIViewControllerRepresentable {
+    let file: ExportedFile
+    typealias UIViewControllerType = UIActivityViewController
+
+    func makeUIViewController(
+        context: UIViewControllerRepresentableContext<FileShareSheet>
+    ) -> UIActivityViewController {
+        UIActivityViewController(
+            activityItems: [SharedFileActivityItem(file: file)],
+            applicationActivities: nil
+        )
+    }
+
+    func updateUIViewController(
+        _ controller: UIActivityViewController,
+        context: UIViewControllerRepresentableContext<FileShareSheet>
+    ) {}
+}
+
+private final class SharedFileActivityItem: NSObject, UIActivityItemSource {
+    let file: ExportedFile
+
+    init(file: ExportedFile) {
+        self.file = file
+    }
+
+    func activityViewControllerPlaceholderItem(
+        _ activityViewController: UIActivityViewController
+    ) -> Any {
+        file.data
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        itemForActivityType activityType: UIActivity.ActivityType?
+    ) -> Any? {
+        file.data
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        subjectForActivityType activityType: UIActivity.ActivityType?
+    ) -> String {
+        file.filename
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        dataTypeIdentifierForActivityType activityType: UIActivity.ActivityType?
+    ) -> String {
+        file.contentTypeIdentifier
+    }
 }
 
 private enum WorkspaceSection: CaseIterable {
     case artefacts
+    case sources
     case skills
 
     var title: String {
         switch self {
         case .artefacts: "Artefacts"
+        case .sources: "Sources"
         case .skills: "Skills"
         }
     }

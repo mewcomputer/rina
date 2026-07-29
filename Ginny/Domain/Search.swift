@@ -6,6 +6,7 @@ enum SearchDocumentKind: String, Codable, CaseIterable, Equatable, Sendable {
     case artefact
     case artefactRevision
     case source
+    case citation
     case context
     case relationship
 }
@@ -35,7 +36,7 @@ struct SearchDocument: Codable, Equatable, Sendable {
     }
 }
 
-struct SearchResult: Equatable, Sendable {
+struct SearchResult: Codable, Equatable, Sendable {
     let nodeID: GraphNodeID
     let kind: SearchDocumentKind
     let title: String?
@@ -66,13 +67,15 @@ enum SearchDocumentFactory {
         artefacts: [Artefact] = [],
         sources: [Source] = [],
         contexts: [Context] = [],
-        relationships: [RelationshipEdge] = []
+        relationships: [RelationshipEdge] = [],
+        citations: [Citation] = []
     ) -> [SearchDocument] {
         var documents = documents(for: conversation)
         documents.append(contentsOf: artefacts.flatMap(documents(for:)))
         documents.append(contentsOf: sources.map(document(for:)))
         documents.append(contentsOf: contexts.map(document(for:)))
         documents.append(contentsOf: relationships.map(document(for:)))
+        documents.append(contentsOf: citations.map(document(for:)))
         return documents
     }
 
@@ -154,9 +157,24 @@ enum SearchDocumentFactory {
         )
     }
 
+    static func document(for citation: Citation) -> SearchDocument {
+        SearchDocument(
+            id: .citation(citation.id),
+            kind: .citation,
+            title: citation.title,
+            content: [citation.snippet, citation.url].joined(separator: "\n"),
+            metadata: [
+                "provider": citation.provider.rawValue,
+                "query": citation.query,
+                "url": citation.url
+            ],
+            createdAt: citation.createdAt
+        )
+    }
+
     static func document(for relationship: RelationshipEdge) -> SearchDocument {
         SearchDocument(
-            id: .contentBlock(ContentBlockID(rawValue: relationship.id.rawValue)),
+            id: .relationship(relationship.id),
             kind: .relationship,
             title: relationship.predicate.rawValue,
             content: relationship.attributes
@@ -211,7 +229,9 @@ enum SearchDocumentFactory {
         case .artefactRevision(let artefactID, let revisionID):
             "artefactRevision:\(artefactID.rawValue.uuidString):\(revisionID.rawValue.uuidString)"
         case .source(let id): "source:\(id.rawValue.uuidString)"
+        case .citation(let id): "citation:\(id.rawValue.uuidString)"
         case .context(let id): "context:\(id.rawValue.uuidString)"
+        case .relationship(let id): "relationship:\(id.rawValue.uuidString)"
         case .skill(let name): "skill:\(name)"
         }
     }
@@ -402,7 +422,9 @@ actor LocalSearchIndex {
         case .artefactRevision(let artefactID, let revisionID):
             "artefactRevision:\(artefactID.rawValue.uuidString):\(revisionID.rawValue.uuidString)"
         case .source(let id): "source:\(id.rawValue.uuidString)"
+        case .citation(let id): "citation:\(id.rawValue.uuidString)"
         case .context(let id): "context:\(id.rawValue.uuidString)"
+        case .relationship(let id): "relationship:\(id.rawValue.uuidString)"
         case .skill(let name): "skill:\(name)"
         }
     }
@@ -510,6 +532,76 @@ struct WebSearchResponse: Codable, Equatable, Sendable {
     let provider: WebSearchProviderID
     let answer: String?
     let results: [WebSearchResult]
+}
+
+struct Citation: Codable, Equatable, Identifiable, Sendable {
+    let id: CitationID
+    let createdAt: Date
+    let query: String
+    let provider: WebSearchProviderID
+    let title: String
+    let url: String
+    let snippet: String
+    let publishedAt: String?
+    let author: String?
+    let score: Double?
+
+    init(
+        id: CitationID,
+        createdAt: Date = Date(),
+        query: String,
+        result: WebSearchResult
+    ) {
+        self.id = id
+        self.createdAt = createdAt
+        self.query = query
+        self.provider = result.provider
+        self.title = result.title
+        self.url = result.url
+        self.snippet = result.snippet
+        self.publishedAt = result.publishedAt
+        self.author = result.author
+        self.score = result.score
+    }
+
+    static func from(
+        _ result: WebSearchResult,
+        query: String,
+        createdAt: Date = Date()
+    ) -> Citation {
+        Citation(
+            id: CitationID(rawValue: stableUUID(for: result.citationID)),
+            createdAt: createdAt,
+            query: query,
+            result: result
+        )
+    }
+
+    static func referenceRelationshipID(
+        messageID: MessageID,
+        citationID: CitationID
+    ) -> RelationshipID {
+        RelationshipID(rawValue: stableUUID(
+            for: "message:\(messageID.rawValue.uuidString)|citation:\(citationID.rawValue.uuidString)"
+        ))
+    }
+
+    private static func stableUUID(for value: String) -> UUID {
+        var hash = value.utf8.reduce(into: (UInt64(1469598103934665603), UInt64(1099511628211))) {
+            $0.0 ^= UInt64($1)
+            $0.0 &*= $0.1
+        }.0
+        var bytes = [UInt8](repeating: 0, count: 16)
+        for index in 0..<16 {
+            hash ^= hash >> 7
+            hash &*= 0x9E3779B185EBCA87
+            bytes[index] = UInt8(truncatingIfNeeded: hash)
+        }
+        bytes[6] = (bytes[6] & 0x0F) | 0x50
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        let hex = bytes.map { String(format: "%02x", $0) }.joined()
+        return UUID(uuidString: "\(hex.prefix(8))-\(hex.dropFirst(8).prefix(4))-\(hex.dropFirst(12).prefix(4))-\(hex.dropFirst(16).prefix(4))-\(hex.dropFirst(20))")!
+    }
 }
 
 struct WebSearchConfiguration: Equatable, Sendable {

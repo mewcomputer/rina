@@ -7,7 +7,9 @@ enum GraphNodeID: Codable, Equatable, Hashable, Sendable {
     case artefact(ArtefactID)
     case artefactRevision(artefactID: ArtefactID, revisionID: RevisionID)
     case source(SourceID)
+    case citation(CitationID)
     case context(ContextID)
+    case relationship(RelationshipID)
     case skill(String)
 }
 

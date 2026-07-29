@@ -27,10 +27,10 @@ struct ChatView: View {
     @State private var generationTask: Task<Void, Never>?
     @State private var showsSettings = false
     @State private var showsWorkspace = false
-    @State private var artefactNotice: String?
     @State private var isSidebarPresented = false
     @State private var sidebarDragOffset: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let composerReservedHeight: CGFloat = 198
 
     init(
         dependencies: AppDependencies,
@@ -43,7 +43,14 @@ struct ChatView: View {
                 toolRegistry: dependencies.makeToolRegistry(),
                 persistence: { conversation in
                     try dependencies.conversationRepository.upsert(conversation)
-                }
+                },
+                citationPersistence: { citation in
+                    try dependencies.citationRepository?.upsert(citation)
+                },
+                relationshipPersistence: { edge in
+                    try dependencies.relationshipRepository.upsert(edge)
+                },
+                searchIndex: dependencies.searchIndex
             )
         )
         _settings = StateObject(
@@ -146,20 +153,12 @@ struct ChatView: View {
             .preferredColorScheme(theme.mode.colorScheme)
         }
         .sheet(isPresented: $showsWorkspace) {
-            WorkspaceLibraryView(store: artefacts)
+            WorkspaceLibraryView(
+                store: artefacts,
+                sourceImporter: dependencies.makeSourceImporter()
+            )
                 .environment(\.ginnyTheme, theme)
                 .preferredColorScheme(theme.mode.colorScheme)
-        }
-        .alert(
-            "Artefact",
-            isPresented: Binding(
-                get: { artefactNotice != nil },
-                set: { if !$0 { artefactNotice = nil } }
-            )
-        ) {
-            Button("Done") { artefactNotice = nil }
-        } message: {
-            Text(artefactNotice ?? "")
         }
     }
 
@@ -168,7 +167,7 @@ struct ChatView: View {
             theme.color("background")
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            ZStack(alignment: .bottom) {
                 ZStack(alignment: .top) {
                     ScrollViewReader { proxy in
                         ScrollView {
@@ -184,10 +183,7 @@ struct ChatView: View {
                                                     message: message,
                                                     artefactStore: artefacts,
                                                     markdownConfig: markdownConfig,
-                                                    thinkingMarkdownConfig: thinkingMarkdownConfig,
-                                                    onPromote: { kind in
-                                                        promote(message: message, kind: kind)
-                                                    }
+                                                    thinkingMarkdownConfig: thinkingMarkdownConfig
                                                 )
                                                 .id(item.id)
                                             case .toolActivity(let message, let group):
@@ -196,10 +192,7 @@ struct ChatView: View {
                                                     toolActivity: group,
                                                     artefactStore: artefacts,
                                                     markdownConfig: markdownConfig,
-                                                    thinkingMarkdownConfig: thinkingMarkdownConfig,
-                                                    onPromote: { kind in
-                                                        promote(message: message, kind: kind)
-                                                    }
+                                                    thinkingMarkdownConfig: thinkingMarkdownConfig
                                                 )
                                                 .id(item.id)
                                             }
@@ -253,6 +246,7 @@ struct ChatView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 72)
                             .padding(.horizontal, 16)
+                            .padding(.bottom, composerReservedHeight)
                         }
                         .scrollIndicators(.hidden)
                         .scrollDismissesKeyboard(.interactively)
@@ -293,6 +287,21 @@ struct ChatView: View {
                 }
                 .frame(maxHeight: .infinity)
 
+                LinearGradient(
+                    colors: [
+                        theme.color("background").opacity(0),
+                        theme.color("background").opacity(0.88),
+                        theme.color("background").opacity(0.96)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: composerReservedHeight + 32)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+                .zIndex(1)
+
                 ComposerView(
                     draft: $draft,
                     settings: settings,
@@ -301,7 +310,7 @@ struct ChatView: View {
                     cancel: cancel,
                     openSettings: { showsSettings = true }
                 )
-                .frame(height: 100)
+                .zIndex(2)
             }
         }
     }
@@ -611,20 +620,6 @@ struct ChatView: View {
         generationTask?.cancel()
     }
 
-    private func promote(message: Message, kind: ArtefactKind) {
-        do {
-            let artefact = try ArtefactPromoter.promote(message: message, kind: kind)
-            artefacts.save(artefact)
-            if artefacts.persistenceError == nil {
-                session.attachArtefact(artefact, to: message.id)
-                artefactNotice = "Saved \(artefact.title) to your workspace."
-            } else {
-                artefactNotice = "Ginny couldn’t save that artefact."
-            }
-        } catch {
-            artefactNotice = "That response doesn’t contain content that can be saved."
-        }
-    }
 }
 
 private enum ChatDisplayItem: Identifiable {
@@ -680,7 +675,17 @@ func assistantContentSegments(
                 )
             }
             index += 1
-        case .markdown, .code, .table, .mermaid, .image, .fileReference, .citationGroup, .providerNotice, .unknown:
+        case .citationGroup:
+            if toolActivity == nil, !block.payload.isEmpty {
+                segments.append(
+                    .text(
+                        block,
+                        rendererKind: rendererRegistry.rendererKind(for: block.kind)
+                    )
+                )
+            }
+            index += 1
+        case .markdown, .code, .table, .mermaid, .image, .fileReference, .providerNotice, .unknown:
             if !block.payload.isEmpty || block.kind == .fileReference {
                 segments.append(
                     .text(
@@ -729,9 +734,10 @@ private struct ChatHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: onOpenSidebar) {
-                HeaderIconButton(systemImage: "text.menu")
+                HeaderIconButton(systemImage: "line.3.horizontal")
             }
             .accessibilityLabel("Open session history")
+            .accessibilityIdentifier("header.sessionHistory")
 
             Text(title)
                 .font(.headline)
@@ -944,7 +950,8 @@ private struct ComposerView: View {
             TextField("Start a message", text: $draft, axis: .vertical)
                 .font(.body)
                 .lineLimit(1...5)
-                .frame(minHeight: 34, maxHeight: 120, alignment: .top)
+                .padding(.top, 6)
+                .padding(.bottom, 10)
                 .textFieldStyle(.plain)
                 .focused($isInputFocused)
                 .submitLabel(.send)
@@ -974,6 +981,7 @@ private struct ComposerView: View {
                 .disabled(!canSubmit)
                 .opacity(canSubmit ? 1 : 0.38)
                 .accessibilityLabel(isGenerating ? "Stop generating" : "Send message")
+                .accessibilityIdentifier("composer.send")
             }
         }
         .padding(12)
@@ -1022,6 +1030,7 @@ private struct ServiceModelMenu: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Choose service and model")
         .accessibilityValue(modelLabel)
+        .accessibilityIdentifier("composer.modelPicker")
         .sheet(isPresented: $showsModelPicker) {
             ModelPickerSheet(settings: settings, openSettings: openSettings)
                 .environment(\.ginnyTheme, theme)
@@ -1234,7 +1243,6 @@ private struct ChatMessageView: View {
     @ObservedObject var artefactStore: ArtefactStore
     let markdownConfig: MarkdownRenderConfig
     let thinkingMarkdownConfig: MarkdownRenderConfig
-    let onPromote: ((ArtefactKind) -> Void)?
     @Environment(\.ginnyTheme) private var theme
 
     init(
@@ -1242,15 +1250,13 @@ private struct ChatMessageView: View {
         toolActivity: ToolActivityGroup? = nil,
         artefactStore: ArtefactStore,
         markdownConfig: MarkdownRenderConfig,
-        thinkingMarkdownConfig: MarkdownRenderConfig,
-        onPromote: ((ArtefactKind) -> Void)? = nil
+        thinkingMarkdownConfig: MarkdownRenderConfig
     ) {
         self.message = message
         self.toolActivity = toolActivity
         self.artefactStore = artefactStore
         self.markdownConfig = markdownConfig
         self.thinkingMarkdownConfig = thinkingMarkdownConfig
-        self.onPromote = onPromote
     }
 
     var body: some View {
@@ -1282,7 +1288,10 @@ private struct ChatMessageView: View {
                         case .text(let block, let rendererKind):
                             contentView(block, rendererKind: rendererKind)
                         case .toolActivity(_, let group):
-                            ToolActivityGroupView(group: group)
+                            ToolActivityGroupView(
+                                group: group,
+                                citations: citationItems(for: group)
+                            )
                         case .artefactReference(_, let reference):
                             ArtefactReferenceView(
                                 reference: reference,
@@ -1291,22 +1300,6 @@ private struct ChatMessageView: View {
                             )
                         }
                     }
-                }
-            }
-        }
-        .contextMenu {
-            if message.role == .assistant, let onPromote {
-                Button("Save as document", systemImage: "doc.text") {
-                    onPromote(.document)
-                }
-                Button("Save as code", systemImage: "chevron.left.forwardslash.chevron.right") {
-                    onPromote(.code)
-                }
-                Button("Save as web artefact", systemImage: "globe") {
-                    onPromote(.web)
-                }
-                Button("Save inline web artefact", systemImage: "rectangle.on.rectangle") {
-                    onPromote(.inlineWeb)
                 }
             }
         }
@@ -1319,16 +1312,52 @@ private struct ChatMessageView: View {
             .joined()
     }
 
+    private func citationItems(for group: ToolActivityGroup) -> [Citation] {
+        let citationBlocks = message.blocks.filter { $0.kind == .citationGroup }
+        let callIDs = Set(group.activities.compactMap { $0.call.attributes["callID"] })
+        let hasCallIDAssociations = citationBlocks.contains {
+            $0.attributes["callID"] != nil
+        }
+        let matchingBlocks = citationBlocks.filter { block in
+            guard let blockCallID = block.attributes["callID"] else {
+                return !hasCallIDAssociations
+            }
+            return callIDs.contains(blockCallID)
+        }
+
+        return matchingBlocks.flatMap { block in
+                guard let data = block.payload.data(using: .utf8) else { return [Citation]() }
+                return (try? JSONDecoder().decode([Citation].self, from: data)) ?? []
+        }
+    }
+
     @ViewBuilder
     private func contentView(
         _ block: ContentBlock,
         rendererKind: ContentBlockRendererKind
     ) -> some View {
         switch rendererKind {
-        case .markdown, .code, .table, .mermaid, .image, .fileReference,
-             .citationGroup, .providerNotice:
+        case .markdown, .table:
             MarkdownView(text: block.payload, config: markdownConfig)
                 .frame(maxWidth: .infinity, alignment: .leading)
+        case .code:
+            CodeBlockView(
+                source: block.payload,
+                language: block.attributes["language"]
+            )
+        case .mermaid:
+            MermaidBlockView(source: block.payload)
+        case .image:
+            ImageBlockView(
+                reference: block.payload,
+                alt: block.attributes["alt"]
+            )
+        case .fileReference:
+            FileReferenceBlockView(displayName: block.attributes["displayName"])
+        case .citationGroup:
+            CitationGroupView(payload: block.payload)
+        case .providerNotice:
+            ProviderNoticeView(text: block.payload)
         case .unsupported:
             Text(block.payload)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1359,6 +1388,171 @@ private struct ChatMessageView: View {
                 && $0.fields["thinking"] == nil
                 && $0.fields["text"] == nil
         }
+    }
+}
+
+private struct CodeBlockView: View {
+    let source: String
+    let language: String?
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let language, !language.isEmpty {
+                Text(language)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(theme.color("text.muted"))
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                Text(source)
+                    .font(.system(.body, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(12)
+        .background(
+            theme.color("card").opacity(0.35),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(language.map { "\($0) code" } ?? "Code")
+    }
+}
+
+private struct MermaidBlockView: View {
+    let source: String
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Diagram", systemImage: "arrow.triangle.branch")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(theme.color("text.muted"))
+            Text(source)
+                .font(.system(.footnote, design: .monospaced))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .background(
+            theme.color("card").opacity(0.25),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Mermaid diagram")
+    }
+}
+
+private struct ImageBlockView: View {
+    let reference: String
+    let alt: String?
+
+    var body: some View {
+        if let url = URL(string: reference), url.scheme != nil {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .frame(maxWidth: .infinity, minHeight: 100)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                case .failure:
+                    Label("Image unavailable", systemImage: "photo")
+                        .frame(maxWidth: .infinity, minHeight: 100)
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .accessibilityLabel(alt ?? "Image")
+        } else {
+            Label(alt ?? "Image reference", systemImage: "photo")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct FileReferenceBlockView: View {
+    let displayName: String?
+
+    var body: some View {
+        Label(
+            displayName ?? "Attached file",
+            systemImage: "doc"
+        )
+        .font(.subheadline)
+    }
+}
+
+private struct CitationGroupView: View {
+    let citations: [Citation]
+    @Environment(\.ginnyTheme) private var theme
+
+    init(payload: String) {
+        guard let data = payload.data(using: .utf8) else {
+            citations = []
+            return
+        }
+        citations = (try? JSONDecoder().decode([Citation].self, from: data)) ?? []
+    }
+
+    init(citations: [Citation]) {
+        self.citations = citations
+    }
+
+    var body: some View {
+        if citations.isEmpty {
+            Text("Sources unavailable")
+                .font(.footnote)
+                .foregroundStyle(theme.color("text.muted"))
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Sources", systemImage: "link")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(citations) { citation in
+                    if let url = URL(string: citation.url) {
+                        Link(destination: url) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(citation.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(2)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(citation.url)
+                                    .font(.caption)
+                                    .foregroundStyle(theme.color("text.muted"))
+                                    .lineLimit(1)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+            }
+            .padding(12)
+            .background(
+                theme.color("card").opacity(0.25),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+        }
+    }
+}
+
+private struct ProviderNoticeView: View {
+    let text: String
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: "info.circle")
+        }
+        .font(.footnote)
+        .foregroundStyle(theme.color("text.muted"))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -1688,8 +1882,14 @@ private struct ThinkingIndicator: View {
 
 private struct ToolActivityGroupView: View {
     let group: ToolActivityGroup
+    let citations: [Citation]
     @Environment(\.ginnyTheme) private var theme
     @State private var isExpanded = false
+
+    init(group: ToolActivityGroup, citations: [Citation] = []) {
+        self.group = group
+        self.citations = citations
+    }
 
     private var containsError: Bool {
         group.activities.contains { $0.result?.attributes["isError"] == "true" }
@@ -1702,21 +1902,32 @@ private struct ToolActivityGroupView: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(group.activities) { activity in
-                    ToolActivityRow(activity: activity)
-                }
-                ForEach(group.unmatchedResults, id: \.id) { result in
-                    ToolResultRow(result: result)
+            VStack(alignment: .leading, spacing: 0) {
+                if isSearchActivity {
+                    SearchActivityDetailsView(group: group, citations: citations)
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(group.activities) { activity in
+                            ToolActivityRow(activity: activity)
+                        }
+                        ForEach(group.unmatchedResults, id: \.id) { result in
+                            ToolResultRow(result: result)
+                        }
+                        if !citations.isEmpty {
+                            CitationGroupView(citations: citations)
+                        }
+                    }
                 }
             }
             .padding(.top, 10)
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: "wrench.and.screwdriver")
+                Image(systemName: isSearchActivity ? "magnifyingglass" : "wrench.and.screwdriver")
                     .font(.subheadline.weight(.medium))
-                Text(toolActivityLabel(for: group))
+                Text(activityLabel)
                     .font(.subheadline.weight(.medium))
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer()
                 if isPending {
                     ThinkingIndicator(isAnimating: true)
@@ -1736,6 +1947,107 @@ private struct ToolActivityGroupView: View {
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
     }
+
+    private var activityLabel: String {
+        guard !citations.isEmpty, !isPending, !containsError else {
+            return toolActivityLabel(for: group)
+        }
+        return citationActivitySummary(citations)
+    }
+
+    private var isSearchActivity: Bool {
+        !group.activities.isEmpty && group.activities.allSatisfy {
+            $0.call.attributes["name"] == "search_web"
+                || $0.call.attributes["name"] == "search_workspace"
+        }
+    }
+}
+
+private struct SearchActivityDetailsView: View {
+    let group: ToolActivityGroup
+    let citations: [Citation]
+    @Environment(\.ginnyTheme) private var theme
+
+    private var queries: [String] {
+        group.activities.compactMap { activity in
+            guard let data = activity.call.payload.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return nil }
+            return object["query"] as? String
+        }
+    }
+
+    private var resultCount: Int? {
+        for activity in group.activities {
+            guard let result = activity.result,
+                  let data = result.payload.data(using: .utf8)
+            else { continue }
+            if let response = try? JSONDecoder().decode(WebSearchResponse.self, from: data) {
+                return response.results.count
+            }
+            if let results = try? JSONDecoder().decode([SearchResult].self, from: data) {
+                return results.count
+            }
+        }
+        return nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(queries, id: \.self) { query in
+                Label {
+                    Text("“\(query)”")
+                        .lineLimit(2)
+                } icon: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .font(.caption)
+                .foregroundStyle(theme.color("text.muted"))
+            }
+
+            if !citations.isEmpty {
+                CitationGroupView(citations: citations)
+            } else if let resultCount {
+                Text(resultCount == 0 ? "No items found" : "Found \(resultCount) items")
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
+            } else {
+                ForEach(group.activities.compactMap(\.result), id: \.id) { result in
+                    if result.attributes["isError"] == "true" {
+                        ToolResultRow(result: result)
+                    }
+                }
+            }
+        }
+    }
+}
+
+func citationActivitySummary(_ citations: [Citation]) -> String {
+    var domains: [String] = []
+    for citation in citations {
+        guard let host = URL(string: citation.url)?.host,
+              !host.isEmpty
+        else { continue }
+        let domain = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+        if !domains.contains(domain) {
+            domains.append(domain)
+        }
+    }
+
+    guard !domains.isEmpty else { return "Found items" }
+    let visibleDomains = Array(domains.prefix(3))
+    let domainText: String
+    switch visibleDomains.count {
+    case 1:
+        domainText = visibleDomains[0]
+    case 2:
+        domainText = "\(visibleDomains[0]) and \(visibleDomains[1])"
+    default:
+        domainText = visibleDomains.dropLast().joined(separator: ", ")
+            + ", and \(visibleDomains.last!)"
+    }
+    let suffix = domains.count > 3 ? ", and more" : ""
+    return "Found items from \(domainText)\(suffix)"
 }
 
 private struct ToolApprovalView: View {

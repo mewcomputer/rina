@@ -79,6 +79,9 @@
 		A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* GinnyLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A20000000000000000000001 /* WebSearchTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* WebSearchTools.swift */; };
 		A20000000000000000000002 /* WebSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* WebSearch.swift */; };
+		A20000000000000000000003 /* CitationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* CitationRepository.swift */; };
+		A20000000000000000000004 /* ContextRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* ContextRepository.swift */; };
+		F20000000000000000000001 /* GinnyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* GinnyUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -95,6 +98,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = E10000000000000000000001;
 			remoteInfo = GinnyLiveActivity;
+		};
+		F90000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 623794BEDAB75D309DC84F2C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0AEBED158889DE2A3984B81A;
+			remoteInfo = Ginny;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -173,6 +183,10 @@
 		B10000000000000000000005 /* GinnyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = GinnyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000000000000000000001 /* WebSearchTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchTools.swift; sourceTree = "<group>"; };
 		B20000000000000000000002 /* WebSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearch.swift; sourceTree = "<group>"; };
+		B20000000000000000000003 /* CitationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationRepository.swift; sourceTree = "<group>"; };
+		B20000000000000000000004 /* ContextRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextRepository.swift; sourceTree = "<group>"; };
+		F30000000000000000000001 /* GinnyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyUITests.swift; sourceTree = "<group>"; };
+		F30000000000000000000002 /* GinnyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GinnyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -250,6 +264,7 @@
 				6367FEC595B74A9399415B18 /* Ginny */,
 				C10000000000000000000001 /* GinnyLiveActivity */,
 				DBB2D52842EEE777932F5F26 /* GinnyTests */,
+				F40000000000000000000001 /* GinnyUITests */,
 				B2FEE8F6D7EAB5211AE095BC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -257,6 +272,8 @@
 		62FA47A6D31169E02A185374 /* Persistence */ = {
 			isa = PBXGroup;
 			children = (
+				B20000000000000000000003 /* CitationRepository.swift */,
+				B20000000000000000000004 /* ContextRepository.swift */,
 				9707D3DB741C35A3F950FA09 /* ArtefactRepository.swift */,
 				6AE1B83C9D89D35DA02D78AA /* AttachmentStore.swift */,
 				5B99BD93E51D059B8620CBAE /* ConversationRepository.swift */,
@@ -323,6 +340,7 @@
 				C4622D72389852D888EE9495 /* Ginny.app */,
 				B10000000000000000000005 /* GinnyLiveActivity.appex */,
 				92C5627E3E2ACC39677676CC /* GinnyTests.xctest */,
+				F30000000000000000000002 /* GinnyUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -373,6 +391,14 @@
 				28CB2AD08D5ED8302810E37D /* ToolTests.swift */,
 			);
 			path = GinnyTests;
+			sourceTree = "<group>";
+		};
+		F40000000000000000000001 /* GinnyUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F30000000000000000000001 /* GinnyUITests.swift */,
+			);
+			path = GinnyUITests;
 			sourceTree = "<group>";
 		};
 		C10000000000000000000001 /* GinnyLiveActivity */ = {
@@ -444,6 +470,22 @@
 			productReference = 92C5627E3E2ACC39677676CC /* GinnyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		F60000000000000000000001 /* GinnyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F70000000000000000000001 /* Build configuration list for PBXNativeTarget "GinnyUITests" */;
+			buildPhases = (
+				F50000000000000000000001 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F90000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = GinnyUITests;
+			productName = GinnyUITests;
+			productReference = F30000000000000000000002 /* GinnyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -481,6 +523,7 @@
 				0AEBED158889DE2A3984B81A /* Ginny */,
 				E10000000000000000000001 /* GinnyLiveActivity */,
 				38639F0C01A9B32D52BBFA47 /* GinnyTests */,
+				F60000000000000000000001 /* GinnyUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -582,6 +625,16 @@
 				5CB9D914FFB636615F434EC6 /* ToolRegistry.swift in Sources */,
 				A20000000000000000000001 /* WebSearchTools.swift in Sources */,
 				A20000000000000000000002 /* WebSearch.swift in Sources */,
+				A20000000000000000000003 /* CitationRepository.swift in Sources */,
+				A20000000000000000000004 /* ContextRepository.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F50000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F20000000000000000000001 /* GinnyUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -606,6 +659,11 @@
 			isa = PBXTargetDependency;
 			target = E10000000000000000000001 /* GinnyLiveActivity */;
 			targetProxy = 110000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		F90000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0AEBED158889DE2A3984B81A /* Ginny */;
+			targetProxy = F90000000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -835,6 +893,40 @@
 			};
 			name = Release;
 		};
+		F80000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = P2B3GABB6H;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Ginny;
+			};
+			name = Debug;
+		};
+		F80000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = P2B3GABB6H;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Ginny;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -870,6 +962,15 @@
 			buildConfigurations = (
 				F10000000000000000000001 /* Debug */,
 				F10000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F70000000000000000000001 /* Build configuration list for PBXNativeTarget "GinnyUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F80000000000000000000001 /* Debug */,
+				F80000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -337,6 +337,52 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertEqual(requests[1].messages.last?.toolCallID, "call-1")
     }
 
+    func testSessionPersistsSearchCitationsAndReferencesThemFromTheAssistant() async throws {
+        var persistedCitations: [Citation] = []
+        var persistedEdges: [RelationshipEdge] = []
+        let searchIndex = LocalSearchIndex()
+        let result = WebSearchResult(
+            title: "Swift",
+            url: "https://swift.org",
+            snippet: "A programming language.",
+            provider: .tavily
+        )
+        let session = ChatSession(
+            provider: CitationToolLoopProvider(result: result),
+            toolRegistry: ToolRegistry(tools: [
+                SearchWebTool(service: ChatSearchService(result: result))
+            ]),
+            citationPersistence: { persistedCitations.append($0) },
+            relationshipPersistence: { persistedEdges.append($0) },
+            searchIndex: searchIndex
+        )
+
+        await session.send("Search for Swift.")
+
+        let assistant = try XCTUnwrap(session.conversation.messages[1])
+        let citationBlock = try XCTUnwrap(
+            assistant.blocks.first(where: { $0.kind == .citationGroup })
+        )
+        let citations = try JSONDecoder().decode(
+            [Citation].self,
+            from: Data(citationBlock.payload.utf8)
+        )
+        XCTAssertEqual(citations, persistedCitations)
+        XCTAssertEqual(citations.count, 1)
+        XCTAssertEqual(persistedEdges.count, 1)
+        XCTAssertEqual(persistedEdges[0].source, .message(assistant.id))
+        XCTAssertEqual(persistedEdges[0].target, .citation(citations[0].id))
+        XCTAssertEqual(persistedEdges[0].predicate, .references)
+
+        for _ in 0..<20 {
+            await Task.yield()
+            if await searchIndex.status().sourceVersion > 0 { break }
+        }
+        await searchIndex.flush()
+        let searchResults = await searchIndex.search(query: "programming")
+        XCTAssertTrue(searchResults.contains { $0.nodeID == .citation(citations[0].id) })
+    }
+
     func testSessionPausesForToolApprovalAndResumesAfterApproval() async {
         let provider = ApprovalLoopProvider()
         let session = ChatSession(
@@ -505,6 +551,58 @@ private final class ToolLoopProvider: ProviderAdapter, @unchecked Sendable {
             ]
         } else {
             events = [.responseStarted, .textDelta("Done."), .responseEnded]
+        }
+
+        return AsyncThrowingStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
+        }
+    }
+}
+
+private struct ChatSearchService: WebSearchProviding {
+    let result: WebSearchResult
+
+    func search(_ request: WebSearchRequest) async throws -> WebSearchResponse {
+        WebSearchResponse(
+            query: request.query,
+            provider: result.provider,
+            answer: nil,
+            results: [result]
+        )
+    }
+}
+
+private final class CitationToolLoopProvider: ProviderAdapter, @unchecked Sendable {
+    let result: WebSearchResult
+
+    init(result: WebSearchResult) {
+        self.result = result
+    }
+
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        let isFirstResponse = request.messages.last?.role == .user
+        let events: [ProviderStreamEvent]
+        if isFirstResponse {
+            events = [
+                .responseStarted,
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "search-call",
+                        name: "search_web",
+                        arguments: "{\"query\":\"swift\"}"
+                    )
+                ),
+                .finish(reason: "tool_calls"),
+                .responseEnded
+            ]
+        } else {
+            events = [.responseStarted, .textDelta("Found it."), .responseEnded]
         }
 
         return AsyncThrowingStream { continuation in

@@ -15,6 +15,9 @@ final class ChatSession: ObservableObject {
     private var activeGenerationID: UUID?
     private var toolRegistry: ToolRegistry
     private let persistence: ((Conversation) throws -> Void)?
+    private let citationPersistence: ((Citation) throws -> Void)?
+    private let relationshipPersistence: ((RelationshipEdge) throws -> Void)?
+    private let searchIndex: LocalSearchIndex?
     private var toolApprovalContinuation: CheckedContinuation<Bool, Never>?
     private var responseFinishReason: String? = nil
     private var autoApproveArtefactWrites = false
@@ -23,12 +26,18 @@ final class ChatSession: ObservableObject {
         provider: (any ProviderAdapter)? = nil,
         conversation: Conversation = Conversation(),
         toolRegistry: ToolRegistry = ToolRegistry(),
-        persistence: ((Conversation) throws -> Void)? = nil
+        persistence: ((Conversation) throws -> Void)? = nil,
+        citationPersistence: ((Citation) throws -> Void)? = nil,
+        relationshipPersistence: ((RelationshipEdge) throws -> Void)? = nil,
+        searchIndex: LocalSearchIndex? = nil
     ) {
         self.provider = provider
         self.conversation = conversation
         self.toolRegistry = toolRegistry
         self.persistence = persistence
+        self.citationPersistence = citationPersistence
+        self.relationshipPersistence = relationshipPersistence
+        self.searchIndex = searchIndex
     }
 
     func configure(provider: any ProviderAdapter) {
@@ -467,6 +476,70 @@ final class ChatSession: ObservableObject {
             )
         )
 
+        if !isError,
+           let assistantMessageID,
+           let response = try? JSONDecoder().decode(
+               WebSearchResponse.self,
+               from: Data(result.utf8)
+           )
+        {
+            let citations = response.results.map {
+                Citation.from($0, query: response.query)
+            }
+            if !citations.isEmpty {
+                let edges = citations.map { citation in
+                    RelationshipEdge(
+                        id: Citation.referenceRelationshipID(
+                            messageID: assistantMessageID,
+                            citationID: citation.id
+                        ),
+                        source: .message(assistantMessageID),
+                        predicate: .references,
+                        target: .citation(citation.id),
+                        attributes: [
+                            "provider": citation.provider.rawValue,
+                            "url": citation.url,
+                            "query": citation.query
+                        ]
+                    )
+                }
+                if let citationPersistence {
+                    for citation in citations {
+                        try citationPersistence(citation)
+                    }
+                }
+                if let searchIndex {
+                    Task {
+                        var changes: [SearchIndexChange] = citations.map {
+                            .upsert(SearchDocumentFactory.document(for: $0))
+                        }
+                        changes.append(contentsOf: edges.map(SearchIndexChange.upsertRelationship))
+                        await searchIndex.enqueue(contentsOf: changes)
+                        await searchIndex.flush()
+                    }
+                }
+                for edge in edges {
+                    try relationshipPersistence?(edge)
+                }
+                if var assistant = conversation.messages.first(where: {
+                    $0.id == assistantMessageID && $0.role == .assistant
+                }) {
+                    let payload = try String(
+                        decoding: JSONEncoder().encode(citations),
+                        as: UTF8.self
+                    )
+                    assistant.blocks.append(
+                        .citationGroup(
+                            payload,
+                            callID: callID,
+                            isComplete: true
+                        )
+                    )
+                    try conversation.updateMessage(assistant)
+                }
+            }
+        }
+
         guard !isError,
               let assistantMessageID,
               let details = try? JSONDecoder().decode(
@@ -529,6 +602,16 @@ final class ChatSession: ObservableObject {
     }
 
     private func persistConversation() {
+        if let searchIndex {
+            let snapshot = conversation
+            Task {
+                await searchIndex.enqueue(contentsOf: SearchDocumentFactory
+                    .documents(for: snapshot)
+                    .map(SearchIndexChange.upsert))
+                await searchIndex.flush()
+            }
+        }
+
         guard let persistence else { return }
 
         do {

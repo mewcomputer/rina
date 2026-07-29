@@ -60,4 +60,25 @@ final class RelationshipTests: XCTestCase {
 
         XCTAssertEqual(try repository.fetchOutgoing(from: source), [second])
     }
+
+    func testCitationRepositoryRoundTripsDeterministicCitations() throws {
+        let repository = try CitationRepository(isStoredInMemoryOnly: true)
+        let result = WebSearchResult(
+            title: "Swift",
+            url: "https://swift.org",
+            snippet: "A programming language.",
+            provider: .tavily
+        )
+        let first = Citation.from(result, query: "swift")
+        let second = Citation.from(result, query: "swift again")
+
+        XCTAssertEqual(first.id, second.id)
+        try repository.upsert(first)
+        try repository.upsert(second)
+
+        let fetched = try repository.fetch()
+        XCTAssertEqual(fetched.count, 1)
+        XCTAssertEqual(fetched.first?.query, "swift again")
+        XCTAssertEqual(fetched.first?.url, result.url)
+    }
 }

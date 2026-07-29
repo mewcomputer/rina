@@ -127,6 +127,29 @@ final class SearchTests: XCTestCase {
         XCTAssertEqual(decoded, response)
     }
 
+    func testSearchWorkspaceToolReturnsLocalResultsWithoutApproval() async throws {
+        let citation = Citation.from(
+            WebSearchResult(
+                title: "Swift actors",
+                url: "https://swift.org/actors",
+                snippet: "Actors protect mutable state.",
+                provider: .tavily
+            ),
+            query: "actors"
+        )
+        let index = LocalSearchIndex()
+        await index.enqueue(.upsert(SearchDocumentFactory.document(for: citation)))
+        await index.flush()
+        let tool = SearchWorkspaceTool(index: index)
+
+        XCTAssertEqual(tool.approvalRequirement, .automatic)
+        let output = try await tool.execute(arguments: "{\"query\":\"actors\"}")
+        let results = try JSONDecoder().decode([SearchResult].self, from: Data(output.utf8))
+
+        XCTAssertEqual(results.first?.nodeID, .citation(citation.id))
+        XCTAssertEqual(results.first?.kind, .citation)
+    }
+
     func testIndexIsEventuallyConsistentAndCoalescesDocumentUpdates() async {
         let index = LocalSearchIndex()
         let node = GraphNodeID.source(SourceID())
@@ -253,13 +276,23 @@ final class SearchTests: XCTestCase {
             predicate: .supportedBy,
             target: .artefactRevision(artefactID: artefact.id, revisionID: revisionID)
         )
+        let citation = Citation.from(
+            WebSearchResult(
+                title: "Swift",
+                url: "https://swift.org",
+                snippet: "A programming language.",
+                provider: .tavily
+            ),
+            query: "swift"
+        )
 
         let documents = SearchDocumentFactory.documents(
             for: conversation,
             artefacts: [artefact],
             sources: [source],
             contexts: [context],
-            relationships: [edge]
+            relationships: [edge],
+            citations: [citation]
         )
 
         XCTAssertEqual(
@@ -269,6 +302,28 @@ final class SearchTests: XCTestCase {
         XCTAssertTrue(documents.contains { $0.id == .message(conversation.messages[0].id) })
         XCTAssertTrue(documents.contains { $0.content.contains("Important research") })
         XCTAssertTrue(documents.contains { $0.title == "supportedBy" })
+        XCTAssertTrue(documents.contains { $0.id == .relationship(edge.id) })
+        XCTAssertTrue(documents.contains { $0.id == .citation(citation.id) })
+    }
+
+    func testLocalSearchIndexesPersistedCitationsWithTheirMetadata() async {
+        let citation = Citation.from(
+            WebSearchResult(
+                title: "Swift concurrency",
+                url: "https://swift.org/concurrency",
+                snippet: "Actors protect mutable state.",
+                provider: .exa
+            ),
+            query: "actors"
+        )
+        let index = LocalSearchIndex()
+
+        await index.enqueue(.upsert(SearchDocumentFactory.document(for: citation)))
+        await index.flush()
+
+        let results = await index.search(query: "actors")
+        XCTAssertEqual(results.first?.nodeID, .citation(citation.id))
+        XCTAssertEqual(results.first?.kind, .citation)
     }
 }
 

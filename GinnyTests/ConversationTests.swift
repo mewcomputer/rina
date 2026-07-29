@@ -203,6 +203,30 @@ final class ConversationTests: XCTestCase {
         )
     }
 
+    func testCitationActivitySummaryNamesDomainsAndCollapsesTheRest() {
+        let citations = [
+            "https://swift.org/language",
+            "https://developer.apple.com/swift",
+            "https://www.example.com/guide",
+            "https://docs.example.net/reference"
+        ].map { url in
+            Citation.from(
+                WebSearchResult(
+                    title: "Result",
+                    url: url,
+                    snippet: "Snippet",
+                    provider: .tavily
+                ),
+                query: "swift"
+            )
+        }
+
+        XCTAssertEqual(
+            citationActivitySummary(citations),
+            "Found items from swift.org, developer.apple.com, and example.com, and more"
+        )
+    }
+
     func testGenerationFollowsTheDocumentedLifecycle() throws {
         var conversation = Conversation()
 

@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import Ginny
 
+@MainActor
 final class ContextTests: XCTestCase {
     func testContextReferencesObjectsWithoutOwningTheirContent() {
         let messageID = MessageID()
@@ -22,6 +23,28 @@ final class ContextTests: XCTestCase {
             .artefactRevision(artefactID: artefactID, revisionID: revisionID),
             .source(sourceID)
         ])
+    }
+
+    func testContextRepositoryRoundTripsMembers() throws {
+        let repository = try ContextRepository(isStoredInMemoryOnly: true)
+        let context = Context(
+            name: "Research",
+            members: [
+                .message(MessageID()),
+                .source(SourceID())
+            ]
+        )
+
+        try repository.upsert(context)
+
+        XCTAssertEqual(try repository.fetch(), [context])
+
+        var renamed = context
+        renamed.setName("Updated research")
+        try repository.upsert(renamed)
+
+        XCTAssertEqual(try repository.fetch().first?.name, "Updated research")
+        XCTAssertEqual(try repository.fetch().first?.members, context.members)
     }
 
     func testAssemblerPreservesSystemAndRecentConversationContinuity() throws {

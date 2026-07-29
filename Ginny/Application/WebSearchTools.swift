@@ -37,9 +37,13 @@ struct SearchWebTool: GinnyTool {
     var approvalRequirement: ToolApprovalRequirement { .automatic }
 
     func execute(arguments: String) async throws -> String {
-        let decoded = try decode(arguments)
-        let response = try await service.search(decoded.request)
-        return try String(decoding: JSONEncoder().encode(response), as: UTF8.self)
+        try await GinnyDiagnostics.withSpan(
+            OperationIdentity(name: "tool.search_web")
+        ) {
+            let decoded = try decode(arguments)
+            let response = try await service.search(decoded.request)
+            return try String(decoding: JSONEncoder().encode(response), as: UTF8.self)
+        }
     }
 
     private func decode(_ arguments: String) throws -> DecodedArguments {
@@ -83,5 +87,57 @@ struct SearchWebTool: GinnyTool {
             case recency
             case includeAnswer = "include_answer"
         }
+    }
+}
+
+struct SearchWorkspaceTool: GinnyTool {
+    private let index: LocalSearchIndex
+
+    init(index: LocalSearchIndex) {
+        self.index = index
+    }
+
+    var definition: ProviderToolDefinition {
+        ProviderToolDefinition(
+            name: "search_workspace",
+            description: "Searches local conversations, artefacts, sources, contexts, citations, and relationships.",
+            inputSchema: .object(
+                properties: [
+                    "query": JSONSchema(type: .string, description: "The focused local search query."),
+                    "limit": JSONSchema(type: .integer, description: "The maximum number of results, from 1 to 50.")
+                ],
+                required: ["query"]
+            )
+        )
+    }
+
+    var approvalRequirement: ToolApprovalRequirement { .automatic }
+
+    func execute(arguments: String) async throws -> String {
+        try await GinnyDiagnostics.withSpan(
+            OperationIdentity(name: "tool.search_workspace")
+        ) {
+            guard let data = arguments.data(using: .utf8) else {
+                throw ToolExecutionError.invalidArguments("search_workspace arguments were not valid JSON.")
+            }
+
+            let decoded: Arguments
+            do {
+                decoded = try JSONDecoder().decode(Arguments.self, from: data)
+            } catch {
+                throw ToolExecutionError.invalidArguments("search_workspace arguments were not valid JSON.")
+            }
+
+            let results = await index.search(
+                query: decoded.query,
+                limit: min(max(decoded.limit ?? 10, 1), 50)
+            )
+            return try String(decoding: JSONEncoder().encode(results), as: UTF8.self)
+        }
+    }
+
+    private struct Arguments: Decodable {
+        let query: String
+        let limit: Int?
     }
 }

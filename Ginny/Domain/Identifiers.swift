@@ -48,6 +48,14 @@ struct SourceID: Hashable, Codable, RawRepresentable, Sendable {
     }
 }
 
+struct CitationID: Hashable, Codable, RawRepresentable, Sendable {
+    let rawValue: UUID
+
+    init(rawValue: UUID = UUID()) {
+        self.rawValue = rawValue
+    }
+}
+
 struct ContextID: Hashable, Codable, RawRepresentable, Sendable {
     let rawValue: UUID
 

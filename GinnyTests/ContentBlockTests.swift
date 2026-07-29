@@ -24,6 +24,12 @@ final class ContentBlockTests: XCTestCase {
         }
     }
 
+    func testCitationGroupCanBeAssociatedWithItsToolCall() {
+        let block = ContentBlock.citationGroup("[]", callID: "search-1")
+
+        XCTAssertEqual(block.attributes["callID"], "search-1")
+    }
+
     func testUnknownBlockKindsRemainPreservable() throws {
         let json = """
         {
@@ -49,11 +55,68 @@ final class ContentBlockTests: XCTestCase {
         )
     }
 
+    func testLegacyStructuredBlockWithoutAttributesMigratesWithDefaults() throws {
+        let json = """
+        {
+          "id": { "rawValue": "00000000-0000-0000-0000-000000000002" },
+          "kind": "citationGroup",
+          "payload": "[]",
+          "isComplete": true
+        }
+        """.data(using: .utf8)!
+
+        let block = try JSONDecoder().decode(ContentBlock.self, from: json)
+
+        XCTAssertEqual(block.attributes, [:])
+        XCTAssertEqual(block.kind, .citationGroup)
+        XCTAssertEqual(block.payload, "[]")
+    }
+
     func testRendererRegistryProvidesSafeFallbackForUnknownKinds() {
         let registry = ContentBlockRendererRegistry()
 
         XCTAssertEqual(registry.rendererKind(for: .code), .code)
         XCTAssertEqual(registry.rendererKind(for: .citationGroup), .citationGroup)
         XCTAssertEqual(registry.rendererKind(for: .unknown("future")), .unsupported)
+    }
+
+    func testRendererRegistryCoversEveryCanonicalBlockKind() {
+        let registry = ContentBlockRendererRegistry()
+        let expected: [(ContentBlockKind, ContentBlockRendererKind)] = [
+            (.text, .markdown),
+            (.markdown, .markdown),
+            (.code, .code),
+            (.table, .table),
+            (.mermaid, .mermaid),
+            (.image, .image),
+            (.fileReference, .fileReference),
+            (.citationGroup, .citationGroup),
+            (.toolCall, .toolCall),
+            (.toolResult, .toolResult),
+            (.artefactReference, .artefactReference),
+            (.providerNotice, .providerNotice)
+        ]
+
+        for (blockKind, rendererKind) in expected {
+            XCTAssertEqual(registry.rendererKind(for: blockKind), rendererKind)
+        }
+
+        let snapshot = expected
+            .map { "\($0.0.rawValue) -> \($0.1.rawValue)" }
+            .joined(separator: "\n")
+        XCTAssertEqual(snapshot, """
+        text -> markdown
+        markdown -> markdown
+        code -> code
+        table -> table
+        mermaid -> mermaid
+        image -> image
+        fileReference -> fileReference
+        citationGroup -> citationGroup
+        toolCall -> toolCall
+        toolResult -> toolResult
+        artefactReference -> artefactReference
+        providerNotice -> providerNotice
+        """)
     }
 }

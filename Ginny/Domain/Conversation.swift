@@ -222,9 +222,16 @@ struct ContentBlock: Codable, Equatable, Sendable {
     static func citationGroup(
         id: ContentBlockID = ContentBlockID(),
         _ payload: String,
+        callID: String? = nil,
         isComplete: Bool = true
     ) -> ContentBlock {
-        structured(id: id, kind: .citationGroup, payload: payload, isComplete: isComplete)
+        structured(
+            id: id,
+            kind: .citationGroup,
+            payload: payload,
+            attributes: callID.map { ["callID": $0] } ?? [:],
+            isComplete: isComplete
+        )
     }
 
     static func providerNotice(
@@ -386,6 +393,16 @@ let toolActivityCopies: [String: ToolActivityCopy] = [
         inProgress: "Checking time",
         completed: "Checked time",
         failed: "Couldn’t check time"
+    ),
+    "search_web": ToolActivityCopy(
+        inProgress: "Searching the web",
+        completed: "Searched the web",
+        failed: "Couldn’t search the web"
+    ),
+    "search_workspace": ToolActivityCopy(
+        inProgress: "Searching the workspace",
+        completed: "Searched the workspace",
+        failed: "Couldn’t search the workspace"
     )
 ]
 

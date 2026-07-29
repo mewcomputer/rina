@@ -179,6 +179,41 @@ final class SessionHistoryTests: XCTestCase {
         XCTAssertEqual(try repository.fetch(), [legacyConversation])
     }
 
+    func testConversationRepositoryMigratesLegacyStructuredBlocksWithoutAttributes() throws {
+        let suiteName = "SessionHistoryTests.LegacyStructuredBlock-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let legacyConversation = Conversation(
+            messages: [Message(
+                role: .assistant,
+                blocks: [.citationGroup("[]")]
+            )],
+            generationState: .completed
+        )
+        var fixture = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: JSONEncoder().encode([legacyConversation])
+            ) as? [[String: Any]]
+        )
+        var messages = try XCTUnwrap(fixture[0]["messages"] as? [[String: Any]])
+        var blocks = try XCTUnwrap(messages[0]["blocks"] as? [[String: Any]])
+        blocks[0].removeValue(forKey: "attributes")
+        messages[0]["blocks"] = blocks
+        fixture[0]["messages"] = messages
+        defaults.set(
+            try JSONSerialization.data(withJSONObject: fixture),
+            forKey: "session.history"
+        )
+
+        let repository = try ConversationRepository(isStoredInMemoryOnly: true)
+        XCTAssertEqual(try repository.importLegacy(from: defaults), 1)
+
+        let restored = try XCTUnwrap(try repository.fetch().first)
+        XCTAssertEqual(restored.messages[0].blocks[0].kind, .citationGroup)
+        XCTAssertEqual(restored.messages[0].blocks[0].attributes, [:])
+    }
+
     func testSessionHistoryRecoversInterruptedGeneration() throws {
         let repository = try ConversationRepository(isStoredInMemoryOnly: true)
         let conversation = Conversation(

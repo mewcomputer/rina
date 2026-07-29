@@ -8,12 +8,32 @@ enum SourceExtractionState: Codable, Equatable, Sendable {
     case failed(String)
 }
 
-enum SourceImportError: Error, Equatable, Sendable {
+enum SourceImportError: LocalizedError, Equatable, Sendable {
     case emptyContent
     case invalidTextEncoding
     case unsupportedContentType(String)
+    case extractionFailed(String)
     case tooLarge(maximumBytes: Int)
     case persistenceFailure
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyContent:
+            "That source is empty."
+        case .invalidTextEncoding:
+            "Ginny couldn’t decode that source as UTF-8 text."
+        case .unsupportedContentType(let type):
+            "Ginny doesn’t support importing " + type + " yet."
+        case .extractionFailed(let message):
+            "Ginny couldn’t extract text from that source: " + message
+        case .tooLarge(let maximumBytes):
+            "That source is too large. The limit is "
+                + String(maximumBytes / 1_000_000)
+                + " MB."
+        case .persistenceFailure:
+            "Ginny couldn’t save that source locally."
+        }
+    }
 }
 
 struct SourceAttachment: Codable, Equatable, Sendable {

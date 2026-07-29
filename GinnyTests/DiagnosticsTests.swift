@@ -35,7 +35,7 @@ final class DiagnosticsTests: XCTestCase {
     func testDiagnosticsSpanReturnsWorkResultAndDoesNotStoreContent() throws {
         let operation = OperationIdentity(name: "search.flush")
 
-        let result = try GinnyDiagnostics.withSpan(operation) {
+        let result = GinnyDiagnostics.withSpan(operation) {
             42
         }
 

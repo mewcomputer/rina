@@ -90,7 +90,7 @@ final class SourceTests: XCTestCase {
         )
 
         do {
-            try await importer.importData(
+            _ = try await importer.importData(
                 Data("image".utf8),
                 displayName: "image.png",
                 contentTypeIdentifier: "public.png"
@@ -101,7 +101,7 @@ final class SourceTests: XCTestCase {
         }
 
         do {
-            try await importer.importData(
+            _ = try await importer.importData(
                 Data([0xff, 0xfe]),
                 displayName: "notes.txt",
                 contentTypeIdentifier: "public.plain-text"
@@ -110,6 +110,11 @@ final class SourceTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? SourceImportError, .invalidTextEncoding)
         }
+
+        let storedFiles = try FileManager.default
+            .subpathsOfDirectory(atPath: root.path)
+            .filter { !$0.hasPrefix(".") }
+        XCTAssertTrue(storedFiles.isEmpty)
     }
 
     private func temporaryRoot() -> URL {
