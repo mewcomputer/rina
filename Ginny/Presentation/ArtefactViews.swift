@@ -463,7 +463,7 @@ struct WebArtefactPreview: UIViewRepresentable {
         Coordinator()
     }
 
-    func makeUIView(context: Context) -> WKWebView {
+    func makeUIView(context: UIViewRepresentableContext<WebArtefactPreview>) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.websiteDataStore = .nonPersistent()
@@ -476,7 +476,10 @@ struct WebArtefactPreview: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {
+    func updateUIView(
+        _ webView: WKWebView,
+        context: UIViewRepresentableContext<WebArtefactPreview>
+    ) {
         let contentHeight = $contentHeight
         context.coordinator.onContentHeightChange = { height in
             guard abs(contentHeight.wrappedValue - height) > 1 else { return }

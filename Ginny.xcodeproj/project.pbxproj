@@ -19,6 +19,7 @@
 		264D29FF249882B12D58FC85 /* ArtefactRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9707D3DB741C35A3F950FA09 /* ArtefactRepository.swift */; };
 		2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */; };
 		2C3B8186145EFFC7C01176BA /* AttachmentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE1B83C9D89D35DA02D78AA /* AttachmentStore.swift */; };
+		3ACCCA454086C9CF5F82A19C /* Context.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C80E07053B6C5F27ED28C6 /* Context.swift */; };
 		41D19214FF2E191CE77F83A1 /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82BD921B65734CCF8933C9FF /* ModelCatalog.swift */; };
 		43C0DF8434750116FD40D971 /* SSE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4627A6932AFCC922D079F4 /* SSE.swift */; };
 		48581DCD3065254370E583FE /* ConversationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B99BD93E51D059B8620CBAE /* ConversationRepository.swift */; };
@@ -51,6 +52,7 @@
 		CBCF7264B81A5BD1ABA7C0E3 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */; };
 		CFD2820648D9A8933EA72451 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604F428D68F76A14BCE9A5F5 /* RootView.swift */; };
 		D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5B56B84488FBF598916DDB /* Conversation.swift */; };
+		D58E385144AC57D91049E636 /* ContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B805DE7BA30FB3F2455025C1 /* ContextTests.swift */; };
 		D770B6E0CC668F94B3E39034 /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EB399BEEEDC2B36FB06B201 /* Skill.swift */; };
 		D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */; };
 		D9BEB6E6A505D06E41A6B43D /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FA948BCF63CC7B840A03A1 /* Glass.swift */; };
@@ -74,6 +76,7 @@
 		01F16D2B7BFAA0C3A560D9FE /* ToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
 		08C8F3956963A5DBB935220F /* ProviderSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettingsTests.swift; sourceTree = "<group>"; };
 		0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettings.swift; sourceTree = "<group>"; };
+		15C80E07053B6C5F27ED28C6 /* Context.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Context.swift; sourceTree = "<group>"; };
 		1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactRepositoryTests.swift; sourceTree = "<group>"; };
 		18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactPromoter.swift; sourceTree = "<group>"; };
 		1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identifiers.swift; sourceTree = "<group>"; };
@@ -115,6 +118,7 @@
 		B2612F3084E164C0A80744CD /* Artefact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Artefact.swift; sourceTree = "<group>"; };
 		B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAICompatibleAdapter.swift; sourceTree = "<group>"; };
 		B6A2FB8E617D55DBAD72F68F /* SourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTests.swift; sourceTree = "<group>"; };
+		B805DE7BA30FB3F2455025C1 /* ContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTests.swift; sourceTree = "<group>"; };
 		C01DC86C6D4A5429571348B7 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		C22AE8DFC71A2A8813F3DF56 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		C4622D72389852D888EE9495 /* Ginny.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ginny.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -225,6 +229,7 @@
 			isa = PBXGroup;
 			children = (
 				B2612F3084E164C0A80744CD /* Artefact.swift */,
+				15C80E07053B6C5F27ED28C6 /* Context.swift */,
 				ED5B56B84488FBF598916DDB /* Conversation.swift */,
 				1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */,
 				56DBDCF5A45A5803E2262232 /* Provider.swift */,
@@ -271,6 +276,7 @@
 				37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */,
 				DA6EBF2B6BCDAACED8E2E932 /* ArtefactTests.swift */,
 				3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */,
+				B805DE7BA30FB3F2455025C1 /* ContextTests.swift */,
 				520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */,
 				51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */,
 				3F5ED5AA1DAFAADAFD217757 /* ModelCatalogTests.swift */,
@@ -384,6 +390,7 @@
 				D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */,
 				48DF75E429E34F3701F145A8 /* ArtefactTests.swift in Sources */,
 				EB3FA2229ACB08DCFC53DCD7 /* ChatSessionTests.swift in Sources */,
+				D58E385144AC57D91049E636 /* ContextTests.swift in Sources */,
 				2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */,
 				1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */,
 				4F31C594778B2E83D581A951 /* ModelCatalogTests.swift in Sources */,
@@ -414,6 +421,7 @@
 				18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */,
 				515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */,
 				931DF029769AF70E2FE471EE /* ChatView.swift in Sources */,
+				3ACCCA454086C9CF5F82A19C /* Context.swift in Sources */,
 				D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */,
 				48581DCD3065254370E583FE /* ConversationRepository.swift in Sources */,
 				B01CFF6ED6A68A558D3CB3FA /* CredentialStore.swift in Sources */,
