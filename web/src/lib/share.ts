@@ -7,6 +7,7 @@ const MAX_TITLE_LENGTH = 200
 const MAX_TEXT_LENGTH = 1_000_000
 const MAX_MESSAGES = 1_000
 const MAX_BLOCKS_PER_MESSAGE = 200
+const MAX_CONTINUATIONS_PER_MESSAGE = 100
 const MAX_ARTEFACTS = 100
 const MAX_RELATIONSHIPS = 500
 const MAX_ATTRIBUTES = 100
@@ -32,10 +33,18 @@ export type ShareBlock = {
   isComplete: boolean
 }
 
+export type ShareProviderContinuation = {
+  provider: string
+  id: string
+  kind: string
+  fields: Record<string, string>
+}
+
 export type ShareMessage = {
   id?: string
   role: 'user' | 'assistant' | 'system' | 'tool'
   blocks: ShareBlock[]
+  providerContinuations: ShareProviderContinuation[]
   createdAt?: string
 }
 
@@ -294,6 +303,10 @@ function parseMessages(input: unknown): ShareMessage[] {
         }
         return [parseBlock(block, path)]
       }),
+      providerContinuations: parseProviderContinuations(
+        message.providerContinuations,
+        `snapshot.messages[${index}].providerContinuations`,
+      ),
     }
     const id = optionalString(message.id, `snapshot.messages[${index}].id`)
     const createdAt = optionalDate(
@@ -303,6 +316,35 @@ function parseMessages(input: unknown): ShareMessage[] {
     if (id !== undefined) parsed.id = id
     if (createdAt !== undefined) parsed.createdAt = createdAt
     return parsed
+  })
+}
+
+function parseProviderContinuations(
+  input: unknown,
+  path: string,
+): ShareProviderContinuation[] {
+  const values = optionalArray(input, path)
+  if (values.length > MAX_CONTINUATIONS_PER_MESSAGE) {
+    throw new ShareParseError(
+      'tooLarge',
+      `${path} has too many continuations`,
+    )
+  }
+  return values.map((value, index) => {
+    const continuation = asRecord(value, `${path}[${index}]`)
+    return {
+      provider: requiredString(
+        continuation.provider,
+        `${path}[${index}].provider`,
+        100,
+      ),
+      id: requiredString(continuation.id, `${path}[${index}].id`, 512),
+      kind: requiredString(continuation.kind, `${path}[${index}].kind`, 100),
+      fields: parseAttributes(
+        continuation.fields,
+        `${path}[${index}].fields`,
+      ),
+    }
   })
 }
 

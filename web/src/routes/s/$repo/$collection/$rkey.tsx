@@ -3,7 +3,10 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { EllipsisVertical, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ShareArtefactCard, ShareMessageCard } from '@/components/share-content'
+import {
+  ShareArtefactCard,
+  ShareMessageList,
+} from '@/components/share-content'
 import {
   Card,
   CardContent,
@@ -59,12 +62,7 @@ function TypedSharePage() {
       </div>
 
       <div className="space-y-6">
-        {snapshot.messages.map((message, index) => (
-          <ShareMessageCard
-            key={message.id ?? `${message.role}-${index}`}
-            message={message}
-          />
-        ))}
+        <ShareMessageList messages={snapshot.messages} />
         {snapshot.artefacts.map((artefact, index) => (
           <ShareArtefactCard
             key={artefact.id ?? `${artefact.title}-${index}`}

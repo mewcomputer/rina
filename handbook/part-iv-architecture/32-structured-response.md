@@ -13,4 +13,4 @@ Messages contain ordered canonical blocks with stable identifiers and versioned 
 
 Initial types: text, markdown, code, table, Mermaid, image, file reference, citation group, tool call, tool result, and provider notice.
 
-Unknown future block types remain preservable even if a current renderer cannot display them. A block may begin incomplete and receive typed deltas. Provider reasoning traces and raw wire payloads are not ordinary user-visible content.
+Unknown future block types remain preservable even if a current renderer cannot display them. A block may begin incomplete and receive typed deltas. Provider reasoning traces and raw wire payloads are not ordinary text content. The native UI and explicit public conversation snapshots may expose reasoning and tool activity through dedicated disclosures, while keeping those payloads separate from ordinary response blocks.

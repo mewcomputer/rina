@@ -8,7 +8,7 @@ final class AtprotoSharingTests: XCTestCase {
         XCTAssertThrowsError(try RinaRecordKey(string: "3jv3l5k7w20bc"))
     }
 
-    func testConversationSnapshotPublishesVisibleContentOnly() throws {
+    func testConversationSnapshotPublishesToolActivityAndThinkingTrace() throws {
         var conversation = Conversation(title: "Web accessibility")
         try conversation.appendMessage(.user("Can you review this page?"))
         try conversation.appendMessage(
@@ -34,14 +34,19 @@ final class AtprotoSharingTests: XCTestCase {
 
         XCTAssertEqual(snapshot.title, "Web accessibility")
         XCTAssertEqual(snapshot.messages.count, 2)
-        XCTAssertEqual(snapshot.messages[1].blocks.map(\.payload), ["The page needs a clearer focus state."])
+        XCTAssertEqual(
+            snapshot.messages[1].blocks.map(\.kind),
+            ["text", "toolCall", "toolResult"]
+        )
+        XCTAssertEqual(snapshot.messages[1].blocks[1].attributes["callID"], "call-1")
+        XCTAssertEqual(snapshot.messages[1].providerContinuations.count, 1)
+        XCTAssertEqual(snapshot.messages[1].providerContinuations[0].kind, "reasoning")
         let encoded = try JSONEncoder().encode(snapshot)
-        let publicJSON = String(decoding: encoded, as: UTF8.self)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         XCTAssertTrue(object["createdAt"] is String)
         XCTAssertTrue(object["updatedAt"] is String)
-        XCTAssertFalse(publicJSON.contains("private reasoning"))
-        XCTAssertFalse(publicJSON.contains("private tool output"))
+        XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("private reasoning"))
+        XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("private tool output"))
     }
 
     func testArtefactRecordUsesCurrentRevision() throws {

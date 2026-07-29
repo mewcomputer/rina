@@ -1,15 +1,89 @@
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
+  AlertTriangle,
+  Check,
+  ChevronRight,
+  LoaderCircle,
+  Sparkles,
+} from 'lucide-react'
+import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import type { ShareArtefact, ShareBlock, ShareMessage } from '@/lib/share'
+import type {
+  ShareArtefact,
+  ShareBlock,
+  ShareMessage,
+  ShareProviderContinuation,
+} from '@/lib/share'
 
-export function ShareMessageCard({ message }: { message: ShareMessage }) {
+export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
+  const items = []
+
+  for (let index = 0; index < messages.length;) {
+    const message = messages[index]
+    const calls = message.blocks.filter((block) => block.kind === 'toolCall')
+
+    if (message.role === 'assistant' && calls.length > 0) {
+      const results: ShareBlock[] = []
+      let nextIndex = index + 1
+
+      while (nextIndex < messages.length && messages[nextIndex].role === 'tool') {
+        results.push(
+          ...messages[nextIndex].blocks.filter(
+            (block) => block.kind === 'toolResult',
+          ),
+        )
+        nextIndex += 1
+      }
+
+      items.push(
+        <ShareMessageCard
+          key={message.id ?? `${message.role}-${index}`}
+          message={message}
+          toolActivity={{ calls, results }}
+        />,
+      )
+      index = nextIndex
+      continue
+    }
+
+    if (message.role === 'tool') {
+      const results = message.blocks.filter((block) => block.kind === 'toolResult')
+      items.push(
+        <ShareToolActivityCard
+          key={message.id ?? `${message.role}-${index}`}
+          calls={[]}
+          results={results}
+        />,
+      )
+      index += 1
+      continue
+    }
+
+    items.push(
+      <ShareMessageCard
+        key={message.id ?? `${message.role}-${index}`}
+        message={message}
+      />,
+    )
+    index += 1
+  }
+
+  return items
+}
+
+export function ShareMessageCard({
+  message,
+  toolActivity,
+}: {
+  message: ShareMessage
+  toolActivity?: { calls: ShareBlock[]; results: ShareBlock[] }
+}) {
   const isUser = message.role === 'user'
 
   return (
@@ -19,6 +93,7 @@ export function ShareMessageCard({ message }: { message: ShareMessage }) {
       </p>
       <Card className={isUser ? 'bg-muted/60' : undefined}>
         <CardContent className="py-5">
+          <ThinkingDisclosure continuations={message.providerContinuations} />
           <div className="typeset typeset-docs max-w-[65ch]">
             {message.blocks.map((block, index) => (
               <ShareBlockView
@@ -27,9 +102,129 @@ export function ShareMessageCard({ message }: { message: ShareMessage }) {
               />
             ))}
           </div>
+          {toolActivity && (
+            <ShareToolActivityCard
+              calls={toolActivity.calls}
+              results={toolActivity.results}
+            />
+          )}
         </CardContent>
       </Card>
     </article>
+  )
+}
+
+function ThinkingDisclosure({
+  continuations,
+}: {
+  continuations: ShareProviderContinuation[]
+}) {
+  const reasoning = continuations.filter(
+    (continuation) => continuation.kind === 'reasoning',
+  )
+  const content = reasoning
+    .map(
+      (continuation) =>
+        continuation.fields.thinking ?? continuation.fields.text ?? '',
+    )
+    .join('')
+  const isRedacted = reasoning.some(
+    (continuation) =>
+      continuation.fields.data !== undefined
+      && continuation.fields.thinking === undefined
+      && continuation.fields.text === undefined,
+  )
+
+  if (!content && !isRedacted) return null
+
+  return (
+    <details className="group mb-4 max-w-[65ch] text-muted-foreground">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium marker:hidden">
+        <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
+        <Sparkles className="size-4" />
+        Thinking
+      </summary>
+      <div className="mt-3 border-l border-border pl-4 [--color-foreground:var(--muted-foreground)]">
+        {content ? (
+          <div className="typeset typeset-docs text-sm">
+            <MarkdownContent content={content} />
+          </div>
+        ) : (
+          <p className="text-sm">Reasoning is hidden by the provider.</p>
+        )}
+      </div>
+    </details>
+  )
+}
+
+function ShareToolActivityCard({
+  calls,
+  results,
+}: {
+  calls: ShareBlock[]
+  results: ShareBlock[]
+}) {
+  if (calls.length === 0 && results.length === 0) return null
+
+  const activities = pairToolActivity(calls, results)
+  const hasError = results.some((result) => result.attributes.isError === 'true')
+  const isPending =
+    calls.some((call) => !call.isComplete)
+    || activities.some(({ result }) => !result)
+  const label = toolActivityLabel(calls, results, isPending, hasError)
+  const StatusIcon = hasError ? AlertTriangle : isPending ? LoaderCircle : Check
+
+  return (
+    <details className="group mt-4 max-w-[65ch] rounded-xl border border-border bg-muted/30">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium marker:hidden">
+        <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
+        <StatusIcon
+          className={[
+            'size-4',
+            hasError
+              ? 'text-destructive'
+              : isPending
+                ? 'animate-spin text-muted-foreground'
+                : 'text-primary',
+          ].join(' ')}
+        />
+        {label}
+      </summary>
+      <div className="space-y-4 border-t border-border px-4 py-3">
+        {activities.map(({ call, result }, index) => (
+          <div
+            key={call.id ?? `${call.attributes.callID ?? 'tool'}-${index}`}
+            className="space-y-2"
+          >
+            <div className="text-sm font-medium">
+              {call.attributes.name || 'Tool'}
+            </div>
+            {call.payload && (
+              <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-background/70 p-3 text-xs leading-5 text-muted-foreground">
+                {call.payload}
+              </pre>
+            )}
+            {result && (
+              <div className="space-y-2 border-t border-border/70 pt-3">
+                <p
+                  className={[
+                    'text-xs font-medium',
+                    result.attributes.isError === 'true'
+                      ? 'text-destructive'
+                      : 'text-muted-foreground',
+                  ].join(' ')}
+                >
+                  Result
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-background/70 p-3 text-xs leading-5 text-muted-foreground">
+                  {result.payload}
+                </pre>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
   )
 }
 
@@ -63,8 +258,6 @@ export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
 function ShareBlockView({ block }: { block: ShareBlock }) {
   if (
     block.kind === 'code'
-    || block.kind === 'toolCall'
-    || block.kind === 'toolResult'
   ) {
     return (
       <div className="not-typeset">
@@ -75,11 +268,55 @@ function ShareBlockView({ block }: { block: ShareBlock }) {
     )
   }
 
+  if (block.kind === 'toolCall' || block.kind === 'toolResult') return null
+
   if (block.kind === 'artefactReference' || block.kind === 'fileReference') {
     return null
   }
 
   return <MarkdownContent content={block.payload} />
+}
+
+function pairToolActivity(calls: ShareBlock[], results: ShareBlock[]) {
+  const remainingResults = [...results]
+
+  return calls.map((call) => {
+    const callID = call.attributes.callID
+    const resultIndex = remainingResults.findIndex(
+      (result) => result.attributes.callID === callID,
+    )
+    const result = resultIndex === -1 ? undefined : remainingResults.splice(resultIndex, 1)[0]
+    return { call, result }
+  })
+}
+
+function toolActivityLabel(
+  calls: ShareBlock[],
+  results: ShareBlock[],
+  isPending: boolean,
+  hasError: boolean,
+) {
+  if (calls.length !== 1) {
+    return calls.length === 0
+      ? results.length === 1
+        ? 'Tool result'
+        : `${results.length} tool results`
+      : `${calls.length} tool activities`
+  }
+
+  const name = calls[0].attributes.name
+  const copy: Record<string, [string, string, string]> = {
+    create_artefact: ['Writing artefact', 'Wrote artefact', 'Couldn’t write artefact'],
+    update_artefact: ['Updating artefact', 'Updated artefact', 'Couldn’t update artefact'],
+    display_artefact: ['Displaying artefact', 'Displayed artefact', 'Couldn’t display artefact'],
+    read_artefact: ['Reading artefact', 'Read artefact', 'Couldn’t read artefact'],
+    list_artefacts: ['Searching artefacts', 'Searched artefacts', 'Couldn’t search artefacts'],
+    search_web: ['Searching the web', 'Searched the web', 'Couldn’t search the web'],
+    search_workspace: ['Searching the workspace', 'Searched the workspace', 'Couldn’t search the workspace'],
+  }
+  const phrases = name ? copy[name] : undefined
+  if (!phrases) return 'Tool activity'
+  return isPending ? phrases[0] : hasError ? phrases[2] : phrases[1]
 }
 
 function MarkdownContent({ content }: { content: string }) {

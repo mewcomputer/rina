@@ -82,6 +82,20 @@ describe('parseShareRecord', () => {
                     payload: 'Use a visible focus ring.',
                     attributes: {},
                   },
+                  {
+                    id: 'call-1',
+                    kind: 'toolCall',
+                    payload: '{"q":"focus"}',
+                    attributes: { callID: 'call-1', name: 'search_web' },
+                  },
+                ],
+                providerContinuations: [
+                  {
+                    provider: 'umans',
+                    id: 'reasoning-1',
+                    kind: 'reasoning',
+                    fields: { thinking: 'Check the primary sources.' },
+                  },
                 ],
                 createdAt: '2026-07-29T18:00:00.000Z',
               },
@@ -93,7 +107,15 @@ describe('parseShareRecord', () => {
     ).toMatchObject({
       title: 'Accessible card review',
       kind: 'conversation',
-      messages: [{ role: 'assistant', blocks: [{ kind: 'markdown' }] }],
+      messages: [
+        {
+          role: 'assistant',
+          blocks: [{ kind: 'markdown' }, { kind: 'toolCall' }],
+          providerContinuations: [
+            { kind: 'reasoning', fields: { thinking: 'Check the primary sources.' } },
+          ],
+        },
+      ],
       artefacts: [],
     })
   })
@@ -170,6 +192,7 @@ describe('parseShareRecord', () => {
       messages: [
         {
           role: 'user',
+          providerContinuations: [],
           blocks: [
             {
               kind: 'text',
@@ -181,6 +204,7 @@ describe('parseShareRecord', () => {
         },
         {
           role: 'assistant',
+          providerContinuations: [],
           blocks: [
             {
               kind: 'markdown',

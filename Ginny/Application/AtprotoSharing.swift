@@ -35,11 +35,53 @@ struct RinaRecordBlock: Codable, Equatable, Sendable {
     let attributes: [String: String]
 }
 
+struct RinaRecordContinuation: Codable, Equatable, Sendable {
+    let provider: String
+    let id: String
+    let kind: String
+    let fields: [String: String]
+}
+
 struct RinaRecordMessage: Codable, Equatable, Sendable {
     let id: String
     let role: MessageRole
     let blocks: [RinaRecordBlock]
+    let providerContinuations: [RinaRecordContinuation]
     let createdAt: String
+
+    init(
+        id: String,
+        role: MessageRole,
+        blocks: [RinaRecordBlock],
+        providerContinuations: [RinaRecordContinuation] = [],
+        createdAt: String
+    ) {
+        self.id = id
+        self.role = role
+        self.blocks = blocks
+        self.providerContinuations = providerContinuations
+        self.createdAt = createdAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case role
+        case blocks
+        case providerContinuations
+        case createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        role = try container.decode(MessageRole.self, forKey: .role)
+        blocks = try container.decode([RinaRecordBlock].self, forKey: .blocks)
+        providerContinuations = try container.decodeIfPresent(
+            [RinaRecordContinuation].self,
+            forKey: .providerContinuations
+        ) ?? []
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+    }
 }
 
 struct RinaArtefactReference: Codable, Equatable, Sendable {
@@ -193,22 +235,29 @@ enum AtprotoSnapshotBuilder {
             createdAt: timestamp(conversation.createdAt),
             updatedAt: timestamp(now),
             messages: conversation.messages.compactMap { message in
-                let blocks = message.blocks.compactMap { block -> RinaRecordBlock? in
-                    guard block.kind != .toolCall, block.kind != .toolResult else { return nil }
-                    return RinaRecordBlock(
+                let blocks = message.blocks.map { block in
+                    RinaRecordBlock(
                         id: block.id.rawValue.rawValue,
                         kind: block.kind.rawValue,
                         payload: block.payload,
-                        attributes: block.attributes.filter { key, _ in
-                            key != "callID" && key != "approvalState"
-                        }
+                        attributes: block.attributes
                     )
                 }
-                guard !blocks.isEmpty else { return nil }
+                guard !blocks.isEmpty || !message.providerContinuations.isEmpty else {
+                    return nil
+                }
                 return RinaRecordMessage(
                     id: message.id.rawValue.rawValue,
                     role: message.role,
                     blocks: blocks,
+                    providerContinuations: message.providerContinuations.map {
+                        RinaRecordContinuation(
+                            provider: $0.provider.rawValue,
+                            id: $0.id,
+                            kind: $0.kind,
+                            fields: $0.fields
+                        )
+                    },
                     createdAt: timestamp(message.createdAt)
                 )
             },
