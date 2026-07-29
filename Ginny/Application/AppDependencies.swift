@@ -28,12 +28,13 @@ struct AppDependencies: Sendable {
 
     func makeToolRegistry() -> ToolRegistry {
         let catalog = makeSkillCatalog()
+        let artefactTools = ArtefactToolSet(repository: artefactRepository).tools
 
         return ToolRegistry(tools: [
             CurrentTimeTool(),
             DiscoverSkillsTool(catalog: catalog),
             ReadSkillTool(catalog: catalog)
-        ])
+        ] + artefactTools)
     }
 
     func makeProvider(for configuration: ProviderConfiguration) -> any ProviderAdapter {

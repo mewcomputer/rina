@@ -4,6 +4,22 @@ import XCTest
 
 @MainActor
 final class ChatSessionTests: XCTestCase {
+    func testSessionAddsArtefactCapabilityInstructionsToProviderRequest() async throws {
+        let provider = RecordingContinuationProvider()
+        let session = ChatSession(provider: provider)
+
+        await session.send("Make a small web preview and save it.")
+
+        let request = try XCTUnwrap(provider.recorder.requests.first)
+        let systemMessage = try XCTUnwrap(request.messages.first)
+        XCTAssertEqual(systemMessage.role, .system)
+        XCTAssertTrue(systemMessage.content.contains("artefact"))
+        XCTAssertTrue(systemMessage.content.contains("immutable revisions"))
+        XCTAssertTrue(systemMessage.content.contains("inlineWeb"))
+        XCTAssertTrue(systemMessage.content.contains("discover_skills"))
+        XCTAssertTrue(systemMessage.content.contains("create_artefact"))
+    }
+
     func testSessionPreservesCompletedUserAndAssistantMessages() async {
         let provider = StubProvider(events: [
             .responseStarted,
@@ -182,7 +198,7 @@ final class ChatSessionTests: XCTestCase {
         )
     }
 
-    func testSessionPersistsAndReusesProviderContinuationMetadata() async {
+    func testSessionPersistsAndReusesProviderContinuationMetadata() async throws {
         let provider = RecordingContinuationProvider()
         let session = ChatSession(provider: provider)
 
@@ -191,7 +207,9 @@ final class ChatSessionTests: XCTestCase {
 
         let requests = provider.recorder.requests
         XCTAssertEqual(requests.count, 2)
-        let assistant = requests[1].messages[1]
+        let assistant = try XCTUnwrap(
+            requests[1].messages.first(where: { $0.role == .assistant })
+        )
         XCTAssertEqual(assistant.role, .assistant)
         XCTAssertEqual(
             assistant.continuations.first?.fields["text"],

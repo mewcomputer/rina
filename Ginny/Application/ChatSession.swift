@@ -295,7 +295,9 @@ final class ChatSession: ObservableObject {
 
     private func makeRequest() -> ProviderRequest {
         ProviderRequest(
-            messages: conversation.messages.dropLast().map { message in
+            messages: [
+                .system(AgentInstructions.artefactCapabilities)
+            ] + conversation.messages.dropLast().map { message in
                 let toolCalls = message.blocks.compactMap { block -> ProviderToolCall? in
                     guard block.kind == .toolCall,
                           let id = block.attributes["callID"],
