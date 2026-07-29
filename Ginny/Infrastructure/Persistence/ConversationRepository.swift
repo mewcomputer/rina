@@ -66,6 +66,28 @@ final class MessageRecord {
 }
 
 @MainActor
+enum GinnyPersistence {
+    static func makeContainer(isStoredInMemoryOnly: Bool = false) throws -> ModelContainer {
+        let schema = Schema([
+            ConversationRecord.self,
+            MessageRecord.self,
+            ArtefactRecord.self,
+            ArtefactRevisionRecord.self,
+            SkillRecord.self,
+            SkillRevisionRecord.self
+        ])
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: isStoredInMemoryOnly
+        )
+        return try ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+    }
+}
+
+@MainActor
 final class ConversationRepository {
     let container: ModelContainer
     private let context: ModelContext
@@ -85,6 +107,11 @@ final class ConversationRepository {
             for: schema,
             configurations: [configuration]
         )
+        context = ModelContext(container)
+    }
+
+    init(container: ModelContainer) {
+        self.container = container
         context = ModelContext(container)
     }
 

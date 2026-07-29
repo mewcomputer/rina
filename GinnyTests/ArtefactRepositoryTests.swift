@@ -3,6 +3,24 @@ import XCTest
 
 @MainActor
 final class ArtefactRepositoryTests: XCTestCase {
+    func testConversationAndArtefactRepositoriesCanShareOneContainer() throws {
+        let container = try GinnyPersistence.makeContainer(isStoredInMemoryOnly: true)
+        let conversationRepository = ConversationRepository(container: container)
+        let artefactRepository = ArtefactRepository(container: container)
+        let conversation = Conversation(
+            messages: [Message.user("Keep this session")],
+            generationState: .completed
+        )
+        var artefact = Artefact(title: "Keep this artefact", kind: .document)
+        _ = artefact.checkpoint(source: "Durable content")
+
+        try conversationRepository.upsert(conversation)
+        try artefactRepository.upsert(artefact)
+
+        XCTAssertEqual(try conversationRepository.fetch(), [conversation])
+        XCTAssertEqual(try artefactRepository.fetchArtefacts(), [artefact])
+    }
+
     func testRepositoryRoundTripsArtefactRevisionsAndPreview() throws {
         let repository = try ArtefactRepository(isStoredInMemoryOnly: true)
         var artefact = Artefact(title: "Widget", kind: .inlineWeb)

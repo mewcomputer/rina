@@ -9,13 +9,16 @@ struct AppDependencies: Sendable {
     let conversationRepository: ConversationRepository
     let artefactRepository: ArtefactRepository
 
-    static let live = AppDependencies(
-        credentialStore: KeychainCredentialStore(),
-        transport: URLSessionStreamingTransport(),
-        modelCatalog: URLSessionModelCatalog(),
-        conversationRepository: try! ConversationRepository(),
-        artefactRepository: try! ArtefactRepository()
-    )
+    static let live: AppDependencies = {
+        let container = try! GinnyPersistence.makeContainer()
+        return AppDependencies(
+            credentialStore: KeychainCredentialStore(),
+            transport: URLSessionStreamingTransport(),
+            modelCatalog: URLSessionModelCatalog(),
+            conversationRepository: ConversationRepository(container: container),
+            artefactRepository: ArtefactRepository(container: container)
+        )
+    }()
 
     func makeSkillCatalog() -> SkillCatalog {
         let persistedSkills = (try? artefactRepository.fetchSkills()) ?? []

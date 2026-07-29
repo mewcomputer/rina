@@ -161,6 +161,11 @@ final class ArtefactRepository {
         context = ModelContext(container)
     }
 
+    init(container: ModelContainer) {
+        self.container = container
+        context = ModelContext(container)
+    }
+
     func fetchArtefacts() throws -> [Artefact] {
         let descriptor = FetchDescriptor<ArtefactRecord>(
             sortBy: [SortDescriptor(\ArtefactRecord.createdAt, order: .reverse)]
