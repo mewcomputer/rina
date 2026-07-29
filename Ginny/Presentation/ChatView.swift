@@ -164,7 +164,11 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showsSettings) {
             NavigationStack {
-                ProviderSettingsView(settings: settings)
+                ProviderSettingsView(
+                    settings: settings,
+                    authService: dependencies.atprotoAuth,
+                    themeStore: themeStore
+                )
             }
             .environment(\.ginnyTheme, theme)
             .preferredColorScheme(theme.mode.colorScheme)
@@ -795,7 +799,7 @@ private struct ChatHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: onOpenSidebar) {
-                HeaderIconButton(systemImage: "line.3.horizontal")
+                HeaderIconButton(systemImage: "text.menu")
             }
             .accessibilityLabel("Open session history")
             .accessibilityIdentifier("header.sessionHistory")
@@ -930,6 +934,7 @@ private struct SessionSidebar: View {
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .accessibilityLabel("Provider settings")
+            .accessibilityIdentifier("sidebar.settings")
         }
         .padding(.horizontal, 16)
         .safeAreaPadding(.top, 10)
@@ -1741,12 +1746,142 @@ private struct InlineArtefactContentView: View {
 
 private struct ProviderSettingsView: View {
     @ObservedObject var settings: ProviderSettings
+    let authService: AtprotoAuthService
+    @ObservedObject var themeStore: ThemeStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.ginnyTheme) private var theme
 
     var body: some View {
+        List {
+            Section("Connection") {
+                NavigationLink {
+                    ProviderConfigurationSettingsView(settings: settings)
+                } label: {
+                    SettingsNavigationRow(
+                        title: "Provider and models",
+                        summary: providerSummary,
+                        systemImage: "square.3.layers.3d"
+                    )
+                }
+
+                NavigationLink {
+                    AtprotoAccountSettingsView(authService: authService)
+                } label: {
+                    SettingsNavigationRow(
+                        title: "atproto account",
+                        summary: "Sign in for sharing and sync",
+                        systemImage: "person.crop.circle"
+                    )
+                }
+            }
+
+            Section("Workspace") {
+                NavigationLink {
+                    ArtefactSettingsView(settings: settings)
+                } label: {
+                    SettingsNavigationRow(
+                        title: "Artefacts and web",
+                        summary: artefactSummary,
+                        systemImage: "square.stack.3d.up"
+                    )
+                }
+
+                NavigationLink {
+                    WebSearchSettingsView(settings: settings)
+                } label: {
+                    SettingsNavigationRow(
+                        title: "Web search",
+                        summary: settings.webSearchProvider.displayName,
+                        systemImage: "globe"
+                    )
+                }
+
+                NavigationLink {
+                    AppearanceSettingsView(themeStore: themeStore)
+                } label: {
+                    SettingsNavigationRow(
+                        title: "Appearance",
+                        summary: themeStore.displayName(for: themeStore.selectedThemeID),
+                        systemImage: "paintpalette"
+                    )
+                }
+            }
+
+            Section {
+                Text("Credentials stay in the system Keychain. Remote endpoints require HTTPS; localhost HTTP is allowed for local development.")
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(theme.color("background"))
+        .navigationTitle("Settings")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    if settings.save() {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .task {
+            await settings.refreshModels()
+        }
+    }
+
+    private var providerSummary: String {
+        let model = settings.modelText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return model.isEmpty ? settings.provider.displayName : "\(settings.provider.displayName) · \(model)"
+    }
+
+    private var artefactSummary: String {
+        if settings.allowAllArtefactWebRequests && settings.autoApproveArtefactWrites {
+            return "Relaxed web and write approvals"
+        }
+        if settings.allowAllArtefactWebRequests {
+            return "Relaxed web approvals"
+        }
+        if settings.autoApproveArtefactWrites {
+            return "Relaxed write approvals"
+        }
+        return "Approval safeguards on"
+    }
+}
+
+private struct SettingsNavigationRow: View {
+    let title: String
+    let summary: String
+    let systemImage: String
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body)
+                Text(summary)
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
+                    .lineLimit(2)
+            }
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(theme.color("primary"))
+                .frame(width: 26)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct ProviderConfigurationSettingsView: View {
+    @ObservedObject var settings: ProviderSettings
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
         Form {
-            Section("Provider") {
+            Section("Service") {
                 Picker("Provider", selection: $settings.provider) {
                     ForEach(ProviderID.allCases, id: \.self) { provider in
                         Text(provider.displayName).tag(provider)
@@ -1760,7 +1895,9 @@ private struct ProviderSettingsView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
+            }
 
+            Section("Model") {
                 if settings.provider == .umans, !settings.availableModels.isEmpty {
                     Picker("Model", selection: $settings.modelText) {
                         ForEach(settings.availableModels) { model in
@@ -1771,7 +1908,7 @@ private struct ProviderSettingsView: View {
                         settings.selectModel(model)
                     }
                 } else {
-                    TextField("Model", text: $settings.modelText)
+                    TextField("Model identifier", text: $settings.modelText)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 }
@@ -1787,22 +1924,68 @@ private struct ProviderSettingsView: View {
                         .disabled(settings.isLoadingModels)
                     }
                 }
+            }
 
+            Section("Credential") {
                 SecureField("API key", text: $settings.credentialText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-            }
 
-            Section("Artefacts") {
-                Toggle("Allow all HTTPS requests", isOn: $settings.allowAllArtefactWebRequests)
-                Toggle("Auto-approve artefact writes", isOn: $settings.autoApproveArtefactWrites)
-
-                Text("These relax artefact-only safeguards. Requests still require HTTPS and local or private addresses remain blocked.")
+                Text("The key is stored in the system Keychain and is only attached when a request is sent.")
                     .font(.footnote)
                     .foregroundStyle(theme.color("text.muted"))
             }
 
-            Section("Web search") {
+            if let validationMessage = settings.validationMessage {
+                Section {
+                    Text(validationMessage)
+                        .foregroundStyle(theme.color("text.error"))
+                }
+            }
+
+            if let catalogMessage = settings.catalogMessage {
+                Section {
+                    Text(catalogMessage)
+                        .foregroundStyle(theme.color("text.error"))
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(theme.color("background"))
+        .navigationTitle("Provider and models")
+    }
+}
+
+private struct ArtefactSettingsView: View {
+    @ObservedObject var settings: ProviderSettings
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        Form {
+            Section("Permissions") {
+                Toggle("Allow all HTTPS requests", isOn: $settings.allowAllArtefactWebRequests)
+                Toggle("Auto-approve artefact writes", isOn: $settings.autoApproveArtefactWrites)
+            }
+
+            Section {
+                Text("These options relax artefact-only safeguards. HTTPS remains required, and local or private addresses remain blocked.")
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(theme.color("background"))
+        .navigationTitle("Artefacts and web")
+    }
+}
+
+private struct WebSearchSettingsView: View {
+    @ObservedObject var settings: ProviderSettings
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        Form {
+            Section("Search service") {
                 Picker("Provider", selection: $settings.webSearchProvider) {
                     ForEach(WebSearchProviderID.allCases, id: \.self) { provider in
                         Text(provider.displayName).tag(provider)
@@ -1820,40 +2003,209 @@ private struct ProviderSettingsView: View {
                 SecureField("API key", text: $settings.webSearchCredentialText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+            }
 
+            Section {
                 Text("Search results include citation metadata. Use an HTTPS endpoint for the selected provider.")
                     .font(.footnote)
                     .foregroundStyle(theme.color("text.muted"))
             }
+        }
+        .scrollContentBackground(.hidden)
+        .background(theme.color("background"))
+        .navigationTitle("Web search")
+    }
+}
 
-            Text("Credentials are stored in the system Keychain. Localhost HTTP endpoints are supported for local providers.")
-                .font(.footnote)
-                .foregroundStyle(theme.color("text.muted"))
+private struct AppearanceSettingsView: View {
+    @ObservedObject var themeStore: ThemeStore
+    @Environment(\.ginnyTheme) private var theme
 
-            if let validationMessage = settings.validationMessage {
-                Text(validationMessage)
-                    .foregroundStyle(theme.color("text.error"))
+    var body: some View {
+        Form {
+            Section("Theme") {
+                Picker(
+                    "Theme",
+                    selection: Binding(
+                        get: { themeStore.selectedThemeID },
+                        set: { themeStore.select(themeID: $0) }
+                    )
+                ) {
+                    ForEach(themeStore.availableThemeIDs, id: \.self) { themeID in
+                        Text(themeStore.displayName(for: themeID)).tag(themeID)
+                    }
+                }
             }
 
-            if let catalogMessage = settings.catalogMessage {
-                Text(catalogMessage)
-                    .foregroundStyle(theme.color("text.error"))
+            Section {
+                Text("Themes change the app chrome and artefact surfaces while preserving the same content hierarchy.")
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
             }
         }
         .scrollContentBackground(.hidden)
         .background(theme.color("background"))
-        .navigationTitle("Provider")
-        .task {
-            await settings.refreshModels()
-        }
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    if settings.save() {
-                        dismiss()
+        .navigationTitle("Appearance")
+    }
+}
+
+private enum AtprotoAuthMethod: String {
+    case oauth
+    case appPassword
+}
+
+private struct AtprotoAccountSettingsView: View {
+    let authService: AtprotoAuthService
+    @Environment(\.ginnyTheme) private var theme
+    @State private var state: AtprotoAuthState = .signedOut
+    @State private var authMethod: AtprotoAuthMethod = .oauth
+    @State private var handle = ""
+    @State private var appPassword = ""
+    @State private var pdsURL = ""
+    @State private var isSigningIn = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        Form {
+            Section("Account") {
+                switch state {
+                case .signedOut:
+                    Picker("Sign-in method", selection: $authMethod) {
+                        Text("OAuth").tag(AtprotoAuthMethod.oauth)
+                        Text("App password").tag(AtprotoAuthMethod.appPassword)
+                    }
+                    .pickerStyle(.segmented)
+
+                    if authMethod == .oauth {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.crop.circle.badge.checkmark")
+                                    .font(.system(size: 28))
+                                    .foregroundStyle(theme.color("primary"))
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Sign in with atproto")
+                                        .font(.headline)
+                                    Text("Use your account provider to continue.")
+                                        .font(.subheadline)
+                                        .foregroundStyle(theme.color("text.muted"))
+                                }
+                            }
+
+                            TextField("Handle or DID", text: $handle)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+
+                            Text("Ginny will open your provider’s website. Your password stays there, and you’ll return here when you’re done.")
+                                .font(.footnote)
+                                .foregroundStyle(theme.color("text.muted"))
+
+                            Button {
+                                signInWithOAuth()
+                            } label: {
+                                Label(isSigningIn ? "Opening sign-in…" : "Continue in browser", systemImage: "safari")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            .disabled(isSigningIn)
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        TextField("Handle or DID", text: $handle)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+
+                        TextField("PDS URL override", text: $pdsURL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+
+                        Text("Leave blank to resolve the PDS from the handle.")
+                            .font(.footnote)
+                            .foregroundStyle(theme.color("text.muted"))
+
+                        SecureField("App password", text: $appPassword)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+
+                        Button(isSigningIn ? "Signing in…" : "Sign in") {
+                            signIn()
+                        }
+                        .disabled(isSigningIn)
+
+                        Text("The app password is stored in the system Keychain.")
+                            .font(.footnote)
+                            .foregroundStyle(theme.color("text.muted"))
+                    }
+                case .signedIn(let account):
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(account.handle)
+                            .font(.headline)
+                        Text(account.did)
+                            .font(.footnote)
+                            .foregroundStyle(theme.color("text.muted"))
+                        Text(account.pdsURL)
+                            .font(.footnote)
+                            .foregroundStyle(theme.color("text.muted"))
+                    }
+
+                    Button("Sign out", role: .destructive) {
+                        Task {
+                            await authService.signOut()
+                            state = .signedOut
+                        }
                     }
                 }
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(theme.color("text.error"))
+                }
             }
+        }
+        .task {
+            state = await authService.restore()
+        }
+        .scrollContentBackground(.hidden)
+        .background(theme.color("background"))
+        .navigationTitle("atproto account")
+    }
+
+    private func signIn() {
+        isSigningIn = true
+        errorMessage = nil
+
+        Task {
+            do {
+                let account = try await authService.signIn(
+                    handle: handle,
+                    appPassword: appPassword,
+                    pdsURL: pdsURL
+                )
+                state = .signedIn(account)
+                appPassword = ""
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSigningIn = false
+        }
+    }
+
+    private func signInWithOAuth() {
+        isSigningIn = true
+        errorMessage = nil
+
+        Task {
+            do {
+                let account = try await authService.signInWithOAuth(identifier: handle)
+                state = .signedIn(account)
+                appPassword = ""
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSigningIn = false
         }
     }
 }

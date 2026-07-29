@@ -4,6 +4,13 @@ import Security
 protocol CredentialStore: Sendable {
     func credential(for identifier: String) throws -> String?
     func save(_ credential: String, for identifier: String) throws
+    func deleteCredential(for identifier: String) throws
+}
+
+extension CredentialStore {
+    func deleteCredential(for identifier: String) throws {
+        _ = identifier
+    }
 }
 
 struct KeychainCredentialStore: CredentialStore {
@@ -47,6 +54,13 @@ struct KeychainCredentialStore: CredentialStore {
             }
         } else if updateStatus != errSecSuccess {
             throw KeychainError.status(updateStatus)
+        }
+    }
+
+    func deleteCredential(for identifier: String) throws {
+        let status = SecItemDelete(baseQuery(identifier: identifier) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw KeychainError.status(status)
         }
     }
 

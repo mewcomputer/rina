@@ -16,5 +16,22 @@ final class GinnyUITests: XCTestCase {
 
         app.buttons["header.sessionHistory"].tap()
         XCTAssertTrue(app.buttons["sidebar.searchWorkspace"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["sidebar.settings"].exists)
+
+        app.buttons["sidebar.settings"].tap()
+        XCTAssertTrue(app.staticTexts["Provider and models"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Artefacts and web"].exists)
+        XCTAssertTrue(app.staticTexts["Web search"].exists)
+        XCTAssertTrue(app.staticTexts["Appearance"].exists)
+
+        app.staticTexts["atproto account"].tap()
+        XCTAssertTrue(app.buttons["OAuth"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["App password"].exists)
+        XCTAssertTrue(app.staticTexts["Sign in with atproto"].exists)
+        XCTAssertTrue(app.buttons["Continue in browser"].exists)
+        XCTAssertFalse(app.secureTextFields["App password"].exists)
+
+        app.buttons["App password"].tap()
+        XCTAssertTrue(app.secureTextFields["App password"].waitForExistence(timeout: 2))
     }
 }
