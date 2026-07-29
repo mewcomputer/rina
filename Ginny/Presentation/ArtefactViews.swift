@@ -245,7 +245,13 @@ private struct ArtefactEditorView: View {
     @ViewBuilder
     private var editorContent: some View {
         if isWebArtefact, mode == .preview {
-            WebArtefactPreview(html: source, isInline: initialArtefact.kind == .inlineWeb)
+            WebArtefactPreview(
+                html: source,
+                isInline: initialArtefact.kind == .inlineWeb,
+                networkOrigins: ArtefactNetworkPolicy(
+                    metadata: initialArtefact.currentRevision?.metadata ?? initialArtefact.metadata
+                ).origins
+            )
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .padding(16)
         } else {
@@ -385,16 +391,19 @@ private struct SkillEditorView: View {
 struct WebArtefactPreview: UIViewRepresentable {
     let html: String
     let isInline: Bool
+    let networkOrigins: [String]
     @Binding private var contentHeight: CGFloat
     @Environment(\.ginnyTheme) private var theme
 
     init(
         html: String,
         isInline: Bool,
+        networkOrigins: [String] = [],
         contentHeight: Binding<CGFloat> = .constant(220)
     ) {
         self.html = html
         self.isInline = isInline
+        self.networkOrigins = ArtefactNetworkPolicy(origins: networkOrigins).origins
         _contentHeight = contentHeight
     }
 
@@ -405,6 +414,7 @@ struct WebArtefactPreview: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        configuration.websiteDataStore = .nonPersistent()
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.isOpaque = false
         view.backgroundColor = .clear
@@ -420,7 +430,7 @@ struct WebArtefactPreview: UIViewRepresentable {
             guard abs(contentHeight.wrappedValue - height) > 1 else { return }
             contentHeight.wrappedValue = height
         }
-        let renderKey = "\(theme.id)|\(isInline)|\(html)"
+        let renderKey = "\(theme.id)|\(isInline)|\(networkOrigins)|\(html)"
         guard context.coordinator.lastRenderKey != renderKey else { return }
         context.coordinator.lastRenderKey = renderKey
         webView.loadHTMLString(
@@ -437,13 +447,15 @@ struct WebArtefactPreview: UIViewRepresentable {
     static func document(
         for content: String,
         isInline: Bool,
+        networkOrigins: [String] = [],
         cssVariables: [String: String] = GinnyThemeKeyDefaults.cssVariables,
         isDark: Bool = true
     ) -> String {
         let viewport = "width=device-width, initial-scale=1.0, viewport-fit=cover"
+        let connectSource = ArtefactNetworkPolicy(origins: networkOrigins).cspConnectSource
         let head = """
         <meta name="viewport" content="\(viewport)">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none';">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; img-src data: blob:; font-src data:; connect-src \(connectSource); frame-src 'none';">
         <script src="\(tailwindBrowserURL)"></script>
         <style type="text/tailwindcss">\(styleSheet(cssVariables: cssVariables, isInline: isInline, isDark: isDark))</style>
         """

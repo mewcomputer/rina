@@ -1307,6 +1307,7 @@ private struct ArtefactReferenceView: View {
                     WebArtefactPreview(
                         html: revision.renderedContent ?? revision.source,
                         isInline: true,
+                        networkOrigins: ArtefactNetworkPolicy(metadata: revision.metadata).origins,
                         contentHeight: $inlineHeight
                     )
                     .frame(maxWidth: .infinity)

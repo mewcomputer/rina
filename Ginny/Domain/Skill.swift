@@ -184,7 +184,10 @@ enum CuratedSkills {
         a replacement color to get around the role.
         For HTML or React/Tailwind-style artefacts, preserve the component intent in the
         source but provide a self-contained HTML/CSS/JavaScript preview with no dependency downloads.
-        Keep inline artefacts self-contained and appropriate to the available space.
+        Network access is denied by default. If live network behavior is explicitly requested,
+        declare exact HTTPS origins in metadata.networkOrigins as a JSON array. Never use wildcards,
+        local endpoints, credentials, or undeclared network destinations. Keep inline artefacts
+        self-contained and appropriate to the available space.
         """,
         targetKinds: [.web, .inlineWeb],
         keywords: ["frontend", "web", "react", "tailwind", "shadcn", "ui", "accessibility"],

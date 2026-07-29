@@ -13,6 +13,7 @@ Secrets use Keychain Services. Files use appropriate iOS Data Protection. Logs e
 
 Remote providers, custom endpoints, imported files, Mermaid rendering, and external links are trust boundaries. Credentials are referenced by opaque identifiers and injected only during authorised request construction.
 
-Web retrieval is a separate trust boundary. `fetch_url` is approval-required and currently accepts only HTTP and HTTPS targets intended for public web content. It rejects known local/private hostname and literal-address forms, embedded credentials, and non-standard ports; validates each redirect; uses an ephemeral session without cookies or credential storage; caps redirects, response size, and timeout; and does not execute fetched scripts. Fetched text is marked as untrusted data in the tool result. Page content must never be treated as agent instructions or permission to disclose workspace data. This client-side policy is not a server-grade SSRF boundary; DNS resolution and rebinding hardening remain follow-up work if remote fetching expands.
+Web artefacts are network-isolated by default. Their preview CSP denies connections, images, fonts, frames, and external scripts unless the runtime explicitly provides a safe source. An artefact can request exact HTTPS origins through `metadata.networkOrigins`, which triggers approval for inline artefacts. The preview uses a non-persistent `WKWebView` data store without application cookies or credentials. Network responses remain untrusted page data and cannot grant tool or filesystem access.
+
 
 Deletion semantics distinguish active data, recoverable data, caches, and physical removal.

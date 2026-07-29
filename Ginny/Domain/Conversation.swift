@@ -206,11 +206,6 @@ let toolActivityCopies: [String: ToolActivityCopy] = [
         inProgress: "Checking time",
         completed: "Checked time",
         failed: "Couldn’t check time"
-    ),
-    "fetch_url": ToolActivityCopy(
-        inProgress: "Fetching webpage",
-        completed: "Fetched webpage",
-        failed: "Couldn’t fetch webpage"
     )
 ]
 

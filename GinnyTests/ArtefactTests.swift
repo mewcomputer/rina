@@ -92,4 +92,43 @@ final class ArtefactTests: XCTestCase {
         XCTAssertTrue(document.contains("<style type=\"text/tailwindcss\">"))
         XCTAssertTrue(document.contains("<body><button>Save</button></body>"))
     }
+
+    func testWebPreviewBlocksNetworkByDefault() {
+        let document = WebArtefactPreview.document(
+            for: "<script>fetch('https://api.example.com')</script>",
+            isInline: true
+        )
+
+        XCTAssertTrue(document.contains("connect-src 'none'"))
+    }
+
+    func testWebPreviewAllowsOnlyDeclaredHTTPSOrigins() {
+        let document = WebArtefactPreview.document(
+            for: "<script>fetch('https://api.example.com')</script>",
+            isInline: true,
+            networkOrigins: [
+                "https://api.example.com",
+                "http://insecure.example.com",
+                "https://api.example.com/v1"
+            ]
+        )
+
+        XCTAssertTrue(document.contains("connect-src https://api.example.com;"))
+        XCTAssertFalse(document.contains("http://insecure.example.com"))
+        XCTAssertFalse(document.contains("https://api.example.com/v1"))
+    }
+
+    func testNetworkCapabilityMetadataUsesExactHTTPSOrigins() throws {
+        let metadataValue = try XCTUnwrap(
+            ArtefactNetworkPolicy.metadataValue(for: ["https://api.example.com"])
+        )
+        let policy = ArtefactNetworkPolicy(
+            metadata: [ArtefactNetworkPolicy.metadataKey: metadataValue]
+        )
+
+        XCTAssertTrue(policy.isValid)
+        XCTAssertEqual(policy.origins, ["https://api.example.com"])
+        XCTAssertTrue(ArtefactNetworkPolicy.requestsNetwork(in: "fetch('/data')"))
+        XCTAssertFalse(ArtefactNetworkPolicy.requestsNetwork(in: "<p>fetch</p>"))
+    }
 }

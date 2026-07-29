@@ -206,6 +206,12 @@ struct CreateArtefactTool: GinnyTool {
             from: arguments,
             message: "create_artefact expects title, kind, and source."
         )
+        let networkPolicy = ArtefactNetworkPolicy(metadata: decoded.metadata ?? [:])
+        guard networkPolicy.isValid else {
+            throw ToolExecutionError.invalidArguments(
+                "create_artefact networkOrigins must be a JSON array of up to eight exact HTTPS origins."
+            )
+        }
         let title = decoded.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else {
             throw ToolExecutionError.invalidArguments("create_artefact requires a non-empty title.")
@@ -233,6 +239,8 @@ struct CreateArtefactTool: GinnyTool {
     func approvalRequirement(for arguments: String) -> ToolApprovalRequirement {
         struct ApprovalArguments: Decodable {
             let kind: ArtefactKind?
+            let source: String?
+            let metadata: [String: String]?
         }
 
         guard let data = arguments.data(using: .utf8),
@@ -241,7 +249,12 @@ struct CreateArtefactTool: GinnyTool {
             return approvalRequirement
         }
 
-        return decoded.kind == .inlineWeb ? .automatic : approvalRequirement
+        let networkPolicy = ArtefactNetworkPolicy(metadata: decoded.metadata ?? [:])
+        let requestsNetwork = decoded.source.map(ArtefactNetworkPolicy.requestsNetwork(in:)) == true
+            || !networkPolicy.origins.isEmpty
+        return decoded.kind == .inlineWeb && !requestsNetwork
+            ? .automatic
+            : approvalRequirement
     }
 }
 
@@ -278,6 +291,12 @@ struct UpdateArtefactTool: GinnyTool {
             from: arguments,
             message: "update_artefact expects an artefact ID and source."
         )
+        let networkPolicy = ArtefactNetworkPolicy(metadata: decoded.metadata ?? [:])
+        guard networkPolicy.isValid else {
+            throw ToolExecutionError.invalidArguments(
+                "update_artefact networkOrigins must be a JSON array of up to eight exact HTTPS origins."
+            )
+        }
         let artefactID = try parseArtefactID(decoded.id)
         guard var artefact = try await store.fetchArtefacts().first(where: { $0.id == artefactID }) else {
             throw ToolExecutionError.invalidArguments("No artefact exists with ID \(decoded.id).")
