@@ -8,17 +8,35 @@ struct AppDependencies: Sendable {
     let modelCatalog: any ModelCatalogProviding
     let conversationRepository: ConversationRepository
     let artefactRepository: ArtefactRepository
+    let sourceRepository: SourceRepository
+    let attachmentStore: any AttachmentStore
 
     static let live: AppDependencies = {
         let container = try! GinnyPersistence.makeContainer()
+        let applicationSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0]
+        let attachmentURL = applicationSupport
+            .appendingPathComponent("Ginny", isDirectory: true)
+            .appendingPathComponent("Attachments", isDirectory: true)
         return AppDependencies(
             credentialStore: KeychainCredentialStore(),
             transport: URLSessionStreamingTransport(),
             modelCatalog: URLSessionModelCatalog(),
             conversationRepository: ConversationRepository(container: container),
-            artefactRepository: ArtefactRepository(container: container)
+            artefactRepository: ArtefactRepository(container: container),
+            sourceRepository: SourceRepository(container: container),
+            attachmentStore: try! FileAttachmentStore(rootURL: attachmentURL)
         )
     }()
+
+    func makeSourceImporter() -> SourceImporter {
+        SourceImporter(
+            attachmentStore: attachmentStore,
+            repository: sourceRepository
+        )
+    }
 
     func makeSkillCatalog() -> SkillCatalog {
         let persistedSkills = (try? artefactRepository.fetchSkills()) ?? []

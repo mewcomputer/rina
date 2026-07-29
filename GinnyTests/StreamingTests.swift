@@ -557,7 +557,12 @@ final class StreamingTests: XCTestCase {
             transport: UnusedStreamingTransport(),
             modelCatalog: URLSessionModelCatalog(),
             conversationRepository: try! ConversationRepository(isStoredInMemoryOnly: true),
-            artefactRepository: try! ArtefactRepository(isStoredInMemoryOnly: true)
+            artefactRepository: try! ArtefactRepository(isStoredInMemoryOnly: true),
+            sourceRepository: try! SourceRepository(isStoredInMemoryOnly: true),
+            attachmentStore: try! FileAttachmentStore(
+                rootURL: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("GinnyStreamingTests-\(UUID().uuidString)")
+            )
         )
         let configuration = ProviderConfiguration(
             provider: .kimiCode,
