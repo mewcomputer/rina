@@ -638,6 +638,11 @@ func assistantContentSegments(
                 segments.append(.text(block))
             }
             index += 1
+        case .markdown, .code, .table, .mermaid, .image, .fileReference, .citationGroup, .providerNotice, .unknown:
+            if !block.payload.isEmpty || block.kind == .fileReference {
+                segments.append(.text(block))
+            }
+            index += 1
         case .toolCall:
             let startIndex = index
             while index < message.blocks.count, message.blocks[index].kind == .toolCall {

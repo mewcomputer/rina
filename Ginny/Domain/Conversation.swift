@@ -7,11 +7,64 @@ enum MessageRole: String, Codable, Equatable, Sendable {
     case tool
 }
 
-enum ContentBlockKind: String, Codable, Equatable, Sendable {
+enum ContentBlockKind: Codable, Equatable, Sendable {
     case text
+    case markdown
+    case code
+    case table
+    case mermaid
+    case image
+    case fileReference
+    case citationGroup
     case toolCall
     case toolResult
     case artefactReference
+    case providerNotice
+    case unknown(String)
+
+    var rawValue: String {
+        switch self {
+        case .text: "text"
+        case .markdown: "markdown"
+        case .code: "code"
+        case .table: "table"
+        case .mermaid: "mermaid"
+        case .image: "image"
+        case .fileReference: "fileReference"
+        case .citationGroup: "citationGroup"
+        case .toolCall: "toolCall"
+        case .toolResult: "toolResult"
+        case .artefactReference: "artefactReference"
+        case .providerNotice: "providerNotice"
+        case .unknown(let rawValue): rawValue
+        }
+    }
+
+    init(rawValue: String) {
+        switch rawValue {
+        case "text": self = .text
+        case "markdown": self = .markdown
+        case "code": self = .code
+        case "table": self = .table
+        case "mermaid": self = .mermaid
+        case "image": self = .image
+        case "fileReference": self = .fileReference
+        case "citationGroup": self = .citationGroup
+        case "toolCall": self = .toolCall
+        case "toolResult": self = .toolResult
+        case "artefactReference": self = .artefactReference
+        case "providerNotice": self = .providerNotice
+        default: self = .unknown(rawValue)
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        self.init(rawValue: try String(from: decoder))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try rawValue.encode(to: encoder)
+    }
 }
 
 enum ArtefactReferencePresentation: String, Codable, Equatable, Sendable {
@@ -26,6 +79,9 @@ enum ToolApprovalState: String, Codable, Equatable, Sendable {
 }
 
 struct ContentBlock: Codable, Equatable, Sendable {
+    static let currentSchemaVersion = 1
+    static let schemaVersionKey = "schemaVersion"
+
     let id: ContentBlockID
     let kind: ContentBlockKind
     var payload: String
@@ -76,6 +132,107 @@ struct ContentBlock: Codable, Equatable, Sendable {
             attributes: attributes,
             isComplete: isComplete
         )
+    }
+
+    static func markdown(
+        id: ContentBlockID = ContentBlockID(),
+        _ payload: String,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        structured(
+            id: id,
+            kind: .markdown,
+            payload: payload,
+            isComplete: isComplete
+        )
+    }
+
+    static func code(
+        id: ContentBlockID = ContentBlockID(),
+        _ payload: String,
+        language: String? = nil,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        var attributes: [String: String] = [:]
+        if let language {
+            attributes["language"] = language
+        }
+        return structured(
+            id: id,
+            kind: .code,
+            payload: payload,
+            attributes: attributes,
+            isComplete: isComplete
+        )
+    }
+
+    static func table(
+        id: ContentBlockID = ContentBlockID(),
+        _ payload: String,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        structured(id: id, kind: .table, payload: payload, isComplete: isComplete)
+    }
+
+    static func mermaid(
+        id: ContentBlockID = ContentBlockID(),
+        _ payload: String,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        structured(id: id, kind: .mermaid, payload: payload, isComplete: isComplete)
+    }
+
+    static func image(
+        id: ContentBlockID = ContentBlockID(),
+        reference: String,
+        mimeType: String? = nil,
+        alt: String? = nil,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        var attributes: [String: String] = [:]
+        if let mimeType { attributes["mimeType"] = mimeType }
+        if let alt { attributes["alt"] = alt }
+        return structured(
+            id: id,
+            kind: .image,
+            payload: reference,
+            attributes: attributes,
+            isComplete: isComplete
+        )
+    }
+
+    static func fileReference(
+        id: ContentBlockID = ContentBlockID(),
+        sourceID: SourceID,
+        displayName: String,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        structured(
+            id: id,
+            kind: .fileReference,
+            payload: "",
+            attributes: [
+                "sourceID": sourceID.rawValue.uuidString,
+                "displayName": displayName
+            ],
+            isComplete: isComplete
+        )
+    }
+
+    static func citationGroup(
+        id: ContentBlockID = ContentBlockID(),
+        _ payload: String,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        structured(id: id, kind: .citationGroup, payload: payload, isComplete: isComplete)
+    }
+
+    static func providerNotice(
+        id: ContentBlockID = ContentBlockID(),
+        _ payload: String,
+        isComplete: Bool = true
+    ) -> ContentBlock {
+        structured(id: id, kind: .providerNotice, payload: payload, isComplete: isComplete)
     }
 
     static func toolCall(
@@ -130,6 +287,24 @@ struct ContentBlock: Codable, Equatable, Sendable {
                 "presentation": presentation.rawValue
             ],
             isComplete: true
+        )
+    }
+
+    private static func structured(
+        id: ContentBlockID,
+        kind: ContentBlockKind,
+        payload: String,
+        attributes: [String: String] = [:],
+        isComplete: Bool
+    ) -> ContentBlock {
+        var attributes = attributes
+        attributes[schemaVersionKey] = String(currentSchemaVersion)
+        return ContentBlock(
+            id: id,
+            kind: kind,
+            payload: payload,
+            attributes: attributes,
+            isComplete: isComplete
         )
     }
 }

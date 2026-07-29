@@ -244,8 +244,11 @@ struct ContextAssembler: Sendable {
     private func text(for message: Message) -> String {
         message.blocks.map { block in
             switch block.kind {
-            case .text, .toolResult:
+            case .text, .markdown, .code, .table, .mermaid, .image, .fileReference,
+                 .citationGroup, .providerNotice, .toolResult:
                 return block.payload
+            case .unknown:
+                return "[unsupported content block]"
             case .toolCall:
                 let name = block.attributes["name"] ?? "tool"
                 return "[\(name)] \(block.payload)"
