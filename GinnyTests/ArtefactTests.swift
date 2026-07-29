@@ -58,7 +58,7 @@ final class ArtefactTests: XCTestCase {
         XCTAssertEqual(decoded.metadata["styling"], "tailwind")
     }
 
-    func testWebPreviewInjectsShadcnTokensAndTailwindStyleUtilities() {
+    func testWebPreviewInjectsShadcnTokensAndTailwindRuntime() {
         let document = WebArtefactPreview.document(
             for: "<html><head><title>Preview</title></head><body><button class=\"bg-primary text-primary-foreground rounded-lg\">Save</button></body></html>",
             isInline: true,
@@ -75,6 +75,9 @@ final class ArtefactTests: XCTestCase {
         XCTAssertTrue(document.contains(".bg-primary"))
         XCTAssertTrue(document.contains(".text-primary-foreground"))
         XCTAssertTrue(document.contains(".rounded-lg"))
+        XCTAssertTrue(document.contains("<script src=\"https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11\"></script>"))
+        XCTAssertTrue(document.contains("style type=\"text/tailwindcss\""))
+        XCTAssertTrue(document.contains("--color-primary: var(--primary);"))
         XCTAssertTrue(document.contains("<title>Preview</title>"))
     }
 
@@ -86,7 +89,7 @@ final class ArtefactTests: XCTestCase {
 
         XCTAssertTrue(document.contains("<!doctype html>"))
         XCTAssertTrue(document.contains("<head>"))
-        XCTAssertTrue(document.contains("<style>"))
+        XCTAssertTrue(document.contains("<style type=\"text/tailwindcss\">"))
         XCTAssertTrue(document.contains("<body><button>Save</button></body>"))
     }
 }

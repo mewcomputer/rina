@@ -443,8 +443,9 @@ struct WebArtefactPreview: UIViewRepresentable {
         let viewport = "width=device-width, initial-scale=1.0, viewport-fit=cover"
         let head = """
         <meta name="viewport" content="\(viewport)">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none';">
-        <style>\(styleSheet(cssVariables: cssVariables, isInline: isInline, isDark: isDark))</style>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none';">
+        <script src="\(tailwindBrowserURL)"></script>
+        <style type="text/tailwindcss">\(styleSheet(cssVariables: cssVariables, isInline: isInline, isDark: isDark))</style>
         """
 
         guard content.range(of: "<html", options: .caseInsensitive) != nil else {
@@ -487,6 +488,9 @@ struct WebArtefactPreview: UIViewRepresentable {
         return "<!doctype html><html>\(headMarkup)<body>\(document)</body></html>"
     }
 
+    private static let tailwindBrowserURL =
+        "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"
+
     private static func styleSheet(
         cssVariables: [String: String],
         isInline: Bool,
@@ -508,6 +512,25 @@ struct WebArtefactPreview: UIViewRepresentable {
                 --radius-lg: var(--radius);
                 --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.08);
                 --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.12);
+            }
+            @theme {
+                --color-background: var(--background);
+                --color-foreground: var(--foreground);
+                --color-card: var(--card);
+                --color-card-foreground: var(--card-foreground);
+                --color-primary: var(--primary);
+                --color-primary-foreground: var(--primary-foreground);
+                --color-secondary: var(--secondary);
+                --color-secondary-foreground: var(--secondary-foreground);
+                --color-muted: var(--muted);
+                --color-muted-foreground: var(--muted-foreground);
+                --color-accent: var(--accent);
+                --color-accent-foreground: var(--accent-foreground);
+                --color-destructive: var(--destructive);
+                --color-ring: var(--ring);
+                --radius-sm: calc(var(--radius) - 4px);
+                --radius-md: calc(var(--radius) - 2px);
+                --radius-lg: var(--radius);
             }
             @layer base {
                 *, ::before, ::after { box-sizing: border-box; }

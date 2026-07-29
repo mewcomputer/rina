@@ -18,6 +18,7 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertTrue(systemMessage.content.contains("inlineWeb"))
         XCTAssertTrue(systemMessage.content.contains("discover_skills"))
         XCTAssertTrue(systemMessage.content.contains("create_artefact"))
+        XCTAssertTrue(systemMessage.content.contains("pinned Tailwind browser runtime"))
         XCTAssertTrue(systemMessage.content.contains("Do not provide a duplicate shadcn stylesheet"))
     }
 
