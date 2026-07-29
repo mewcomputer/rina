@@ -11,12 +11,14 @@ struct ChatView: View {
     @StateObject private var history: SessionHistoryStore
     @StateObject private var artefacts: ArtefactStore
     @StateObject private var contextStore: ContextStore
+    @StateObject private var publicationStore: AtprotoPublicationStore
     @State private var draft = ""
     @State private var activeResponse: ActiveResponse?
     @State private var generationTask: Task<Void, Never>?
     @State private var showsSettings = false
     @State private var showsWorkspace = false
     @State private var showsSearch = false
+    @State private var showsSharePreview = false
     @State private var selectedContextID: ContextID?
     @State private var isSidebarPresented = false
     @State private var sidebarDragOffset: CGFloat = 0
@@ -68,6 +70,7 @@ struct ChatView: View {
                 searchIndex: dependencies.searchIndex
             )
         )
+        _publicationStore = StateObject(wrappedValue: AtprotoPublicationStore())
     }
 
     var body: some View {
@@ -177,7 +180,9 @@ struct ChatView: View {
             WorkspaceLibraryView(
                 store: artefacts,
                 sourceImporter: dependencies.makeSourceImporter(),
-                relationshipRepository: dependencies.relationshipRepository
+                relationshipRepository: dependencies.relationshipRepository,
+                sharingService: dependencies.atprotoSharing,
+                publicationStore: publicationStore
             )
                 .environment(\.ginnyTheme, theme)
                 .preferredColorScheme(theme.mode.colorScheme)
@@ -194,6 +199,19 @@ struct ChatView: View {
                 openConversation: selectConversation,
                 openWorkspace: { showsWorkspace = true },
                 selectContext: { selectedContextID = $0 }
+            )
+            .environment(\.ginnyTheme, theme)
+            .preferredColorScheme(theme.mode.colorScheme)
+        }
+        .sheet(isPresented: $showsSharePreview) {
+            ConversationSharePreviewSheet(
+                conversation: session.conversation,
+                publication: publicationStore.publications.first {
+                    $0.collection == AtprotoRecordCollection.conversation
+                        && $0.subjectID == session.conversation.id.rawValue.uuidString
+                },
+                sharingService: dependencies.atprotoSharing,
+                publicationStore: publicationStore
             )
             .environment(\.ginnyTheme, theme)
             .preferredColorScheme(theme.mode.colorScheme)
@@ -305,7 +323,8 @@ struct ChatView: View {
 
                     ChatHeader(
                         title: conversationTitle,
-                        onOpenSidebar: { setSidebarPresented(true) }
+                        onOpenSidebar: { setSidebarPresented(true) },
+                        onShare: { showsSharePreview = true }
                     )
                     .frame(maxWidth: 760)
                     .frame(maxWidth: .infinity)
@@ -794,6 +813,7 @@ func assistantContentSegments(
 private struct ChatHeader: View {
     let title: String
     let onOpenSidebar: () -> Void
+    let onShare: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -814,9 +834,133 @@ private struct ChatHeader: View {
                 )
 
             Spacer(minLength: 8)
+
+            Button(action: onShare) {
+                HeaderIconButton(systemImage: "square.and.arrow.up")
+            }
+            .accessibilityLabel("Share conversation")
+            .accessibilityIdentifier("header.shareConversation")
         }
         .padding(.top, 12)
         .padding(.bottom, 16)
+    }
+}
+
+@MainActor
+private struct ConversationSharePreviewSheet: View {
+    let conversation: Conversation
+    let publication: AtprotoPublication?
+    let sharingService: AtprotoSharingService
+    @ObservedObject var publicationStore: AtprotoPublicationStore
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.ginnyTheme) private var theme
+    @State private var isWorking = false
+    @State private var errorMessage: String?
+    @State private var publishedPublication: AtprotoPublication?
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(publication == nil ? "Share conversation" : "Update public snapshot")
+                        .font(.title2.weight(.semibold))
+                    Text(conversation.title ?? "Untitled conversation")
+                        .font(.headline)
+                    Text("This creates a public atproto record. You choose when to publish and update it.")
+                        .font(.subheadline)
+                        .foregroundStyle(theme.color("text.muted"))
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Public snapshot", systemImage: "globe")
+                        .font(.headline)
+                    Text("Visible messages and saved content are included. Hidden reasoning and raw tool payloads stay local.")
+                        .font(.footnote)
+                        .foregroundStyle(theme.color("text.muted"))
+                }
+                .padding(16)
+                .background(theme.color("card"), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                Spacer()
+
+                Button(action: publish) {
+                    HStack {
+                        if isWorking { ProgressView().tint(theme.color("primary_foreground")) }
+                        Text(publication == nil ? "Publish publicly" : "Update public snapshot")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isWorking || conversation.messages.isEmpty)
+
+                if let publicURL = publishedPublication?.publicWebURL ?? publication?.publicWebURL {
+                    Button("Open public page", systemImage: "arrow.up.right") {
+                        openURL(publicURL)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                if publishedPublication != nil || publication != nil {
+                    Button("Stop sharing", role: .destructive, action: stopSharing)
+                        .frame(maxWidth: .infinity)
+                        .disabled(isWorking)
+                }
+            }
+            .padding(20)
+            .navigationTitle("Share")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .alert(
+                "Couldn’t share conversation",
+                isPresented: Binding(
+                    get: { errorMessage != nil },
+                    set: { if !$0 { errorMessage = nil } }
+                )
+            ) {
+                Button("Done") { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
+            }
+        }
+    }
+
+    private func publish() {
+        isWorking = true
+        Task {
+            do {
+                let snapshot = AtprotoSnapshotBuilder.conversation(conversation)
+                let published = try await sharingService.publish(
+                    snapshot,
+                    publication: publication,
+                    subjectID: conversation.id.rawValue.uuidString
+                )
+                publicationStore.save(published)
+                publishedPublication = published
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isWorking = false
+        }
+    }
+
+    private func stopSharing() {
+        guard let publication = publishedPublication ?? publication else { return }
+        isWorking = true
+        Task {
+            do {
+                try await sharingService.delete(publication)
+                publicationStore.remove(collection: publication.collection, rkey: publication.rkey)
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isWorking = false
+        }
     }
 }
 

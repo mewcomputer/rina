@@ -15,6 +15,7 @@ struct AppDependencies: Sendable {
     let searchIndex: LocalSearchIndex?
     let contextRepository: ContextRepository?
     let atprotoAuth: AtprotoAuthService
+    let atprotoSharing: AtprotoSharingService
 
     init(
         credentialStore: any CredentialStore,
@@ -28,7 +29,8 @@ struct AppDependencies: Sendable {
         citationRepository: CitationRepository? = nil,
         searchIndex: LocalSearchIndex? = nil,
         contextRepository: ContextRepository? = nil,
-        atprotoAuth: AtprotoAuthService = AtprotoAuthService()
+        atprotoAuth: AtprotoAuthService = AtprotoAuthService(),
+        atprotoSharing: AtprotoSharingService? = nil
     ) {
         self.credentialStore = credentialStore
         self.transport = transport
@@ -42,6 +44,7 @@ struct AppDependencies: Sendable {
         self.searchIndex = searchIndex
         self.contextRepository = contextRepository
         self.atprotoAuth = atprotoAuth
+        self.atprotoSharing = atprotoSharing ?? AtprotoSharingService(authService: atprotoAuth)
     }
 
     static func makeLive() throws -> AppDependencies {

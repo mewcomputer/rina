@@ -1,4 +1,5 @@
 import Foundation
+import AtprotoTypes
 import SwiftAtproto
 
 struct AtprotoResolvedIdentity: Equatable, Sendable {
@@ -13,6 +14,10 @@ protocol AtprotoIdentityResolving: Sendable {
 
 struct GinnyAtprotoIdentityResolver: AtprotoIdentityResolving, Sendable {
     private let urlSession: URLSession
+    private static let handleResolutionEndpoints = [
+        URL(string: "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle")!,
+        URL(string: "https://bsky.social/xrpc/com.atproto.identity.resolveHandle")!
+    ]
 
     init(urlSession: URLSession = .shared) {
         self.urlSession = urlSession
@@ -52,6 +57,36 @@ struct GinnyAtprotoIdentityResolver: AtprotoIdentityResolving, Sendable {
     }
 
     func resolve(handle: Handle) async throws -> DID {
+        for endpoint in Self.handleResolutionEndpoints {
+            if let did = try? await resolve(handle: handle, using: endpoint) {
+                return did
+            }
+        }
+
+        return try await resolveFromWellKnown(handle)
+    }
+
+    private func resolve(handle: Handle, using endpoint: URL) async throws -> DID {
+        var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "handle", value: handle.rawValue)]
+        guard let url = components?.url else {
+            throw AtprotoAuthError.identityResolutionFailed
+        }
+
+        let (data, response) = try await urlSession.data(from: url)
+        guard let response = response as? HTTPURLResponse,
+              200..<300 ~= response.statusCode,
+              let resolved = try? JSONDecoder().decode(
+                  AtprotoHandleResolutionResponse.self,
+                  from: data
+              ) else {
+            throw AtprotoAuthError.identityResolutionFailed
+        }
+
+        return try DID(string: resolved.did)
+    }
+
+    private func resolveFromWellKnown(_ handle: Handle) async throws -> DID {
         let url = try makeHandleURL(handle)
         let (data, response) = try await urlSession.data(from: url)
         guard let response = response as? HTTPURLResponse,
@@ -108,6 +143,10 @@ struct GinnyAtprotoIdentityResolver: AtprotoIdentityResolving, Sendable {
             throw AtprotoAuthError.identityResolutionFailed
         }
     }
+}
+
+private struct AtprotoHandleResolutionResponse: Decodable, Sendable {
+    let did: String
 }
 
 private struct AtprotoSession: Codable, Equatable, Sendable {
@@ -315,6 +354,31 @@ actor AtprotoAuthService {
         try? credentialStore.deleteCredential(for: Self.sessionCredentialID)
         try? credentialStore.deleteCredential(for: Self.passwordCredentialID)
         try? metadataStore.deleteCredential(for: Self.accountCredentialID)
+    }
+
+    func authenticatedDID() async throws -> String {
+        try await oauthService.authenticatedDID()
+    }
+
+    func createRecord<R: Atproto.Record>(
+        _ record: R,
+        rkey: R.Key
+    ) async throws {
+        try await oauthService.createRecord(record, rkey: rkey)
+    }
+
+    func putRecord<R: Atproto.Record>(
+        _ record: R,
+        rkey: R.Key
+    ) async throws {
+        try await oauthService.putRecord(record, rkey: rkey)
+    }
+
+    func deleteRecord<R: Atproto.Record>(
+        type: R.Type,
+        rkey: R.Key
+    ) async throws {
+        try await oauthService.deleteRecord(type: type, rkey: rkey)
     }
 
     static func normalizeHandle(_ value: String) throws -> String {

@@ -1,0 +1,80 @@
+import XCTest
+@testable import Ginny
+
+final class AtprotoSharingTests: XCTestCase {
+    func testRecordKeysUseAtprotoTIDFormat() throws {
+        XCTAssertNoThrow(try RinaRecordKey(string: "3jv3l5k7w2abc"))
+        XCTAssertThrowsError(try RinaRecordKey(string: "3abcdef"))
+        XCTAssertThrowsError(try RinaRecordKey(string: "3jv3l5k7w20bc"))
+    }
+
+    func testConversationSnapshotPublishesVisibleContentOnly() throws {
+        var conversation = Conversation(title: "Web accessibility")
+        try conversation.appendMessage(.user("Can you review this page?"))
+        try conversation.appendMessage(
+            Message(
+                role: .assistant,
+                blocks: [
+                    .text("The page needs a clearer focus state."),
+                    .toolCall(callID: "call-1", name: "search_web", arguments: "{\"q\":\"secret\"}"),
+                    .toolResult(callID: "call-1", result: "private tool output"),
+                ],
+                providerContinuations: [
+                    ProviderContinuation(
+                        provider: .umans,
+                        id: "reasoning-1",
+                        kind: "reasoning",
+                        fields: ["thinking": "private reasoning"]
+                    )
+                ]
+            )
+        )
+
+        let snapshot = AtprotoSnapshotBuilder.conversation(conversation)
+
+        XCTAssertEqual(snapshot.title, "Web accessibility")
+        XCTAssertEqual(snapshot.messages.count, 2)
+        XCTAssertEqual(snapshot.messages[1].blocks.map(\.payload), ["The page needs a clearer focus state."])
+        let encoded = try JSONEncoder().encode(snapshot)
+        let publicJSON = String(decoding: encoded, as: UTF8.self)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertTrue(object["createdAt"] is String)
+        XCTAssertTrue(object["updatedAt"] is String)
+        XCTAssertFalse(publicJSON.contains("private reasoning"))
+        XCTAssertFalse(publicJSON.contains("private tool output"))
+    }
+
+    func testArtefactRecordUsesCurrentRevision() throws {
+        var artefact = Artefact(title: "Accessible card", kind: .code)
+        _ = artefact.checkpoint(
+            source: "<button>Save</button>",
+            renderedContent: "<button>Save</button>",
+            metadata: ["language": "html"]
+        )
+
+        let record = try AtprotoSnapshotBuilder.artefact(artefact)
+
+        XCTAssertEqual(record.title, "Accessible card")
+        XCTAssertEqual(record.kind, .code)
+        XCTAssertEqual(record.source, "<button>Save</button>")
+        XCTAssertEqual(record.metadata["language"], "html")
+    }
+
+    func testPublicationStateRoundTrips() throws {
+        let publication = AtprotoPublication(
+            collection: AtprotoRecordCollection.conversation,
+            rkey: "3jv3l5k7w2abc",
+            uri: "at://did:plc:example/computer.mew.rina.conversation/3jv3l5k7w2abc",
+            updatedAt: Date(timeIntervalSince1970: 123),
+            subjectID: "conversation-1"
+        )
+
+        let data = try JSONEncoder().encode(publication)
+
+        XCTAssertEqual(try JSONDecoder().decode(AtprotoPublication.self, from: data), publication)
+        XCTAssertEqual(
+            publication.publicWebURL?.absoluteString,
+            "https://rina.mew.computer/s/did:plc:example/computer.mew.rina.conversation/3jv3l5k7w2abc"
+        )
+    }
+}

@@ -1,0 +1,56 @@
+{
+  "lexicon": 1,
+  "id": "computer.mew.rina.conversation",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["snapshot"],
+        "properties": {
+          "snapshot": {"type": "ref", "ref": "#snapshot"}
+        }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "required": ["schemaVersion", "title", "createdAt", "updatedAt", "messages"],
+      "properties": {
+        "schemaVersion": {"type": "integer", "minimum": 1, "maximum": 1},
+        "title": {"type": "string", "maxLength": 200},
+        "createdAt": {"type": "string", "format": "datetime"},
+        "updatedAt": {"type": "string", "format": "datetime"},
+        "messages": {
+          "type": "array",
+          "maxLength": 1000,
+          "items": {"type": "ref", "ref": "#message"}
+        }
+      }
+    },
+    "message": {
+      "type": "object",
+      "required": ["id", "role", "blocks", "createdAt"],
+      "properties": {
+        "id": {"type": "string", "maxLength": 100},
+        "role": {"type": "string", "knownValues": ["user", "assistant", "system", "tool"]},
+        "blocks": {
+          "type": "array",
+          "maxLength": 200,
+          "items": {"type": "ref", "ref": "#block"}
+        },
+        "createdAt": {"type": "string", "format": "datetime"}
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": ["id", "kind", "payload", "attributes"],
+      "properties": {
+        "id": {"type": "string", "maxLength": 100},
+        "kind": {"type": "string", "maxLength": 100},
+        "payload": {"type": "string", "maxLength": 1000000},
+        "attributes": {"type": "object", "maxProperties": 100, "additionalProperties": {"type": "string", "maxLength": 1000000}}
+      }
+    }
+  }
+}

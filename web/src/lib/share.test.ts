@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ARTEFACT_COLLECTION,
+  CONVERSATION_COLLECTION,
   SHARE_COLLECTION,
   ShareParseError,
   parseAtUri,
@@ -59,6 +61,73 @@ describe('parseAtUri', () => {
 })
 
 describe('parseShareRecord', () => {
+  it('parses a typed conversation record', () => {
+    expect(
+      parseShareRecord(
+        {
+          $type: CONVERSATION_COLLECTION,
+          snapshot: {
+            schemaVersion: 1,
+            title: 'Accessible card review',
+            createdAt: '2026-07-29T18:00:00.000Z',
+            updatedAt: '2026-07-29T18:01:00.000Z',
+            messages: [
+              {
+                id: 'message-1',
+                role: 'assistant',
+                blocks: [
+                  {
+                    id: 'block-1',
+                    kind: 'markdown',
+                    payload: 'Use a visible focus ring.',
+                    attributes: {},
+                  },
+                ],
+                createdAt: '2026-07-29T18:00:00.000Z',
+              },
+            ],
+          },
+        },
+        CONVERSATION_COLLECTION,
+      ),
+    ).toMatchObject({
+      title: 'Accessible card review',
+      kind: 'conversation',
+      messages: [{ role: 'assistant', blocks: [{ kind: 'markdown' }] }],
+      artefacts: [],
+    })
+  })
+
+  it('parses a typed artefact record', () => {
+    expect(
+      parseShareRecord(
+        {
+          $type: ARTEFACT_COLLECTION,
+          snapshot: {
+            schemaVersion: 1,
+            title: 'Accessible card',
+            kind: 'code',
+            createdAt: '2026-07-29T18:00:00.000Z',
+            updatedAt: '2026-07-29T18:01:00.000Z',
+            source: '<button>Save</button>',
+            renderedContent: '<button>Save</button>',
+            metadata: { language: 'html' },
+          },
+        },
+        ARTEFACT_COLLECTION,
+      ),
+    ).toMatchObject({
+      title: 'Accessible card',
+      kind: 'artefact',
+      artefacts: [
+        expect.objectContaining({
+          kind: 'code',
+          source: '<button>Save</button>',
+        }),
+      ],
+    })
+  })
+
   it('normalizes a valid record without losing block attributes', () => {
     expect(parseShareRecord(validRecord)).toEqual({
       schemaVersion: 1,

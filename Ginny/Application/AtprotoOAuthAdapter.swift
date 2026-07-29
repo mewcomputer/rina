@@ -124,6 +124,44 @@ actor AtprotoOAuthService {
         try? metadataStore.deleteCredential(for: Self.archiveCredentialID)
     }
 
+    func authenticatedDID() throws -> String {
+        guard let agent else { throw AtprotoSharingError.notAuthenticated }
+        return agent.authenticatedDID.rawValue
+    }
+
+    func createRecord<R: Atproto.Record>(
+        _ record: R,
+        rkey: R.Key
+    ) async throws {
+        guard let agent else { throw AtprotoSharingError.notAuthenticated }
+        _ = try await agent.createRecord(record, rkey: rkey)
+    }
+
+    func putRecord<R: Atproto.Record>(
+        _ record: R,
+        rkey: R.Key
+    ) async throws {
+        guard let agent else { throw AtprotoSharingError.notAuthenticated }
+        _ = try await agent.putRecord(
+            R.self,
+            input: .init(
+                schema: .init(
+                    repo: .did(agent.did),
+                    rkey: rkey,
+                    record: record
+                )
+            )
+        )
+    }
+
+    func deleteRecord<R: Atproto.Record>(
+        type: R.Type,
+        rkey: R.Key
+    ) async throws {
+        guard let agent else { throw AtprotoSharingError.notAuthenticated }
+        _ = try await agent.deleteRecord(type: type, rkey: rkey)
+    }
+
     private func install(
         agent: AtprotoOAuthAgent,
         saveStream: AsyncStream<OAuth.SessionState.TokenState?>

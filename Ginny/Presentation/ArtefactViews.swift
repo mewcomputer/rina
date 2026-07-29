@@ -40,11 +40,14 @@ struct WorkspaceLibraryView: View {
     @ObservedObject var store: ArtefactStore
     let sourceImporter: SourceImporter
     let relationshipRepository: RelationshipRepository
+    let sharingService: AtprotoSharingService
+    @ObservedObject var publicationStore: AtprotoPublicationStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.ginnyTheme) private var theme
     @State private var section: WorkspaceSection = .artefacts
     @State private var selectedArtefact: Artefact?
     @State private var selectedSkill: Skill?
+    @State private var artefactToShare: Artefact?
     @State private var sources: [Source] = []
     @State private var sharedFile: ExportedFile?
     @State private var isImportingSource = false
@@ -109,6 +112,19 @@ struct WorkspaceLibraryView: View {
                 store.save(updated)
             }
         }
+        .sheet(item: $artefactToShare) { artefact in
+            ArtefactSharePreviewSheet(
+                artefact: artefact,
+                publication: publicationStore.publications.first {
+                    $0.collection == AtprotoRecordCollection.artefact
+                        && $0.subjectID == artefact.id.rawValue.uuidString
+                },
+                sharingService: sharingService,
+                publicationStore: publicationStore
+            )
+            .environment(\.ginnyTheme, theme)
+            .preferredColorScheme(theme.mode.colorScheme)
+        }
         .fileImporter(
             isPresented: $isImportingSource,
             allowedContentTypes: SourceImporter.supportedContentTypes,
@@ -171,6 +187,9 @@ struct WorkspaceLibraryView: View {
                     }
                 }
                 .contextMenu {
+                    Button("Share", systemImage: "square.and.arrow.up") {
+                        artefactToShare = artefact
+                    }
                     Menu("Export", systemImage: "square.and.arrow.up") {
                         ForEach(ArtefactExportFormat.allCases, id: \.self) { format in
                             Button(format.fileExtension.uppercased()) {
@@ -588,6 +607,124 @@ private struct ArtefactEditorView: View {
         )
         onSave(artefact)
         dismiss()
+    }
+}
+
+@MainActor
+private struct ArtefactSharePreviewSheet: View {
+    let artefact: Artefact
+    let publication: AtprotoPublication?
+    let sharingService: AtprotoSharingService
+    @ObservedObject var publicationStore: AtprotoPublicationStore
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.ginnyTheme) private var theme
+    @State private var isWorking = false
+    @State private var errorMessage: String?
+    @State private var publishedPublication: AtprotoPublication?
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(publication == nil ? "Share artefact" : "Update public snapshot")
+                        .font(.title2.weight(.semibold))
+                    Text(artefact.title)
+                        .font(.headline)
+                    Text("The current saved revision becomes a public atproto record. Local revision history stays on this device.")
+                        .font(.subheadline)
+                        .foregroundStyle(theme.color("text.muted"))
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Public snapshot", systemImage: "globe")
+                        .font(.headline)
+                    Text("Source, rendered content, and artefact metadata are included in this v0 snapshot.")
+                        .font(.footnote)
+                        .foregroundStyle(theme.color("text.muted"))
+                }
+                .padding(16)
+                .background(theme.color("card"), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                Spacer()
+
+                Button(action: publish) {
+                    HStack {
+                        if isWorking { ProgressView().tint(theme.color("primary_foreground")) }
+                        Text(publication == nil ? "Publish publicly" : "Update public snapshot")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isWorking || artefact.currentRevision == nil)
+
+                if let publicURL = publishedPublication?.publicWebURL ?? publication?.publicWebURL {
+                    Button("Open public page", systemImage: "arrow.up.right") {
+                        openURL(publicURL)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                if publishedPublication != nil || publication != nil {
+                    Button("Stop sharing", role: .destructive, action: stopSharing)
+                        .frame(maxWidth: .infinity)
+                        .disabled(isWorking)
+                }
+            }
+            .padding(20)
+            .navigationTitle("Share")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .alert(
+                "Couldn’t share artefact",
+                isPresented: Binding(
+                    get: { errorMessage != nil },
+                    set: { if !$0 { errorMessage = nil } }
+                )
+            ) {
+                Button("Done") { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
+            }
+        }
+    }
+
+    private func publish() {
+        isWorking = true
+        Task {
+            do {
+                let snapshot = try AtprotoSnapshotBuilder.artefact(artefact)
+                let published = try await sharingService.publish(
+                    snapshot,
+                    publication: publication,
+                    subjectID: artefact.id.rawValue.uuidString
+                )
+                publicationStore.save(published)
+                publishedPublication = published
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isWorking = false
+        }
+    }
+
+    private func stopSharing() {
+        guard let publication = publishedPublication ?? publication else { return }
+        isWorking = true
+        Task {
+            do {
+                try await sharingService.delete(publication)
+                publicationStore.remove(collection: publication.collection, rkey: publication.rkey)
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isWorking = false
+        }
     }
 }
 

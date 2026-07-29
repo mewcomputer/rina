@@ -1,4 +1,6 @@
 export const SHARE_COLLECTION = 'computer.mew.rina.share'
+export const CONVERSATION_COLLECTION = 'computer.mew.rina.conversation'
+export const ARTEFACT_COLLECTION = 'computer.mew.rina.artefact'
 export const SHARE_SCHEMA_VERSION = 1
 
 const MAX_TITLE_LENGTH = 200
@@ -69,7 +71,10 @@ export type ShareSnapshot = {
 
 export type ShareReference = {
   repo: string
-  collection: typeof SHARE_COLLECTION
+  collection:
+    | typeof SHARE_COLLECTION
+    | typeof CONVERSATION_COLLECTION
+    | typeof ARTEFACT_COLLECTION
   rkey: string
 }
 
@@ -119,7 +124,11 @@ export function parseAtUri(input: string): ShareReference {
       'share references must include one collection and record key',
     )
   }
-  if (collection !== SHARE_COLLECTION) {
+  if (
+    collection !== SHARE_COLLECTION &&
+    collection !== CONVERSATION_COLLECTION &&
+    collection !== ARTEFACT_COLLECTION
+  ) {
     throw new ShareParseError(
       'invalidReference',
       `Unsupported collection: ${collection}`,
@@ -136,14 +145,24 @@ export function parseAtUri(input: string): ShareReference {
   }
 }
 
-export function parseShareRecord(input: unknown): ShareSnapshot {
+export function parseShareRecord(
+  input: unknown,
+  collection: ShareReference['collection'] = SHARE_COLLECTION,
+): ShareSnapshot {
   const record = asRecord(input, 'record')
   const type = optionalString(record.$type, '$type')
-  if (type !== undefined && type !== SHARE_COLLECTION) {
+  if (type !== undefined && type !== collection) {
     throw new ShareParseError(
       'invalidRecord',
       `Unsupported share record type: ${type}`,
     )
+  }
+
+  if (collection === CONVERSATION_COLLECTION) {
+    return parseConversationRecord(record)
+  }
+  if (collection === ARTEFACT_COLLECTION) {
+    return parseArtefactRecord(record)
   }
 
   const version = record.schemaVersion
@@ -176,6 +195,50 @@ export function parseShareRecord(input: unknown): ShareSnapshot {
     messages: parseMessages(snapshot.messages),
     artefacts: parseArtefacts(snapshot.artefacts),
     relationships: parseRelationships(snapshot.relationships),
+  }
+}
+
+function parseConversationRecord(record: Record<string, unknown>): ShareSnapshot {
+  const snapshot = asRecord(record.snapshot, 'snapshot')
+  const version = snapshot.schemaVersion
+  if (version !== SHARE_SCHEMA_VERSION) {
+    throw new ShareParseError(
+      'unsupportedVersion',
+      `Unsupported conversation schema version: ${version}`,
+    )
+  }
+
+  return {
+    schemaVersion: SHARE_SCHEMA_VERSION,
+    title: requiredString(snapshot.title, 'snapshot.title', MAX_TITLE_LENGTH),
+    createdAt: requiredDate(snapshot.createdAt, 'snapshot.createdAt'),
+    kind: 'conversation',
+    messages: parseMessages(snapshot.messages),
+    artefacts: [],
+    relationships: [],
+  }
+}
+
+function parseArtefactRecord(record: Record<string, unknown>): ShareSnapshot {
+  const snapshot = asRecord(record.snapshot, 'snapshot')
+  const version = snapshot.schemaVersion
+  if (version !== SHARE_SCHEMA_VERSION) {
+    throw new ShareParseError(
+      'unsupportedVersion',
+      `Unsupported artefact schema version: ${version}`,
+    )
+  }
+
+  const title = requiredString(snapshot.title, 'snapshot.title', MAX_TITLE_LENGTH)
+  const artefact = parseArtefacts([snapshot])
+  return {
+    schemaVersion: SHARE_SCHEMA_VERSION,
+    title,
+    createdAt: requiredDate(snapshot.createdAt, 'snapshot.createdAt'),
+    kind: 'artefact',
+    messages: [],
+    artefacts: artefact,
+    relationships: [],
   }
 }
 

@@ -64,4 +64,81 @@ final class AtprotoAuthTests: XCTestCase {
         )
         XCTAssertEqual(configuration.clientInfo.scopes, ["atproto"])
     }
+
+    func testIdentityResolverUsesAtprotoHandleResolutionService() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AtprotoIdentityURLProtocol.self]
+        let resolver = GinnyAtprotoIdentityResolver(
+            urlSession: URLSession(configuration: configuration)
+        )
+        AtprotoIdentityURLProtocol.requestedURLs = []
+
+        let identity = try await resolver.resolve(identifier: "alice.test")
+
+        XCTAssertEqual(identity.did, "did:plc:example")
+        XCTAssertEqual(identity.handle, "alice.test")
+        XCTAssertEqual(identity.pdsURL, "https://pds.example.com")
+        XCTAssertEqual(AtprotoIdentityURLProtocol.requestedURLs.first?.host, "public.api.bsky.app")
+    }
+}
+
+private final class AtprotoIdentityURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var requestedURLs: [URL] = []
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let url = request.url else {
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+
+        Self.requestedURLs.append(url)
+
+        let statusCode: Int
+        let body: Data
+        if url.host == "public.api.bsky.app" {
+            statusCode = 200
+            body = Data("{\"did\":\"did:plc:example\"}".utf8)
+        } else if url.host == "plc.directory" {
+            statusCode = 200
+            body = Data(
+                """
+                {
+                  "@context": ["https://www.w3.org/ns/did/v1"],
+                  "id": "did:plc:example",
+                  "alsoKnownAs": ["at://alice.test"],
+                  "service": [
+                    {
+                      "id": "#atproto_pds",
+                      "type": "AtprotoPersonalDataServer",
+                      "serviceEndpoint": "https://pds.example.com"
+                    }
+                  ]
+                }
+                """.utf8
+            )
+        } else {
+            statusCode = 404
+            body = Data()
+        }
+
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }
