@@ -13,7 +13,7 @@ final class ChatSession: ObservableObject {
     private var provider: (any ProviderAdapter)?
     private var activeGenerationTask: Task<Void, Never>?
     private var activeGenerationID: UUID?
-    private let toolRegistry: ToolRegistry
+    private var toolRegistry: ToolRegistry
     private let persistence: ((Conversation) throws -> Void)?
     private var toolApprovalContinuation: CheckedContinuation<Bool, Never>?
 
@@ -31,6 +31,10 @@ final class ChatSession: ObservableObject {
 
     func configure(provider: any ProviderAdapter) {
         self.provider = provider
+    }
+
+    func configure(skillCatalog: SkillCatalog) {
+        toolRegistry.updateSkillCatalog(skillCatalog)
     }
 
     func load(conversation: Conversation) {

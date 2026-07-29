@@ -438,7 +438,8 @@ struct WebArtefactPreview: UIViewRepresentable {
                     padding: 20px;
                     color: var(--foreground);
                     background: var(--background);
-                    font: -apple-system-body, -apple-system, BlinkMacSystemFont, sans-serif;
+                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                    font-size: 16px;
                     line-height: 1.5;
                 }
                 button, input, textarea, select {

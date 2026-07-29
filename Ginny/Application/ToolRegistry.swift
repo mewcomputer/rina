@@ -28,7 +28,7 @@ enum ToolExecutionError: Error, Equatable, Sendable {
 }
 
 struct ToolRegistry: Sendable {
-    let tools: [any GinnyTool]
+    private(set) var tools: [any GinnyTool]
 
     init(tools: [any GinnyTool] = [
         CurrentTimeTool(),
@@ -40,6 +40,15 @@ struct ToolRegistry: Sendable {
 
     var definitions: [ProviderToolDefinition] {
         tools.map(\.definition)
+    }
+
+    mutating func updateSkillCatalog(_ catalog: SkillCatalog) {
+        tools.removeAll {
+            $0.definition.name == "discover_skills"
+                || $0.definition.name == "read_skill"
+        }
+        tools.append(DiscoverSkillsTool(catalog: catalog))
+        tools.append(ReadSkillTool(catalog: catalog))
     }
 
     func approvalRequirement(for name: String) -> ToolApprovalRequirement? {

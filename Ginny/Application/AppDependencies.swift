@@ -17,13 +17,17 @@ struct AppDependencies: Sendable {
         artefactRepository: try! ArtefactRepository()
     )
 
-    func makeToolRegistry() -> ToolRegistry {
+    func makeSkillCatalog() -> SkillCatalog {
         let persistedSkills = (try? artefactRepository.fetchSkills()) ?? []
         var skillsByID = Dictionary(uniqueKeysWithValues: CuratedSkills.all.map { ($0.id, $0) })
         for skill in persistedSkills {
             skillsByID[skill.id] = skill
         }
-        let catalog = SkillCatalog(skills: Array(skillsByID.values))
+        return SkillCatalog(skills: Array(skillsByID.values))
+    }
+
+    func makeToolRegistry() -> ToolRegistry {
+        let catalog = makeSkillCatalog()
 
         return ToolRegistry(tools: [
             CurrentTimeTool(),

@@ -24,6 +24,10 @@ final class ArtefactStore: ObservableObject {
             + skills.filter { !curatedIDs.contains($0.id) }
     }
 
+    var skillCatalog: SkillCatalog {
+        SkillCatalog(skills: availableSkills)
+    }
+
     func refresh() {
         do {
             artefacts = try repository.fetchArtefacts()

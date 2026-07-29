@@ -48,6 +48,24 @@ final class ToolTests: XCTestCase {
             .automatic
         )
     }
+
+    func testToolRegistryRefreshesSkillDiscoveryWithoutReplacingOtherTools() {
+        var registry = ToolRegistry(tools: [CurrentTimeTool()])
+        let skill = Skill(
+            name: "Writing polish",
+            summary: "Improve writing.",
+            instructions: "Use concrete verbs.",
+            targetKinds: [.document],
+            keywords: ["writing"]
+        )
+
+        registry.updateSkillCatalog(SkillCatalog(skills: [skill]))
+
+        XCTAssertEqual(
+            registry.tools.map { $0.definition.name },
+            ["current_time", "discover_skills", "read_skill"]
+        )
+    }
 }
 
 private struct RequiresApprovalTool: GinnyTool {

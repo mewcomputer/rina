@@ -109,6 +109,9 @@ struct ChatView: View {
         .onChange(of: session.streamingReasoningText) { _, snapshot in
             activeResponse?.thinkingSource.yield(snapshot)
         }
+        .onChange(of: artefacts.skills) { _, _ in
+            session.configure(skillCatalog: artefacts.skillCatalog)
+        }
         .onDisappear {
             generationTask?.cancel()
         }
