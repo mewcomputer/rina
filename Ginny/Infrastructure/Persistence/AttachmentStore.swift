@@ -85,7 +85,7 @@ actor FileAttachmentStore: AttachmentStore {
         for item in try fileManager.contentsOfDirectory(
             at: rootURL,
             includingPropertiesForKeys: nil,
-            options: [.skipsHiddenFiles]
+            options: []
         ) {
             try fileManager.removeItem(at: item)
         }
