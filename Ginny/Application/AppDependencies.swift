@@ -121,7 +121,8 @@ struct AppDependencies: Sendable {
     func makeSourceImporter() -> SourceImporter {
         SourceImporter(
             attachmentStore: attachmentStore,
-            repository: sourceRepository
+            repository: sourceRepository,
+            searchIndex: searchIndex
         )
     }
 

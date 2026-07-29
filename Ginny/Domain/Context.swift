@@ -1,6 +1,6 @@
 import Foundation
 
-enum ContextMember: Codable, Equatable, Sendable {
+enum ContextMember: Codable, Equatable, Hashable, Sendable {
     case message(MessageID)
     case artefactRevision(artefactID: ArtefactID, revisionID: RevisionID)
     case source(SourceID)
@@ -85,6 +85,59 @@ struct ContextAssemblyInput: Sendable {
         self.sources = sources
         self.taskConstraints = taskConstraints
     }
+}
+
+enum ContextMaterialResolver {
+    static func input(
+        for context: Context,
+        messages: [Message] = [],
+        artefacts: [Artefact] = [],
+        sources: [Source] = []
+    ) -> ContextAssemblyInput {
+        let messageIDs = Set(context.members.compactMap { member in
+            if case .message(let id) = member { return id }
+            return nil
+        })
+        let artefactRevisions = Set(context.members.compactMap { member in
+            if case .artefactRevision(let artefactID, let revisionID) = member {
+                return ArtefactRevisionReference(artefactID: artefactID, revisionID: revisionID)
+            }
+            return nil
+        })
+        let sourceIDs = Set(context.members.compactMap { member in
+            if case .source(let id) = member { return id }
+            return nil
+        })
+
+        let selectedArtefacts = artefacts.compactMap { artefact -> Artefact? in
+            guard let reference = artefactRevisions.first(where: { $0.artefactID == artefact.id }),
+                  let revision = artefact.revision(id: reference.revisionID)
+            else {
+                return nil
+            }
+            return Artefact(
+                id: artefact.id,
+                title: artefact.title,
+                kind: artefact.kind,
+                createdAt: artefact.createdAt,
+                metadata: artefact.metadata,
+                revisions: [revision],
+                currentRevisionID: revision.id
+            )
+        }
+
+        return ContextAssemblyInput(
+            systemInstructions: "Context: \(context.name)",
+            messages: messages.filter { messageIDs.contains($0.id) },
+            artefacts: selectedArtefacts,
+            sources: sources.filter { sourceIDs.contains($0.id) }
+        )
+    }
+}
+
+private struct ArtefactRevisionReference: Hashable {
+    let artefactID: ArtefactID
+    let revisionID: RevisionID
 }
 
 protocol ContextTokenEstimating: Sendable {

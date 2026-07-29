@@ -81,6 +81,10 @@
 		A20000000000000000000002 /* WebSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* WebSearch.swift */; };
 		A20000000000000000000003 /* CitationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* CitationRepository.swift */; };
 		A20000000000000000000004 /* ContextRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* ContextRepository.swift */; };
+		A20000000000000000000005 /* ContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* ContextStore.swift */; };
+		A30000000000000000000001 /* ChatActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* ChatActivityViews.swift */; };
+		A30000000000000000000002 /* ContextViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000002 /* ContextViews.swift */; };
+		A30000000000000000000003 /* WorkspaceSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000003 /* WorkspaceSearchView.swift */; };
 		F20000000000000000000001 /* GinnyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* GinnyUITests.swift */; };
 /* End PBXBuildFile section */
 
@@ -185,6 +189,10 @@
 		B20000000000000000000002 /* WebSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearch.swift; sourceTree = "<group>"; };
 		B20000000000000000000003 /* CitationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationRepository.swift; sourceTree = "<group>"; };
 		B20000000000000000000004 /* ContextRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextRepository.swift; sourceTree = "<group>"; };
+		B20000000000000000000005 /* ContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextStore.swift; sourceTree = "<group>"; };
+		B30000000000000000000001 /* ChatActivityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatActivityViews.swift; sourceTree = "<group>"; };
+		B30000000000000000000002 /* ContextViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextViews.swift; sourceTree = "<group>"; };
+		B30000000000000000000003 /* WorkspaceSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSearchView.swift; sourceTree = "<group>"; };
 		F30000000000000000000001 /* GinnyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyUITests.swift; sourceTree = "<group>"; };
 		F30000000000000000000002 /* GinnyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GinnyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -231,6 +239,7 @@
 				6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */,
 				20373ABD2111756D7456726E /* ArtefactTools.swift */,
 				D633C99839F2015E2F41F17F /* ChatSession.swift */,
+				B20000000000000000000005 /* ContextStore.swift */,
 				B10000000000000000000002 /* LiveActivityController.swift */,
 				BC3BE2A68BF26E51089F0FA0 /* Exporters.swift */,
 				0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */,
@@ -247,6 +256,9 @@
 			isa = PBXGroup;
 			children = (
 				89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */,
+				B30000000000000000000001 /* ChatActivityViews.swift */,
+				B30000000000000000000002 /* ContextViews.swift */,
+				B30000000000000000000003 /* WorkspaceSearchView.swift */,
 				41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */,
 				D47D54403317B0C02D8EE4F6 /* ChatView.swift */,
 				9BB2447D13B76740668BC849 /* ContentBlockRendering.swift */,
@@ -589,8 +601,12 @@
 				88021DA26FD94883FBC66302 /* ArtefactTools.swift in Sources */,
 				B6FC532F089D33BA8E427746 /* ArtefactViews.swift in Sources */,
 				2C3B8186145EFFC7C01176BA /* AttachmentStore.swift in Sources */,
+				A30000000000000000000001 /* ChatActivityViews.swift in Sources */,
+				A30000000000000000000002 /* ContextViews.swift in Sources */,
+				A30000000000000000000003 /* WorkspaceSearchView.swift in Sources */,
 				18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */,
 				515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */,
+				A20000000000000000000005 /* ContextStore.swift in Sources */,
 				931DF029769AF70E2FE471EE /* ChatView.swift in Sources */,
 				A10000000000000000000002 /* LiveActivityController.swift in Sources */,
 				33AED704E1BCE03E6E0E09E0 /* ContentBlockRendering.swift in Sources */,

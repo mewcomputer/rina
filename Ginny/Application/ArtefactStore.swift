@@ -8,9 +8,11 @@ final class ArtefactStore: ObservableObject {
     @Published private(set) var persistenceError: String?
 
     private let repository: ArtefactRepository
+    private let searchIndex: LocalSearchIndex?
 
-    init(repository: ArtefactRepository) {
+    init(repository: ArtefactRepository, searchIndex: LocalSearchIndex? = nil) {
         self.repository = repository
+        self.searchIndex = searchIndex
         self.artefacts = []
         self.skills = []
         self.persistenceError = nil
@@ -42,6 +44,14 @@ final class ArtefactStore: ObservableObject {
         do {
             try repository.upsert(artefact)
             refresh()
+            if let searchIndex {
+                Task {
+                    await searchIndex.enqueue(contentsOf: SearchDocumentFactory
+                        .documents(for: artefact)
+                        .map(SearchIndexChange.upsert))
+                    await searchIndex.flush()
+                }
+            }
         } catch {
             persistenceError = error.localizedDescription
         }
@@ -51,6 +61,18 @@ final class ArtefactStore: ObservableObject {
         do {
             try repository.delete(artefact)
             refresh()
+            if let searchIndex {
+                Task {
+                    var changes: [SearchIndexChange] = [
+                        .remove(.artefact(artefact.id))
+                    ]
+                    changes.append(contentsOf: artefact.revisions.map {
+                        .remove(.artefactRevision(artefactID: artefact.id, revisionID: $0.id))
+                    })
+                    await searchIndex.enqueue(contentsOf: changes)
+                    await searchIndex.flush()
+                }
+            }
         } catch {
             persistenceError = error.localizedDescription
         }

@@ -16,15 +16,18 @@ struct SourceImporter {
 
     let attachmentStore: any AttachmentStore
     let repository: SourceRepository
+    let searchIndex: LocalSearchIndex?
     let maximumBytes: Int
 
     init(
         attachmentStore: any AttachmentStore,
         repository: SourceRepository,
+        searchIndex: LocalSearchIndex? = nil,
         maximumBytes: Int = SourceImporter.defaultMaximumBytes
     ) {
         self.attachmentStore = attachmentStore
         self.repository = repository
+        self.searchIndex = searchIndex
         self.maximumBytes = maximumBytes
     }
 
@@ -85,6 +88,10 @@ struct SourceImporter {
             try repository.upsert(source)
         } catch {
             throw SourceImportError.persistenceFailure
+        }
+        if let searchIndex {
+            await searchIndex.enqueue(.upsert(SearchDocumentFactory.document(for: source)))
+            await searchIndex.flush()
         }
         return source
     }

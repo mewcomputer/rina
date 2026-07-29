@@ -9,6 +9,7 @@ final class ChatSession: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var persistenceError: String?
     @Published private(set) var pendingToolApproval: ToolApprovalRequest?
+    @Published private(set) var contextOmissions: [ContextOmission] = []
 
     private var provider: (any ProviderAdapter)?
     private var activeGenerationTask: Task<Void, Never>?
@@ -18,6 +19,9 @@ final class ChatSession: ObservableObject {
     private let citationPersistence: ((Citation) throws -> Void)?
     private let relationshipPersistence: ((RelationshipEdge) throws -> Void)?
     private let searchIndex: LocalSearchIndex?
+    private let contextAssembler: ContextAssembler
+    private let contextTokenBudget: Int
+    private var contextInput: ContextAssemblyInput?
     private var toolApprovalContinuation: CheckedContinuation<Bool, Never>?
     private var responseFinishReason: String? = nil
     private var autoApproveArtefactWrites = false
@@ -29,7 +33,9 @@ final class ChatSession: ObservableObject {
         persistence: ((Conversation) throws -> Void)? = nil,
         citationPersistence: ((Citation) throws -> Void)? = nil,
         relationshipPersistence: ((RelationshipEdge) throws -> Void)? = nil,
-        searchIndex: LocalSearchIndex? = nil
+        searchIndex: LocalSearchIndex? = nil,
+        contextAssembler: ContextAssembler = ContextAssembler(),
+        contextTokenBudget: Int = 8_000
     ) {
         self.provider = provider
         self.conversation = conversation
@@ -38,6 +44,8 @@ final class ChatSession: ObservableObject {
         self.citationPersistence = citationPersistence
         self.relationshipPersistence = relationshipPersistence
         self.searchIndex = searchIndex
+        self.contextAssembler = contextAssembler
+        self.contextTokenBudget = contextTokenBudget
     }
 
     func configure(provider: any ProviderAdapter) {
@@ -52,6 +60,11 @@ final class ChatSession: ObservableObject {
         self.autoApproveArtefactWrites = autoApproveArtefactWrites
     }
 
+    func configure(contextInput: ContextAssemblyInput?) {
+        self.contextInput = contextInput
+        contextOmissions = []
+    }
+
     func load(conversation: Conversation) {
         guard !isGenerating else { return }
         self.conversation = conversation
@@ -60,6 +73,7 @@ final class ChatSession: ObservableObject {
         errorMessage = nil
         persistenceError = nil
         pendingToolApproval = nil
+        contextOmissions = []
         responseFinishReason = nil
     }
 
@@ -174,7 +188,7 @@ final class ChatSession: ObservableObject {
 
             while true {
                 responseFinishReason = nil
-                let request = makeRequest()
+                let request = try makeRequest()
                 for try await event in provider.stream(for: request) {
                     try handle(event: event)
                     persistConversation()
@@ -326,11 +340,25 @@ final class ChatSession: ObservableObject {
         }
     }
 
-    private func makeRequest() -> ProviderRequest {
-        ProviderRequest(
-            messages: [
-                .system(AgentInstructions.artefactCapabilities)
-            ] + conversation.messages.dropLast().map { message in
+    private func makeRequest() throws -> ProviderRequest {
+        var requestMessages: [ProviderMessage] = [
+            .system(AgentInstructions.artefactCapabilities)
+        ]
+
+        if let contextInput {
+            let assembly = try contextAssembler.assemble(
+                contextInput,
+                tokenBudget: contextTokenBudget
+            )
+            contextOmissions = assembly.omissions
+            if !assembly.items.isEmpty {
+                requestMessages.append(.system(Self.render(context: assembly)))
+            }
+        } else {
+            contextOmissions = []
+        }
+
+        requestMessages.append(contentsOf: conversation.messages.dropLast().map { message in
                 let toolCalls = message.blocks.compactMap { block -> ProviderToolCall? in
                     guard block.kind == .toolCall,
                           let id = block.attributes["callID"],
@@ -360,9 +388,36 @@ final class ChatSession: ObservableObject {
                     toolCallID: toolCallID,
                     toolResultIsError: toolCallID == nil ? nil : toolResultIsError
                 )
-            },
+            })
+
+        return ProviderRequest(
+            messages: requestMessages,
             tools: provider?.supportsTools == true ? toolRegistry.definitions : []
         )
+    }
+
+    private static func render(context assembly: ContextAssemblyResult) -> String {
+        assembly.items.map { item in
+            "[\(label(for: item.provenance))]\n\(item.text)"
+        }
+        .joined(separator: "\n\n")
+    }
+
+    private static func label(for provenance: ContextItemProvenance) -> String {
+        switch provenance {
+        case .systemInstructions:
+            "context"
+        case .taskConstraint:
+            "constraint"
+        case .message:
+            "message"
+        case .artefact:
+            "artefact"
+        case .artefactRevision:
+            "artefact revision"
+        case .source:
+            "source"
+        }
     }
 
     private func completedToolCalls(
@@ -652,6 +707,9 @@ final class ChatSession: ObservableObject {
     }
 
     private func message(for error: Error) -> String {
+        if error is ContextAssemblyError {
+            return "The selected context is too large. Remove some items and try again."
+        }
         if let providerError = error as? ProviderError {
             switch providerError {
             case .invalidConfiguration(let message), .remote(let message):

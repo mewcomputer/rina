@@ -47,6 +47,56 @@ final class ContextTests: XCTestCase {
         XCTAssertEqual(try repository.fetch().first?.members, context.members)
     }
 
+    func testContextMaterialResolverSelectsReferencedMaterial() {
+        let selectedMessage = Message.user("selected")
+        let ignoredMessage = Message.user("ignored")
+        var selectedArtefact = Artefact(title: "Selected", kind: .document)
+        let selectedRevisionID = selectedArtefact.checkpoint(source: "selected artefact")
+        var ignoredArtefact = Artefact(title: "Ignored", kind: .document)
+        _ = ignoredArtefact.checkpoint(source: "ignored artefact")
+        let selectedSource = Source(
+            displayName: "selected.txt",
+            contentTypeIdentifier: "public.plain-text",
+            byteCount: 8,
+            digest: "selected",
+            storageKey: "selected",
+            extractionState: .ready,
+            extractedText: "selected source"
+        )
+        let ignoredSource = Source(
+            displayName: "ignored.txt",
+            contentTypeIdentifier: "public.plain-text",
+            byteCount: 7,
+            digest: "ignored",
+            storageKey: "ignored",
+            extractionState: .ready,
+            extractedText: "ignored source"
+        )
+        let context = Context(
+            name: "Research",
+            members: [
+                .message(selectedMessage.id),
+                .artefactRevision(
+                    artefactID: selectedArtefact.id,
+                    revisionID: selectedRevisionID
+                ),
+                .source(selectedSource.id)
+            ]
+        )
+
+        let input = ContextMaterialResolver.input(
+            for: context,
+            messages: [selectedMessage, ignoredMessage],
+            artefacts: [selectedArtefact, ignoredArtefact],
+            sources: [selectedSource, ignoredSource]
+        )
+
+        XCTAssertEqual(input.systemInstructions, "Context: Research")
+        XCTAssertEqual(input.messages.map(\.id), [selectedMessage.id])
+        XCTAssertEqual(input.artefacts.map(\.id), [selectedArtefact.id])
+        XCTAssertEqual(input.sources.map(\.id), [selectedSource.id])
+    }
+
     func testAssemblerPreservesSystemAndRecentConversationContinuity() throws {
         let first = Message.user(String(repeating: "a", count: 20))
         let second = Message.assistant(String(repeating: "b", count: 20))

@@ -39,6 +39,7 @@ private extension ArtefactKind {
 struct WorkspaceLibraryView: View {
     @ObservedObject var store: ArtefactStore
     let sourceImporter: SourceImporter
+    let relationshipRepository: RelationshipRepository
     @Environment(\.dismiss) private var dismiss
     @Environment(\.ginnyTheme) private var theme
     @State private var section: WorkspaceSection = .artefacts
@@ -48,6 +49,7 @@ struct WorkspaceLibraryView: View {
     @State private var sharedFile: ExportedFile?
     @State private var isImportingSource = false
     @State private var importMessage: String?
+    @State private var relationships: [RelationshipEdge] = []
 
     var body: some View {
         NavigationStack {
@@ -135,6 +137,7 @@ struct WorkspaceLibraryView: View {
         .tint(theme.color("primary"))
         .task {
             reloadSources()
+            reloadRelationships()
         }
     }
 
@@ -160,6 +163,7 @@ struct WorkspaceLibraryView: View {
                             Text(artefact.kind.displayName)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            relationshipLabels(for: artefact)
                         }
                     } icon: {
                         Image(systemName: artefact.kind.systemImage)
@@ -203,6 +207,7 @@ struct WorkspaceLibraryView: View {
                         Text(source.extractionState.displayName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        relationshipLabels(for: .source(source.id))
                     }
                 } icon: {
                     Image(systemName: "doc.text")
@@ -314,6 +319,59 @@ struct WorkspaceLibraryView: View {
 
     private func reloadSources() {
         sources = (try? sourceImporter.repository.fetch()) ?? []
+    }
+
+    private func reloadRelationships() {
+        relationships = RelationshipPredicate.allCases.flatMap { predicate in
+            (try? relationshipRepository.fetch(predicate: predicate)) ?? []
+        }
+    }
+
+    @ViewBuilder
+    private func relationshipLabels(for artefact: Artefact) -> some View {
+        relationshipLabels(for: Set([
+            .artefact(artefact.id)
+        ] + artefact.revisions.map { revision in
+            .artefactRevision(artefactID: artefact.id, revisionID: revision.id)
+        }))
+    }
+
+    @ViewBuilder
+    private func relationshipLabels(for node: GraphNodeID) -> some View {
+        relationshipLabels(for: Set([node]))
+    }
+
+    @ViewBuilder
+    private func relationshipLabels(for nodes: Set<GraphNodeID>) -> some View {
+        ForEach(Array(relationships(for: nodes).prefix(2))) { edge in
+            Text("\(edge.predicate.rawValue) \(name(for: otherNode(of: edge, in: nodes)))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    private func relationships(for nodes: Set<GraphNodeID>) -> [RelationshipEdge] {
+        relationships.filter { edge in
+            nodes.contains(edge.source) || nodes.contains(edge.target)
+        }
+    }
+
+    private func otherNode(of edge: RelationshipEdge, in nodes: Set<GraphNodeID>) -> GraphNodeID {
+        nodes.contains(edge.source) ? edge.target : edge.source
+    }
+
+    private func name(for node: GraphNodeID) -> String {
+        switch node {
+        case .artefact(let id):
+            return store.artefacts.first(where: { $0.id == id })?.title ?? "Artefact"
+        case .artefactRevision(let artefactID, _):
+            return store.artefacts.first(where: { $0.id == artefactID })?.title ?? "Artefact revision"
+        case .source(let id):
+            return sources.first(where: { $0.id == id })?.displayName ?? "Source"
+        case .conversation, .message, .contentBlock, .citation, .context, .relationship, .skill:
+            return "Workspace item"
+        }
     }
 }
 
