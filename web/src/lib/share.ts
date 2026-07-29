@@ -10,6 +10,7 @@ const MAX_BLOCKS_PER_MESSAGE = 200
 const MAX_ARTEFACTS = 100
 const MAX_RELATIONSHIPS = 500
 const MAX_ATTRIBUTES = 100
+const TID_PATTERN = /^[234567abcdefghij][234567abcdefghijklmnopqrstuvwxyz]{12}$/
 
 const messageRoles = new Set(['user', 'assistant', 'system', 'tool'])
 const artefactKinds = new Set(['document', 'code', 'web', 'inlineWeb'])
@@ -142,7 +143,7 @@ export function parseAtUri(input: string): ShareReference {
       `Unsupported collection: ${collection}`,
     )
   }
-  if (!/^[234567a-z]{13}$/.test(rkey)) {
+  if (!TID_PATTERN.test(rkey)) {
     throw new ShareParseError('invalidReference', 'record key is invalid')
   }
 
@@ -280,9 +281,19 @@ function parseMessages(input: unknown): ShareMessage[] {
 
     const parsed: ShareMessage = {
       role,
-      blocks: blocks.map((block, blockIndex) =>
-        parseBlock(block, `snapshot.messages[${index}].blocks[${blockIndex}]`),
-      ),
+      blocks: blocks.flatMap((block, blockIndex) => {
+        const path = `snapshot.messages[${index}].blocks[${blockIndex}]`
+        const candidate = asRecord(block, path)
+        if (
+          typeof candidate.kind === 'string'
+          && typeof candidate.payload === 'string'
+          && candidate.payload.trim().length === 0
+          && !metadataOnlyBlockKinds.has(candidate.kind)
+        ) {
+          return []
+        }
+        return [parseBlock(block, path)]
+      }),
     }
     const id = optionalString(message.id, `snapshot.messages[${index}].id`)
     const createdAt = optionalDate(
@@ -297,9 +308,13 @@ function parseMessages(input: unknown): ShareMessage[] {
 
 function parseBlock(input: unknown, path: string): ShareBlock {
   const block = asRecord(input, path)
+  const kind = requiredString(block.kind, `${path}.kind`, 100)
+  const payload = metadataOnlyBlockKinds.has(kind)
+    ? boundedString(block.payload, `${path}.payload`, MAX_TEXT_LENGTH)
+    : requiredString(block.payload, `${path}.payload`, MAX_TEXT_LENGTH)
   const parsed: ShareBlock = {
-    kind: requiredString(block.kind, `${path}.kind`, 100),
-    payload: requiredString(block.payload, `${path}.payload`, MAX_TEXT_LENGTH),
+    kind,
+    payload,
     attributes: parseAttributes(block.attributes, `${path}.attributes`),
     isComplete: optionalBoolean(block.isComplete, `${path}.isComplete`) ?? true,
   }
@@ -307,6 +322,13 @@ function parseBlock(input: unknown, path: string): ShareBlock {
   if (id !== undefined) parsed.id = id
   return parsed
 }
+
+const metadataOnlyBlockKinds = new Set([
+  'artefactReference',
+  'fileReference',
+  'toolCall',
+  'toolResult',
+])
 
 function parseArtefacts(input: unknown): ShareArtefact[] {
   const values = optionalArray(input, 'snapshot.artefacts')
@@ -340,8 +362,8 @@ function parseArtefacts(input: unknown): ShareArtefact[] {
         `snapshot.artefacts[${index}].metadata`,
       ),
     }
-    const id = optionalString(artefact.id, `snapshot.artefacts[${index}].id`)
-    const revisionID = optionalString(
+    const id = optionalTID(artefact.id, `snapshot.artefacts[${index}].id`)
+    const revisionID = optionalTID(
       artefact.revisionID,
       `snapshot.artefacts[${index}].revisionID`,
     )
@@ -381,15 +403,27 @@ function parseArtefactReferences(input: unknown): ShareArtefactReference[] {
       )
     }
     return {
-      id: requiredString(reference.id, `snapshot.artefacts[${index}].id`, 13),
-      revisionID: requiredString(
+      id: requiredTID(reference.id, `snapshot.artefacts[${index}].id`),
+      revisionID: requiredTID(
         reference.revisionID,
         `snapshot.artefacts[${index}].revisionID`,
-        13,
       ),
       uri,
     }
   })
+}
+
+function requiredTID(value: unknown, path: string): string {
+  const tid = requiredString(value, path, 13)
+  if (!TID_PATTERN.test(tid)) {
+    throw new ShareParseError('invalidField', `${path} must be a valid TID`)
+  }
+  return tid
+}
+
+function optionalTID(value: unknown, path: string): string | undefined {
+  if (value === undefined) return undefined
+  return requiredTID(value, path)
 }
 
 function parseRelationships(input: unknown): ShareRelationship[] {
@@ -447,6 +481,18 @@ function requiredString(
   path: string,
   maximumLength: number,
 ): string {
+  const value = boundedString(input, path, maximumLength)
+  if (value.trim().length === 0) {
+    throw new ShareParseError('invalidField', `${path} must not be empty`)
+  }
+  return value
+}
+
+function boundedString(
+  input: unknown,
+  path: string,
+  maximumLength: number,
+): string {
   if (typeof input !== 'string') {
     throw new ShareParseError('invalidField', `${path} must be a string`)
   }
@@ -455,9 +501,6 @@ function requiredString(
       'tooLarge',
       `${path} is too long (maximum ${maximumLength} characters)`,
     )
-  }
-  if (input.trim().length === 0) {
-    throw new ShareParseError('invalidField', `${path} must not be empty`)
   }
   return input
 }

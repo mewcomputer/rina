@@ -220,4 +220,60 @@ describe('parseShareRecord', () => {
       }),
     ).toThrow('title is too long')
   })
+
+  it('allows metadata-only blocks to carry an empty payload', () => {
+    expect(
+      parseShareRecord({
+        $type: CONVERSATION_COLLECTION,
+        snapshot: {
+          schemaVersion: 1,
+          title: 'Artefact reference',
+          createdAt: '2026-07-29T18:00:00.000Z',
+          updatedAt: '2026-07-29T18:01:00.000Z',
+          messages: [
+            {
+              role: 'assistant',
+              blocks: [
+                {
+                  kind: 'artefactReference',
+                  payload: '',
+                  attributes: {
+                    artefactID: '3aaaaaaaaaaaa',
+                    revisionID: '3bbbbbbbbbbbb',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      }, CONVERSATION_COLLECTION),
+    ).toMatchObject({
+      messages: [{ blocks: [{ kind: 'artefactReference', payload: '' }] }],
+    })
+  })
+
+  it('drops empty content blocks without dropping the rest of the message', () => {
+    expect(
+      parseShareRecord({
+        $type: CONVERSATION_COLLECTION,
+        snapshot: {
+          schemaVersion: 1,
+          title: 'Search answer',
+          createdAt: '2026-07-29T18:00:00.000Z',
+          updatedAt: '2026-07-29T18:01:00.000Z',
+          messages: [
+            {
+              role: 'assistant',
+              blocks: [
+                { kind: 'text', payload: '', attributes: {} },
+                { kind: 'citationGroup', payload: '[]', attributes: {} },
+              ],
+            },
+          ],
+        },
+      }, CONVERSATION_COLLECTION),
+    ).toMatchObject({
+      messages: [{ blocks: [{ kind: 'citationGroup', payload: '[]' }] }],
+    })
+  })
 })
