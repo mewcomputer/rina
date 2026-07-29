@@ -176,7 +176,13 @@ enum CuratedSkills {
         Design the artefact before writing it. Use semantic color tokens, responsive layout,
         accessible contrast, clear hierarchy, and restrained interaction. Prefer shadcn-inspired
         tokens such as background, foreground, muted, accent, primary, destructive, border, input,
-        and ring. For HTML or React/Tailwind-style artefacts, preserve the component intent in the
+        and ring. Tokens are semantic roles, not interchangeable colors: use background only for
+        backgrounds, foreground only for primary text and icons, card only for cards and raised
+        surfaces, card-foreground only on cards, primary only for primary controls, and
+        primary-foreground only on primary controls. Use matching foreground variants with their
+        surfaces. Never use a text token as a background, a background token as text, or hardcode
+        a replacement color to get around the role.
+        For HTML or React/Tailwind-style artefacts, preserve the component intent in the
         source but provide a self-contained HTML/CSS/JavaScript preview with no dependency downloads.
         Keep inline artefacts self-contained and appropriate to the available space.
         """,

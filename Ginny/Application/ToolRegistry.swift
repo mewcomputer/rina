@@ -39,7 +39,8 @@ struct ToolRegistry: Sendable {
     init(tools: [any GinnyTool] = [
         CurrentTimeTool(),
         DiscoverSkillsTool(),
-        ReadSkillTool()
+        ReadSkillTool(),
+        FetchURLTool()
     ]) {
         self.tools = tools
     }

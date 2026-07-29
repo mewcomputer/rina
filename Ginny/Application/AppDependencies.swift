@@ -36,7 +36,8 @@ struct AppDependencies: Sendable {
         return ToolRegistry(tools: [
             CurrentTimeTool(),
             DiscoverSkillsTool(catalog: catalog),
-            ReadSkillTool(catalog: catalog)
+            ReadSkillTool(catalog: catalog),
+            FetchURLTool()
         ] + artefactTools)
     }
 
