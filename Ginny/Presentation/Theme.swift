@@ -91,6 +91,48 @@ struct GinnyTheme {
         resolve(token: token, visited: [])
     }
 
+    var cssVariables: [String: String] {
+        let tokenMap = [
+            "background": "background",
+            "foreground": "foreground",
+            "card": "card",
+            "card-foreground": "card_foreground",
+            "popover": "popover",
+            "popover-foreground": "popover_foreground",
+            "primary": "primary",
+            "primary-foreground": "primary_foreground",
+            "secondary": "secondary",
+            "secondary-foreground": "secondary_foreground",
+            "muted": "muted",
+            "muted-foreground": "muted_foreground",
+            "accent": "accent",
+            "accent-foreground": "accent_foreground",
+            "destructive": "destructive",
+            "destructive-foreground": "destructive_foreground",
+            "border": "border",
+            "input": "input",
+            "ring": "ring",
+            "sidebar": "sidebar",
+            "sidebar-foreground": "sidebar_foreground",
+            "sidebar-primary": "sidebar_primary",
+            "sidebar-primary-foreground": "sidebar_primary_foreground",
+            "sidebar-accent": "sidebar_accent",
+            "sidebar-accent-foreground": "sidebar_accent_foreground",
+            "sidebar-border": "sidebar_border",
+            "sidebar-ring": "sidebar_ring",
+            "chart-1": "chart_1",
+            "chart-2": "chart_2",
+            "chart-3": "chart_3",
+            "chart-4": "chart_4"
+        ]
+
+        var variables = Dictionary(uniqueKeysWithValues: tokenMap.compactMap { name, token in
+            hexValue(for: token).map { (name, $0) }
+        })
+        variables["radius"] = "0.625rem"
+        return variables
+    }
+
     private func resolve(token: String, visited: Set<String>) -> String? {
         let key = token.hasPrefix("@") ? String(token.dropFirst()) : token
         guard !visited.contains(key), let value = tokens[key] else {

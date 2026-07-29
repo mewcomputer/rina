@@ -353,6 +353,8 @@ final class ChatSession: ObservableObject {
     }
 
     private func execute(_ calls: [ContentBlock]) async throws {
+        let assistantMessageID = conversation.messages.last?.id
+
         for call in calls {
             guard let callID = call.attributes["callID"],
                   let name = call.attributes["name"]
@@ -388,33 +390,80 @@ final class ChatSession: ObservableObject {
                 }
 
                 let result = try await toolRegistry.execute(name: name, arguments: call.payload)
-                try conversation.appendMessage(
-                    Message(
-                        role: .tool,
-                        blocks: [
-                            .toolResult(
-                                callID: callID,
-                                result: result,
-                                approvalState: approvalState
-                            )
-                        ]
-                    )
+                try appendToolResult(
+                    callID: callID,
+                    result: result,
+                    approvalState: approvalState,
+                    to: assistantMessageID
                 )
             } catch {
-                try conversation.appendMessage(
-                    Message(
-                        role: .tool,
-                        blocks: [
-                            .toolResult(
-                                callID: callID,
-                                result: "Tool error: \(error.localizedDescription)",
-                                isError: true
-                            )
-                        ]
-                    )
+                try appendToolResult(
+                    callID: callID,
+                    result: "Tool error: \(error.localizedDescription)",
+                    isError: true,
+                    approvalState: nil,
+                    to: assistantMessageID
                 )
             }
         }
+    }
+
+    private func appendToolResult(
+        callID: String,
+        result: String,
+        isError: Bool = false,
+        approvalState: ToolApprovalState?,
+        to assistantMessageID: MessageID?
+    ) throws {
+        try conversation.appendMessage(
+            Message(
+                role: .tool,
+                blocks: [
+                    .toolResult(
+                        callID: callID,
+                        result: result,
+                        isError: isError,
+                        approvalState: approvalState
+                    )
+                ]
+            )
+        )
+
+        guard !isError,
+              let assistantMessageID,
+              let details = try? JSONDecoder().decode(
+                  ArtefactToolDetails.self,
+                  from: Data(result.utf8)
+              ),
+              details.kind == .inlineWeb,
+              let artefactUUID = UUID(uuidString: details.id),
+              let revisionUUID = UUID(uuidString: details.revisionID),
+              var assistant = conversation.messages.first(where: {
+                  $0.id == assistantMessageID && $0.role == .assistant
+              })
+        else {
+            return
+        }
+
+        let artefactID = ArtefactID(rawValue: artefactUUID)
+        let revisionID = RevisionID(rawValue: revisionUUID)
+        guard !assistant.blocks.contains(where: {
+            $0.kind == .artefactReference
+                && $0.attributes["artefactID"] == artefactID.rawValue.uuidString
+                && $0.attributes["revisionID"] == revisionID.rawValue.uuidString
+        })
+        else {
+            return
+        }
+
+        assistant.blocks.append(
+            .artefactReference(
+                artefactID: artefactID,
+                revisionID: revisionID,
+                presentation: .inline
+            )
+        )
+        try conversation.updateMessage(assistant)
     }
 
     private func finishGeneration() throws {

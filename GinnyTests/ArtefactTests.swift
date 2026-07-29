@@ -1,6 +1,7 @@
 import XCTest
 @testable import Ginny
 
+@MainActor
 final class ArtefactTests: XCTestCase {
     func testCheckpointCreatesImmutableLineageAndUpdatesCurrentRevision() throws {
         let createdAt = Date(timeIntervalSince1970: 100)
@@ -55,5 +56,37 @@ final class ArtefactTests: XCTestCase {
         XCTAssertEqual(decoded, artefact)
         XCTAssertEqual(decoded.kind, .inlineWeb)
         XCTAssertEqual(decoded.metadata["styling"], "tailwind")
+    }
+
+    func testWebPreviewInjectsShadcnTokensAndTailwindStyleUtilities() {
+        let document = WebArtefactPreview.document(
+            for: "<html><head><title>Preview</title></head><body><button class=\"bg-primary text-primary-foreground rounded-lg\">Save</button></body></html>",
+            isInline: true,
+            cssVariables: [
+                "background": "#101014",
+                "foreground": "#f5f5f5",
+                "primary": "#8fd3ff"
+            ]
+        )
+
+        XCTAssertTrue(document.contains("--background: #101014;"))
+        XCTAssertTrue(document.contains("--foreground: #f5f5f5;"))
+        XCTAssertTrue(document.contains("--primary: #8fd3ff;"))
+        XCTAssertTrue(document.contains(".bg-primary"))
+        XCTAssertTrue(document.contains(".text-primary-foreground"))
+        XCTAssertTrue(document.contains(".rounded-lg"))
+        XCTAssertTrue(document.contains("<title>Preview</title>"))
+    }
+
+    func testWebPreviewWrapsFragmentsWithInjectedHead() {
+        let document = WebArtefactPreview.document(
+            for: "<button>Save</button>",
+            isInline: true
+        )
+
+        XCTAssertTrue(document.contains("<!doctype html>"))
+        XCTAssertTrue(document.contains("<head>"))
+        XCTAssertTrue(document.contains("<style>"))
+        XCTAssertTrue(document.contains("<body><button>Save</button></body>"))
     }
 }

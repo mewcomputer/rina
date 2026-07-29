@@ -385,6 +385,7 @@ private struct SkillEditorView: View {
 struct WebArtefactPreview: UIViewRepresentable {
     let html: String
     let isInline: Bool
+    @Environment(\.ginnyTheme) private var theme
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -402,45 +403,106 @@ struct WebArtefactPreview: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        guard context.coordinator.lastHTML != html else { return }
-        context.coordinator.lastHTML = html
-        webView.loadHTMLString(Self.document(for: html, isInline: isInline), baseURL: nil)
+        let renderKey = "\(theme.id)|\(isInline)|\(html)"
+        guard context.coordinator.lastRenderKey != renderKey else { return }
+        context.coordinator.lastRenderKey = renderKey
+        webView.loadHTMLString(
+            Self.document(
+                for: html,
+                isInline: isInline,
+                cssVariables: theme.cssVariables,
+                isDark: theme.mode == .dark
+            ),
+            baseURL: nil
+        )
     }
 
-    static func document(for content: String, isInline: Bool) -> String {
-        let viewport = isInline ? "width=device-width, initial-scale=1.0" : "width=device-width, initial-scale=1.0"
-        let body = content.localizedCaseInsensitiveContains("<html")
-            ? content
-            : "<body>\(content)</body>"
+    static func document(
+        for content: String,
+        isInline: Bool,
+        cssVariables: [String: String] = GinnyThemeKeyDefaults.cssVariables,
+        isDark: Bool = true
+    ) -> String {
+        let viewport = "width=device-width, initial-scale=1.0, viewport-fit=cover"
+        let head = """
+        <meta name="viewport" content="\(viewport)">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none';">
+        <style>\(styleSheet(cssVariables: cssVariables, isInline: isInline, isDark: isDark))</style>
+        """
+
+        guard content.range(of: "<html", options: .caseInsensitive) != nil else {
+            return """
+            <!doctype html>
+            <html>
+            <head>\(head)</head>
+            <body>\(content)</body>
+            </html>
+            """
+        }
+
+        var document = content
+        if let headStart = document.range(of: "<head", options: .caseInsensitive),
+           let headEnd = document.range(
+               of: ">",
+               range: headStart.upperBound..<document.endIndex
+           )
+        {
+            document.insert(contentsOf: head, at: headEnd.upperBound)
+            return document
+        }
+
+        let headMarkup = "<head>\(head)</head>"
+        if let bodyStart = document.range(of: "<body", options: .caseInsensitive) {
+            document.insert(contentsOf: headMarkup, at: bodyStart.lowerBound)
+            return document
+        }
+
+        if let htmlStart = document.range(of: "<html", options: .caseInsensitive),
+           let htmlEnd = document.range(
+               of: ">",
+               range: htmlStart.upperBound..<document.endIndex
+           )
+        {
+            document.insert(contentsOf: headMarkup, at: htmlEnd.upperBound)
+            return document
+        }
+
+        return "<!doctype html><html>\(headMarkup)<body>\(document)</body></html>"
+    }
+
+    private static func styleSheet(
+        cssVariables: [String: String],
+        isInline: Bool,
+        isDark: Bool
+    ) -> String {
+        let fallbackVariables = GinnyThemeKeyDefaults.cssVariables
+        var variables = fallbackVariables
+        variables.merge(cssVariables) { _, replacement in replacement }
+        let rootVariables = variables.keys.sorted().map { key in
+            "--\(key): \(variables[key]!);"
+        }.joined(separator: "\n                    ")
+        let bodyPadding = isInline ? "16px" : "20px"
+
         return """
-        <!doctype html>
-        <html>
-        <head>
-            <meta name="viewport" content="\(viewport)">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:;">
-            <style>
-                :root {
-                    --background: oklch(0.985 0.008 260);
-                    --foreground: oklch(0.22 0.018 260);
-                    --card: oklch(0.995 0.006 260);
-                    --muted: oklch(0.94 0.012 260);
-                    --muted-foreground: oklch(0.48 0.02 260);
-                    --primary: oklch(0.57 0.16 265);
-                    --primary-foreground: oklch(0.99 0.005 260);
-                    --border: oklch(0.86 0.018 260);
-                    --input: oklch(0.9 0.015 260);
-                    --ring: oklch(0.68 0.13 265);
-                    --radius: 0.75rem;
-                }
-                * { box-sizing: border-box; }
+            :root {
+                \(rootVariables)
+                --radius-sm: calc(var(--radius) - 4px);
+                --radius-md: calc(var(--radius) - 2px);
+                --radius-lg: var(--radius);
+                --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.08);
+                --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.12);
+            }
+            @layer base {
+                *, ::before, ::after { box-sizing: border-box; }
                 html, body { margin: 0; min-height: 100%; }
                 body {
-                    padding: 20px;
+                    padding: \(bodyPadding);
                     color: var(--foreground);
                     background: var(--background);
-                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
                     font-size: 16px;
                     line-height: 1.5;
+                    color-scheme: \(isDark ? "dark" : "light");
                 }
                 button, input, textarea, select {
                     font: inherit;
@@ -448,7 +510,7 @@ struct WebArtefactPreview: UIViewRepresentable {
                 }
                 button {
                     border: 1px solid var(--border);
-                    border-radius: var(--radius);
+                    border-radius: var(--radius-md);
                     background: var(--card);
                     padding: 0.65rem 0.9rem;
                 }
@@ -456,15 +518,89 @@ struct WebArtefactPreview: UIViewRepresentable {
                     outline: 2px solid var(--ring);
                     outline-offset: 2px;
                 }
-            </style>
-        </head>
-        \(body)
-        </html>
+                a { color: var(--primary); }
+                img, svg, video { max-width: 100%; height: auto; }
+            }
+            @layer utilities {
+                .container { width: 100%; margin-inline: auto; max-width: 72rem; }
+                .block { display: block; }
+                .inline-block { display: inline-block; }
+                .flex { display: flex; }
+                .inline-flex { display: inline-flex; }
+                .grid { display: grid; }
+                .hidden { display: none; }
+                .flex-col { flex-direction: column; }
+                .flex-wrap { flex-wrap: wrap; }
+                .items-start { align-items: flex-start; }
+                .items-center { align-items: center; }
+                .items-end { align-items: flex-end; }
+                .justify-start { justify-content: flex-start; }
+                .justify-center { justify-content: center; }
+                .justify-between { justify-content: space-between; }
+                .justify-end { justify-content: flex-end; }
+                .gap-1 { gap: 0.25rem; }
+                .gap-2 { gap: 0.5rem; }
+                .gap-3 { gap: 0.75rem; }
+                .gap-4 { gap: 1rem; }
+                .gap-6 { gap: 1.5rem; }
+                .w-full { width: 100%; }
+                .h-full { height: 100%; }
+                .max-w-sm { max-width: 24rem; }
+                .max-w-md { max-width: 28rem; }
+                .max-w-lg { max-width: 32rem; }
+                .p-1 { padding: 0.25rem; }
+                .p-2 { padding: 0.5rem; }
+                .p-3 { padding: 0.75rem; }
+                .p-4 { padding: 1rem; }
+                .p-6 { padding: 1.5rem; }
+                .px-2 { padding-inline: 0.5rem; }
+                .px-3 { padding-inline: 0.75rem; }
+                .px-4 { padding-inline: 1rem; }
+                .py-1 { padding-block: 0.25rem; }
+                .py-2 { padding-block: 0.5rem; }
+                .py-3 { padding-block: 0.75rem; }
+                .py-4 { padding-block: 1rem; }
+                .rounded-sm { border-radius: var(--radius-sm); }
+                .rounded-md { border-radius: var(--radius-md); }
+                .rounded-lg { border-radius: var(--radius-lg); }
+                .rounded-full { border-radius: 9999px; }
+                .border { border: 1px solid var(--border); }
+                .border-0 { border-width: 0; }
+                .bg-background { background: var(--background); }
+                .bg-card { background: var(--card); }
+                .bg-primary { background: var(--primary); }
+                .bg-secondary { background: var(--secondary); }
+                .bg-muted { background: var(--muted); }
+                .bg-accent { background: var(--accent); }
+                .bg-destructive { background: var(--destructive); }
+                .text-foreground { color: var(--foreground); }
+                .text-card-foreground { color: var(--card-foreground); }
+                .text-primary { color: var(--primary); }
+                .text-primary-foreground { color: var(--primary-foreground); }
+                .text-secondary-foreground { color: var(--secondary-foreground); }
+                .text-muted-foreground { color: var(--muted-foreground); }
+                .text-accent-foreground { color: var(--accent-foreground); }
+                .text-destructive { color: var(--destructive); }
+                .text-xs { font-size: 0.75rem; line-height: 1rem; }
+                .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+                .text-base { font-size: 1rem; line-height: 1.5rem; }
+                .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+                .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+                .font-medium { font-weight: 500; }
+                .font-semibold { font-weight: 600; }
+                .font-bold { font-weight: 700; }
+                .text-center { text-align: center; }
+                .text-left { text-align: left; }
+                .shadow-sm { box-shadow: var(--shadow-sm); }
+                .shadow-md { box-shadow: var(--shadow-md); }
+                .opacity-60 { opacity: 0.6; }
+                .opacity-75 { opacity: 0.75; }
+            }
         """
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
-        var lastHTML: String?
+        var lastRenderKey: String?
 
         @MainActor
         func webView(
@@ -475,4 +611,37 @@ struct WebArtefactPreview: UIViewRepresentable {
             decisionHandler(navigationAction.navigationType == .other ? .allow : .cancel)
         }
     }
+}
+
+private enum GinnyThemeKeyDefaults {
+    static let cssVariables: [String: String] = [
+        "background": "#1e1e21",
+        "foreground": "#ffffff",
+        "card": "#323238",
+        "card-foreground": "#ffffff",
+        "popover": "#1e1e21",
+        "popover-foreground": "#ffffff",
+        "primary": "#00ffff",
+        "primary-foreground": "#1e1e21",
+        "secondary": "#323238",
+        "secondary-foreground": "#ffffff",
+        "muted": "#28282c",
+        "muted-foreground": "#a9a9a9",
+        "accent": "#323238",
+        "accent-foreground": "#ffffff",
+        "destructive": "#8c1e1e",
+        "destructive-foreground": "#fff0f0",
+        "border": "#323237",
+        "input": "#1e1e21",
+        "ring": "#00ffff",
+        "sidebar": "#1c1c1f",
+        "sidebar-foreground": "#ffffff",
+        "sidebar-primary": "#00ffff",
+        "sidebar-primary-foreground": "#1c1c1f",
+        "sidebar-accent": "#323238",
+        "sidebar-accent-foreground": "#ffffff",
+        "sidebar-border": "#323237",
+        "sidebar-ring": "#00ffff",
+        "radius": "0.625rem"
+    ]
 }

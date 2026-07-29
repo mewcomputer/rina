@@ -92,6 +92,25 @@ final class ChatSessionTests: XCTestCase {
         )
     }
 
+    func testSessionEmbedsInlineArtefactCreatedByTool() async throws {
+        let provider = InlineArtefactLoopProvider()
+        let session = ChatSession(
+            provider: provider,
+            toolRegistry: ToolRegistry(tools: [CreateInlineArtefactFixtureTool()])
+        )
+
+        await session.send("Make this preview inline.")
+
+        XCTAssertGreaterThan(session.conversation.messages.count, 1)
+        let assistant = session.conversation.messages[1]
+        let reference = try XCTUnwrap(
+            assistant.blocks.first(where: { $0.kind == .artefactReference })
+        )
+        XCTAssertEqual(reference.attributes["artefactID"], InlineArtefactLoopProvider.artefactID)
+        XCTAssertEqual(reference.attributes["revisionID"], InlineArtefactLoopProvider.revisionID)
+        XCTAssertEqual(reference.attributes["presentation"], ArtefactReferencePresentation.inline.rawValue)
+    }
+
     func testSessionPreservesPartialContentWhenProviderFails() async {
         let provider = StubProvider(
             events: [.responseStarted, .textDelta("Partial")],
@@ -415,6 +434,62 @@ private final class ToolLoopProvider: ProviderAdapter, @unchecked Sendable {
         } else {
             events = [.responseStarted, .textDelta("Done."), .responseEnded]
         }
+
+        return AsyncThrowingStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
+        }
+    }
+}
+
+private struct CreateInlineArtefactFixtureTool: GinnyTool {
+    let definition = ProviderToolDefinition(
+        name: "create_artefact",
+        description: "Creates an inline web artefact.",
+        inputSchema: .object(
+            properties: [
+                "title": JSONSchema(type: .string),
+                "kind": JSONSchema(type: .string),
+                "source": JSONSchema(type: .string)
+            ],
+            required: ["title", "kind", "source"]
+        )
+    )
+
+    let approvalRequirement: ToolApprovalRequirement = .automatic
+
+    func execute(arguments: String) async throws -> String {
+        """
+        {"id":"\(InlineArtefactLoopProvider.artefactID)","title":"Inline preview","kind":"inlineWeb","createdAt":"2026-01-01T00:00:00Z","revisionID":"\(InlineArtefactLoopProvider.revisionID)","parentRevisionID":null,"source":"<button>Open</button>","renderedContent":"<button>Open</button>","metadata":{}}
+        """
+    }
+}
+
+private final class InlineArtefactLoopProvider: ProviderAdapter, @unchecked Sendable {
+    static let artefactID = "11111111-1111-1111-1111-111111111111"
+    static let revisionID = "22222222-2222-2222-2222-222222222222"
+
+    var supportsTools: Bool { true }
+
+    func stream(for request: ProviderRequest) -> AsyncThrowingStream<ProviderStreamEvent, Error> {
+        let isFirstResponse = request.messages.last?.role == .user
+        let events: [ProviderStreamEvent] = isFirstResponse
+            ? [
+                .responseStarted,
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .openAICompatible,
+                        id: "inline-call",
+                        name: "create_artefact",
+                        arguments: "{}"
+                    )
+                ),
+                .finish(reason: "tool_calls"),
+                .responseEnded,
+            ]
+            : [.responseStarted, .textDelta("Here it is."), .responseEnded]
 
         return AsyncThrowingStream { continuation in
             for event in events {

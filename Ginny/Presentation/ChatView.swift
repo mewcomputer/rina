@@ -510,6 +510,7 @@ struct ChatView: View {
 
         generationTask = Task { @MainActor in
             await session.send(prompt)
+            artefacts.refresh()
             let completedConversation = session.conversation
             if [.completed, .cancelled, .failed].contains(completedConversation.generationState) {
                 history.save(completedConversation)
