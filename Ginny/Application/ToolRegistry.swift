@@ -30,7 +30,11 @@ enum ToolExecutionError: Error, Equatable, Sendable {
 struct ToolRegistry: Sendable {
     let tools: [any GinnyTool]
 
-    init(tools: [any GinnyTool] = [CurrentTimeTool()]) {
+    init(tools: [any GinnyTool] = [
+        CurrentTimeTool(),
+        DiscoverSkillsTool(),
+        ReadSkillTool()
+    ]) {
         self.tools = tools
     }
 
