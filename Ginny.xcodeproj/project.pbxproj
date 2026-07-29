@@ -51,6 +51,29 @@
 		999E2D80366874B0EF14E431 /* Artefact.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2612F3084E164C0A80744CD /* Artefact.swift */; };
 		9B413C9202E8F998E5B5D05A /* StreamingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 515E025BD4E22E6F292A8415 /* StreamingTests.swift */; };
 		9D26EBCA00DE43693BF285B6 /* SourceImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6AB4AB0A1282F6EC908919 /* SourceImporter.swift */; };
+		A10000000000000000000001 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
+		A10000000000000000000002 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* LiveActivityController.swift */; };
+		A10000000000000000000003 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
+		A10000000000000000000004 /* GinnyLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* GinnyLiveActivityWidget.swift */; };
+		A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* GinnyLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A20000000000000000000001 /* WebSearchTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* WebSearchTools.swift */; };
+		A20000000000000000000002 /* WebSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* WebSearch.swift */; };
+		A20000000000000000000003 /* CitationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* CitationRepository.swift */; };
+		A20000000000000000000004 /* ContextRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* ContextRepository.swift */; };
+		A20000000000000000000005 /* ContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* ContextStore.swift */; };
+		A30000000000000000000001 /* ChatActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* ChatActivityViews.swift */; };
+		A30000000000000000000002 /* ContextViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000002 /* ContextViews.swift */; };
+		A30000000000000000000003 /* WorkspaceSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000003 /* WorkspaceSearchView.swift */; };
+		A40000000000000000000001 /* AtprotoAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000002 /* AtprotoAuthService.swift */; };
+		A40000000000000000000003 /* AtprotoAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000004 /* AtprotoAuth.swift */; };
+		A40000000000000000000005 /* AtprotoAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000006 /* AtprotoAuthTests.swift */; };
+		A60000000000000000000010 /* AtprotoOAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000011 /* AtprotoOAuthAdapter.swift */; };
+		A70000000000000000000001 /* SwiftAtproto in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000002 /* SwiftAtproto */; };
+		A60000000000000000000001 /* AtprotoOAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A60000000000000000000002 /* AtprotoOAuth */; };
+		A60000000000000000000004 /* AtprotoClient in Frameworks */ = {isa = PBXBuildFile; productRef = A60000000000000000000005 /* AtprotoClient */; };
+		A60000000000000000000007 /* AtprotoTypes in Frameworks */ = {isa = PBXBuildFile; productRef = A60000000000000000000008 /* AtprotoTypes */; };
+		A6000000000000000000000A /* GermConvenience in Frameworks */ = {isa = PBXBuildFile; productRef = A6000000000000000000000B /* GermConvenience */; };
+		A6000000000000000000000D /* OAuth4Swift in Frameworks */ = {isa = PBXBuildFile; productRef = A6000000000000000000000E /* OAuth4Swift */; };
 		B01CFF6ED6A68A558D3CB3FA /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8737F656370217260F93276E /* CredentialStore.swift */; };
 		B6FC532F089D33BA8E427746 /* ArtefactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */; };
 		BA8FB63868CF70FA8D325975 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01DC86C6D4A5429571348B7 /* ThemeTests.swift */; };
@@ -71,21 +94,8 @@
 		EB3FA2229ACB08DCFC53DCD7 /* ChatSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */; };
 		F074A2C094D69AAD05EDF3F2 /* ArtefactRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */; };
 		F0DE5293B1A15136EED8AC3E /* ProviderSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C8F3956963A5DBB935220F /* ProviderSettingsTests.swift */; };
-		F71A84DAAC1E6004B0BF2BE4 /* Search.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3350EE57DD17E55714512F7 /* Search.swift */; };
-		A10000000000000000000001 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
-		A10000000000000000000002 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* LiveActivityController.swift */; };
-		A10000000000000000000003 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
-		A10000000000000000000004 /* GinnyLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* GinnyLiveActivityWidget.swift */; };
-		A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* GinnyLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		A20000000000000000000001 /* WebSearchTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* WebSearchTools.swift */; };
-		A20000000000000000000002 /* WebSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* WebSearch.swift */; };
-		A20000000000000000000003 /* CitationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* CitationRepository.swift */; };
-		A20000000000000000000004 /* ContextRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* ContextRepository.swift */; };
-		A20000000000000000000005 /* ContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* ContextStore.swift */; };
-		A30000000000000000000001 /* ChatActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* ChatActivityViews.swift */; };
-		A30000000000000000000002 /* ContextViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000002 /* ContextViews.swift */; };
-		A30000000000000000000003 /* WorkspaceSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000003 /* WorkspaceSearchView.swift */; };
 		F20000000000000000000001 /* GinnyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* GinnyUITests.swift */; };
+		F71A84DAAC1E6004B0BF2BE4 /* Search.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3350EE57DD17E55714512F7 /* Search.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -111,6 +121,20 @@
 			remoteInfo = Ginny;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D10000000000000000000004 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		01F16D2B7BFAA0C3A560D9FE /* ToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
@@ -160,10 +184,27 @@
 		9707D3DB741C35A3F950FA09 /* ArtefactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactRepository.swift; sourceTree = "<group>"; };
 		9BB2447D13B76740668BC849 /* ContentBlockRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentBlockRendering.swift; sourceTree = "<group>"; };
 		9C5F3D001DDEDF4A6E841857 /* SessionHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHistoryStore.swift; sourceTree = "<group>"; };
+		A40000000000000000000002 /* AtprotoAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuthService.swift; sourceTree = "<group>"; };
+		A40000000000000000000004 /* AtprotoAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuth.swift; sourceTree = "<group>"; };
+		A40000000000000000000006 /* AtprotoAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuthTests.swift; sourceTree = "<group>"; };
+		A60000000000000000000011 /* AtprotoOAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoOAuthAdapter.swift; sourceTree = "<group>"; };
 		A4ACDAF24D1C1D2DF8B64C20 /* AgentInstructions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentInstructions.swift; sourceTree = "<group>"; };
 		AA14B4BF60B6010216E83851 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		AC5EC4A9CD4C888672B6F3F3 /* Relationship.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Relationship.swift; sourceTree = "<group>"; };
+		B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		B10000000000000000000003 /* GinnyLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityWidget.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B10000000000000000000005 /* GinnyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GinnyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000000000000000000001 /* WebSearchTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchTools.swift; sourceTree = "<group>"; };
+		B20000000000000000000002 /* WebSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearch.swift; sourceTree = "<group>"; };
+		B20000000000000000000003 /* CitationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationRepository.swift; sourceTree = "<group>"; };
+		B20000000000000000000004 /* ContextRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextRepository.swift; sourceTree = "<group>"; };
+		B20000000000000000000005 /* ContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextStore.swift; sourceTree = "<group>"; };
 		B2612F3084E164C0A80744CD /* Artefact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Artefact.swift; sourceTree = "<group>"; };
+		B30000000000000000000001 /* ChatActivityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatActivityViews.swift; sourceTree = "<group>"; };
+		B30000000000000000000002 /* ContextViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextViews.swift; sourceTree = "<group>"; };
+		B30000000000000000000003 /* WorkspaceSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSearchView.swift; sourceTree = "<group>"; };
 		B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAICompatibleAdapter.swift; sourceTree = "<group>"; };
 		B6A2FB8E617D55DBAD72F68F /* SourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTests.swift; sourceTree = "<group>"; };
 		B805DE7BA30FB3F2455025C1 /* ContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTests.swift; sourceTree = "<group>"; };
@@ -179,22 +220,9 @@
 		DA6EBF2B6BCDAACED8E2E932 /* ArtefactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactTests.swift; sourceTree = "<group>"; };
 		DC2D3D50F5F50ABAC6DD772D /* theme_manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = theme_manifest.json; sourceTree = "<group>"; };
 		ED5B56B84488FBF598916DDB /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
-		FE47BB9A631374B3EDB80A39 /* StreamingTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTransport.swift; sourceTree = "<group>"; };
-		B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityAttributes.swift; sourceTree = "<group>"; };
-		B10000000000000000000002 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
-		B10000000000000000000003 /* GinnyLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityWidget.swift; sourceTree = "<group>"; };
-		B10000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		B10000000000000000000005 /* GinnyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = GinnyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		B20000000000000000000001 /* WebSearchTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchTools.swift; sourceTree = "<group>"; };
-		B20000000000000000000002 /* WebSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearch.swift; sourceTree = "<group>"; };
-		B20000000000000000000003 /* CitationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationRepository.swift; sourceTree = "<group>"; };
-		B20000000000000000000004 /* ContextRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextRepository.swift; sourceTree = "<group>"; };
-		B20000000000000000000005 /* ContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextStore.swift; sourceTree = "<group>"; };
-		B30000000000000000000001 /* ChatActivityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatActivityViews.swift; sourceTree = "<group>"; };
-		B30000000000000000000002 /* ContextViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextViews.swift; sourceTree = "<group>"; };
-		B30000000000000000000003 /* WorkspaceSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSearchView.swift; sourceTree = "<group>"; };
 		F30000000000000000000001 /* GinnyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyUITests.swift; sourceTree = "<group>"; };
 		F30000000000000000000002 /* GinnyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GinnyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE47BB9A631374B3EDB80A39 /* StreamingTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTransport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -202,6 +230,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A6000000000000000000000D /* OAuth4Swift in Frameworks */,
+				A6000000000000000000000A /* GermConvenience in Frameworks */,
+				A60000000000000000000007 /* AtprotoTypes in Frameworks */,
+				A60000000000000000000004 /* AtprotoClient in Frameworks */,
+				A60000000000000000000001 /* AtprotoOAuth in Frameworks */,
+				A70000000000000000000001 /* SwiftAtproto in Frameworks */,
 				CBCF7264B81A5BD1ABA7C0E3 /* SwiftStreamingMarkdown in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -215,26 +249,14 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		D10000000000000000000004 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXGroup section */
 		1C4AEF37B0F3C72D81911EC2 /* Application */ = {
 			isa = PBXGroup;
 			children = (
 				A4ACDAF24D1C1D2DF8B64C20 /* AgentInstructions.swift */,
 				AA14B4BF60B6010216E83851 /* AppDependencies.swift */,
+				A60000000000000000000011 /* AtprotoOAuthAdapter.swift */,
+				A40000000000000000000002 /* AtprotoAuthService.swift */,
 				18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */,
 				6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */,
 				20373ABD2111756D7456726E /* ArtefactTools.swift */,
@@ -331,6 +353,7 @@
 			isa = PBXGroup;
 			children = (
 				B2612F3084E164C0A80744CD /* Artefact.swift */,
+				A40000000000000000000004 /* AtprotoAuth.swift */,
 				15C80E07053B6C5F27ED28C6 /* Context.swift */,
 				ED5B56B84488FBF598916DDB /* Conversation.swift */,
 				396160192E7309F0F87B1324 /* Diagnostics.swift */,
@@ -366,6 +389,15 @@
 			path = Streaming;
 			sourceTree = "<group>";
 		};
+		C10000000000000000000001 /* GinnyLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000003 /* GinnyLiveActivityWidget.swift */,
+				B10000000000000000000004 /* Info.plist */,
+			);
+			path = GinnyLiveActivity;
+			sourceTree = "<group>";
+		};
 		DA04ADBF3E90386BABE4CDC9 /* Infrastructure */ = {
 			isa = PBXGroup;
 			children = (
@@ -381,6 +413,7 @@
 			isa = PBXGroup;
 			children = (
 				7B81D41E0DAE7CDBDAA4A928 /* ArtefactPromotionTests.swift */,
+				A40000000000000000000006 /* AtprotoAuthTests.swift */,
 				1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */,
 				37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */,
 				DA6EBF2B6BCDAACED8E2E932 /* ArtefactTests.swift */,
@@ -413,15 +446,6 @@
 			path = GinnyUITests;
 			sourceTree = "<group>";
 		};
-		C10000000000000000000001 /* GinnyLiveActivity */ = {
-			isa = PBXGroup;
-			children = (
-				B10000000000000000000003 /* GinnyLiveActivityWidget.swift */,
-				B10000000000000000000004 /* Info.plist */,
-			);
-			path = GinnyLiveActivity;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -441,28 +465,17 @@
 			);
 			name = Ginny;
 			packageProductDependencies = (
+				A60000000000000000000002 /* AtprotoOAuth */,
+				A60000000000000000000005 /* AtprotoClient */,
+				A60000000000000000000008 /* AtprotoTypes */,
+				A6000000000000000000000B /* GermConvenience */,
+				A6000000000000000000000E /* OAuth4Swift */,
+				A70000000000000000000002 /* SwiftAtproto */,
 				BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */,
 			);
 			productName = Ginny;
 			productReference = C4622D72389852D888EE9495 /* Ginny.app */;
 			productType = "com.apple.product-type.application";
-		};
-		E10000000000000000000001 /* GinnyLiveActivity */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F10000000000000000000003 /* Build configuration list for PBXNativeTarget "GinnyLiveActivity" */;
-			buildPhases = (
-				D10000000000000000000001 /* Sources */,
-				D10000000000000000000002 /* Resources */,
-				D10000000000000000000003 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = GinnyLiveActivity;
-			productName = GinnyLiveActivity;
-			productReference = B10000000000000000000005 /* GinnyLiveActivity.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 		38639F0C01A9B32D52BBFA47 /* GinnyTests */ = {
 			isa = PBXNativeTarget;
@@ -481,6 +494,23 @@
 			productName = GinnyTests;
 			productReference = 92C5627E3E2ACC39677676CC /* GinnyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		E10000000000000000000001 /* GinnyLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000000000000000000003 /* Build configuration list for PBXNativeTarget "GinnyLiveActivity" */;
+			buildPhases = (
+				D10000000000000000000001 /* Sources */,
+				D10000000000000000000002 /* Resources */,
+				D10000000000000000000003 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GinnyLiveActivity;
+			productName = GinnyLiveActivity;
+			productReference = B10000000000000000000005 /* GinnyLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		F60000000000000000000001 /* GinnyUITests */ = {
 			isa = PBXNativeTarget;
@@ -525,6 +555,12 @@
 			mainGroup = 5557745ADCC3C1C0940861A6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				A60000000000000000000003 /* XCRemoteSwiftPackageReference "AtprotoOAuth" */,
+				A60000000000000000000006 /* XCRemoteSwiftPackageReference "AtprotoClient" */,
+				A60000000000000000000009 /* XCRemoteSwiftPackageReference "AtprotoTypes" */,
+				A6000000000000000000000C /* XCRemoteSwiftPackageReference "GermConvenience" */,
+				A6000000000000000000000F /* XCRemoteSwiftPackageReference "oauth4swift" */,
+				A70000000000000000000003 /* XCRemoteSwiftPackageReference "swift-atproto" */,
 				05FDBFA513F800E81A112DA8 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -563,6 +599,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A40000000000000000000005 /* AtprotoAuthTests.swift in Sources */,
 				C65B5081BF58A6412278D4B7 /* ArtefactPromotionTests.swift in Sources */,
 				F074A2C094D69AAD05EDF3F2 /* ArtefactRepositoryTests.swift in Sources */,
 				D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */,
@@ -594,6 +631,9 @@
 				DD5DABB68CE6EB932D5A65BF /* AgentInstructions.swift in Sources */,
 				56D04DC70D798BA1A6276A61 /* AnthropicMessagesAdapter.swift in Sources */,
 				C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */,
+				A40000000000000000000003 /* AtprotoAuth.swift in Sources */,
+				A40000000000000000000001 /* AtprotoAuthService.swift in Sources */,
+				A60000000000000000000010 /* AtprotoOAuthAdapter.swift in Sources */,
 				999E2D80366874B0EF14E431 /* Artefact.swift in Sources */,
 				95AA2C599BF497F2A4148E22 /* ArtefactPromoter.swift in Sources */,
 				264D29FF249882B12D58FC85 /* ArtefactRepository.swift in Sources */,
@@ -646,20 +686,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		F50000000000000000000001 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F20000000000000000000001 /* GinnyUITests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		D10000000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000003 /* GinnyLiveActivityAttributes.swift in Sources */,
 				A10000000000000000000004 /* GinnyLiveActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F50000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F20000000000000000000001 /* GinnyUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1002,9 +1042,87 @@
 				kind = branch;
 			};
 		};
+		A70000000000000000000003 /* XCRemoteSwiftPackageReference "swift-atproto" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nnabeyang/swift-atproto.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.42.2;
+			};
+		};
+		A60000000000000000000003 /* XCRemoteSwiftPackageReference "AtprotoOAuth" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/germ-network/AtprotoOAuth.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.11;
+			};
+		};
+		A60000000000000000000006 /* XCRemoteSwiftPackageReference "AtprotoClient" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/germ-network/AtprotoClient.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.0;
+			};
+		};
+		A60000000000000000000009 /* XCRemoteSwiftPackageReference "AtprotoTypes" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/germ-network/AtprotoTypes.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.4.6;
+			};
+		};
+		A6000000000000000000000C /* XCRemoteSwiftPackageReference "GermConvenience" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/germ-network/GermConvenience.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.4;
+			};
+		};
+		A6000000000000000000000F /* XCRemoteSwiftPackageReference "oauth4swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/germ-network/oauth4swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		A70000000000000000000002 /* SwiftAtproto */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70000000000000000000003 /* XCRemoteSwiftPackageReference "swift-atproto" */;
+			productName = SwiftAtproto;
+		};
+		A60000000000000000000002 /* AtprotoOAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A60000000000000000000003 /* XCRemoteSwiftPackageReference "AtprotoOAuth" */;
+			productName = AtprotoOAuth;
+		};
+		A60000000000000000000005 /* AtprotoClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A60000000000000000000006 /* XCRemoteSwiftPackageReference "AtprotoClient" */;
+			productName = AtprotoClient;
+		};
+		A60000000000000000000008 /* AtprotoTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A60000000000000000000009 /* XCRemoteSwiftPackageReference "AtprotoTypes" */;
+			productName = AtprotoTypes;
+		};
+		A6000000000000000000000B /* GermConvenience */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6000000000000000000000C /* XCRemoteSwiftPackageReference "GermConvenience" */;
+			productName = GermConvenience;
+		};
+		A6000000000000000000000E /* OAuth4Swift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6000000000000000000000F /* XCRemoteSwiftPackageReference "oauth4swift" */;
+			productName = OAuth4Swift;
+		};
 		BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 05FDBFA513F800E81A112DA8 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */;

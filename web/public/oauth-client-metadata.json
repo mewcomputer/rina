@@ -1,0 +1,12 @@
+{
+  "client_id": "https://rina.mew.computer/oauth-client-metadata.json",
+  "client_name": "Rina",
+  "client_uri": "https://rina.mew.computer",
+  "redirect_uris": ["computer.mew.rina:/oauth/callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "scope": "atproto",
+  "token_endpoint_auth_method": "none",
+  "application_type": "native",
+  "dpop_bound_access_tokens": true
+}
