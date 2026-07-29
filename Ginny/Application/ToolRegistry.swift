@@ -75,7 +75,7 @@ struct CurrentTimeTool: GinnyTool {
         ProviderToolDefinition(
             name: "current_time",
             description: "Returns the current date and time in ISO 8601 format.",
-            inputSchema: "{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}"
+            inputSchema: .object(properties: [:])
         )
     }
 

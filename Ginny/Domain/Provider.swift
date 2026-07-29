@@ -61,10 +61,107 @@ struct ProviderContinuationDelta: Equatable, Sendable {
     let operation: Operation
 }
 
+enum JSONSchemaType: String, Codable, Equatable, Sendable {
+    case object
+    case array
+    case string
+    case number
+    case integer
+    case boolean
+    case null
+}
+
+indirect enum JSONSchemaAdditionalProperties: Codable, Equatable, Sendable {
+    case boolean(Bool)
+    case schema(JSONSchema)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Bool.self) {
+            self = .boolean(value)
+        } else {
+            self = .schema(try container.decode(JSONSchema.self))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .boolean(let value):
+            try container.encode(value)
+        case .schema(let schema):
+            try container.encode(schema)
+        }
+    }
+}
+
+final class JSONSchema: Codable, Equatable, Sendable {
+    let type: JSONSchemaType
+    let description: String?
+    let properties: [String: JSONSchema]?
+    let required: [String]?
+    let items: JSONSchema?
+    let enumValues: [String]?
+    let additionalProperties: JSONSchemaAdditionalProperties?
+
+    init(
+        type: JSONSchemaType,
+        description: String? = nil,
+        properties: [String: JSONSchema]? = nil,
+        required: [String]? = nil,
+        items: JSONSchema? = nil,
+        enumValues: [String]? = nil,
+        additionalProperties: JSONSchemaAdditionalProperties? = nil
+    ) {
+        self.type = type
+        self.description = description
+        self.properties = properties
+        self.required = required
+        self.items = items
+        self.enumValues = enumValues
+        self.additionalProperties = additionalProperties
+    }
+
+    static func object(
+        properties: [String: JSONSchema],
+        required: [String] = [],
+        additionalProperties: JSONSchemaAdditionalProperties = .boolean(false),
+        description: String? = nil
+    ) -> JSONSchema {
+        JSONSchema(
+            type: .object,
+            description: description,
+            properties: properties,
+            required: required.isEmpty ? nil : required,
+            additionalProperties: additionalProperties
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case description
+        case properties
+        case required
+        case items
+        case enumValues = "enum"
+        case additionalProperties
+    }
+
+    static func == (lhs: JSONSchema, rhs: JSONSchema) -> Bool {
+        lhs.type == rhs.type
+            && lhs.description == rhs.description
+            && lhs.properties == rhs.properties
+            && lhs.required == rhs.required
+            && lhs.items == rhs.items
+            && lhs.enumValues == rhs.enumValues
+            && lhs.additionalProperties == rhs.additionalProperties
+    }
+}
+
 struct ProviderToolDefinition: Codable, Equatable, Sendable {
     let name: String
     let description: String
-    let inputSchema: String
+    let inputSchema: JSONSchema
 }
 
 struct ProviderToolCall: Codable, Equatable, Sendable {

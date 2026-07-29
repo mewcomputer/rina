@@ -3,6 +3,25 @@ import XCTest
 
 @MainActor
 final class ToolTests: XCTestCase {
+    func testJSONSchemaEncodesAnObjectSchemaForProviderTools() throws {
+        let schema = JSONSchema.object(
+            properties: ["query": JSONSchema(type: .string)],
+            required: ["query"]
+        )
+
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(schema)) as? [String: Any]
+        )
+
+        XCTAssertEqual(object["type"] as? String, "object")
+        XCTAssertEqual(object["required"] as? [String], ["query"])
+        let querySchema = try XCTUnwrap(
+            (object["properties"] as? [String: Any])?["query"] as? [String: Any]
+        )
+        XCTAssertEqual(querySchema["type"] as? String, "string")
+        XCTAssertEqual(object["additionalProperties"] as? Bool, false)
+    }
+
     func testCurrentTimeToolReturnsInjectedTime() async throws {
         let tool = CurrentTimeTool(now: { Date(timeIntervalSince1970: 0) })
 
@@ -116,7 +135,7 @@ private struct RequiresApprovalTool: GinnyTool {
         ProviderToolDefinition(
             name: "requires_approval",
             description: "A fixture tool that requires explicit user approval.",
-            inputSchema: "{\"type\":\"object\"}"
+            inputSchema: .object(properties: [:])
         )
     }
 

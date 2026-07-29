@@ -135,7 +135,7 @@ struct OpenAICompatibleAdapter: ProviderAdapter {
         urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         urlRequest.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization")
 
-        let toolDefinitions = try request.tools.isEmpty || configuration.supportsTools == false
+        let toolDefinitions = request.tools.isEmpty || configuration.supportsTools == false
             ? nil
             : request.tools.map(OpenAIToolDefinition.init)
         let body = OpenAICompatibleRequestBody(
@@ -272,14 +272,11 @@ private struct OpenAIToolDefinition: Encodable {
     let type = "function"
     let function: OpenAIFunctionDefinition
 
-    init(_ definition: ProviderToolDefinition) throws {
+    init(_ definition: ProviderToolDefinition) {
         function = OpenAIFunctionDefinition(
             name: definition.name,
             description: definition.description,
-            parameters: try JSONDecoder().decode(
-                ProviderJSONValue.self,
-                from: Data(definition.inputSchema.utf8)
-            )
+            parameters: definition.inputSchema
         )
     }
 }
@@ -287,7 +284,7 @@ private struct OpenAIToolDefinition: Encodable {
 private struct OpenAIFunctionDefinition: Encodable {
     let name: String
     let description: String
-    let parameters: ProviderJSONValue
+    let parameters: JSONSchema
 }
 
 indirect enum ProviderJSONValue: Codable, Equatable, Sendable {

@@ -429,7 +429,7 @@ private struct ApprovalRequiredSessionTool: GinnyTool {
     let definition = ProviderToolDefinition(
         name: "requires_approval",
         description: "A test tool requiring user approval.",
-        inputSchema: "{\"type\":\"object\"}"
+        inputSchema: .object(properties: [:])
     )
 
     let approvalRequirement: ToolApprovalRequirement = .requiresApproval

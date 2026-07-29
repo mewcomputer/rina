@@ -392,7 +392,7 @@ final class StreamingTests: XCTestCase {
         let tool = ProviderToolDefinition(
             name: "current_time",
             description: "Returns the current time.",
-            inputSchema: "{\"type\":\"object\",\"properties\":{}}"
+            inputSchema: .object(properties: [:])
         )
 
         let request = try adapter.makeRequest(
@@ -539,7 +539,7 @@ final class StreamingTests: XCTestCase {
                     ProviderToolDefinition(
                         name: "current_time",
                         description: "Returns the time.",
-                        inputSchema: "{\"type\":\"object\"}"
+                        inputSchema: .object(properties: [:])
                     )
                 ]
             )
@@ -786,7 +786,7 @@ final class StreamingTests: XCTestCase {
         let tool = ProviderToolDefinition(
             name: "current_time",
             description: "Returns the current time.",
-            inputSchema: "{\"type\":\"object\",\"properties\":{}}"
+            inputSchema: .object(properties: [:])
         )
         let call = ProviderToolCall(
             id: "toolu_1",

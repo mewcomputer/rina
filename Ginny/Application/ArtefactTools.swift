@@ -1,5 +1,19 @@
 import Foundation
 
+private let artefactWriteSchemaProperties: [String: JSONSchema] = [
+    "title": JSONSchema(type: .string),
+    "kind": JSONSchema(
+        type: .string,
+        enumValues: ArtefactKind.allCases.map(\.rawValue)
+    ),
+    "source": JSONSchema(type: .string),
+    "renderedContent": JSONSchema(type: .string),
+    "metadata": JSONSchema.object(
+        properties: [:],
+        additionalProperties: .schema(JSONSchema(type: .string))
+    )
+]
+
 struct ArtefactToolDetails: Codable, Equatable, Sendable {
     let id: String
     let title: String
@@ -57,9 +71,15 @@ struct ListArtefactsTool: GinnyTool {
         ProviderToolDefinition(
             name: "list_artefacts",
             description: "Lists durable artefacts in the Ginny workspace. Use this before editing an existing artefact.",
-            inputSchema: """
-            {"type":"object","properties":{"query":{"type":"string"},"kind":{"type":"string","enum":["document","code","web","inlineWeb"]}},"additionalProperties":false}
-            """
+            inputSchema: .object(
+                properties: [
+                    "query": JSONSchema(type: .string),
+                    "kind": JSONSchema(
+                        type: .string,
+                        enumValues: ArtefactKind.allCases.map(\.rawValue)
+                    )
+                ]
+            )
         )
     }
 
@@ -110,9 +130,13 @@ struct ReadArtefactTool: GinnyTool {
         ProviderToolDefinition(
             name: "read_artefact",
             description: "Reads a durable artefact and one of its immutable revisions by ID.",
-            inputSchema: """
-            {"type":"object","properties":{"id":{"type":"string"},"revisionID":{"type":"string"}},"required":["id"],"additionalProperties":false}
-            """
+            inputSchema: .object(
+                properties: [
+                    "id": JSONSchema(type: .string),
+                    "revisionID": JSONSchema(type: .string)
+                ],
+                required: ["id"]
+            )
         )
     }
 
@@ -161,9 +185,10 @@ struct CreateArtefactTool: GinnyTool {
         ProviderToolDefinition(
             name: "create_artefact",
             description: "Creates and persists a new durable artefact with its first immutable revision.",
-            inputSchema: """
-            {"type":"object","properties":{"title":{"type":"string"},"kind":{"type":"string","enum":["document","code","web","inlineWeb"]},"source":{"type":"string"},"renderedContent":{"type":"string"},"metadata":{"type":"object","additionalProperties":{"type":"string"}}},"required":["title","kind","source"],"additionalProperties":false}
-            """
+            inputSchema: .object(
+                properties: artefactWriteSchemaProperties,
+                required: ["title", "kind", "source"]
+            )
         )
     }
 
@@ -213,9 +238,13 @@ struct UpdateArtefactTool: GinnyTool {
         ProviderToolDefinition(
             name: "update_artefact",
             description: "Creates a new immutable revision for an existing durable artefact.",
-            inputSchema: """
-            {"type":"object","properties":{"id":{"type":"string"},"title":{"type":"string"},"source":{"type":"string"},"renderedContent":{"type":"string"},"metadata":{"type":"object","additionalProperties":{"type":"string"}}},"required":["id","source"],"additionalProperties":false}
-            """
+            inputSchema: .object(
+                properties: artefactWriteSchemaProperties.merging(
+                    ["id": JSONSchema(type: .string)],
+                    uniquingKeysWith: { current, _ in current }
+                ),
+                required: ["id", "source"]
+            )
         )
     }
 

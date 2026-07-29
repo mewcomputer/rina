@@ -233,7 +233,7 @@ struct AnthropicMessagesAdapter: ProviderAdapter {
         urlRequest.setValue(credential, forHTTPHeaderField: "x-api-key")
         urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
-        let toolDefinitions = try request.tools.isEmpty || configuration.supportsTools == false
+        let toolDefinitions = request.tools.isEmpty || configuration.supportsTools == false
             ? nil
             : request.tools.map(AnthropicToolDefinition.init)
         let body = AnthropicMessagesRequestBody(
@@ -526,7 +526,7 @@ private struct AnthropicContentBlock: Encodable {
 private struct AnthropicToolDefinition: Encodable {
     let name: String
     let description: String
-    let inputSchema: ProviderJSONValue
+    let inputSchema: JSONSchema
 
     private enum CodingKeys: String, CodingKey {
         case name
@@ -534,17 +534,10 @@ private struct AnthropicToolDefinition: Encodable {
         case inputSchema = "input_schema"
     }
 
-    init(_ definition: ProviderToolDefinition) throws {
+    init(_ definition: ProviderToolDefinition) {
         name = definition.name
         description = definition.description
-        do {
-            inputSchema = try JSONDecoder().decode(
-                ProviderJSONValue.self,
-                from: Data(definition.inputSchema.utf8)
-            )
-        } catch {
-            throw ProviderError.invalidConfiguration("Tool input schema was not valid JSON.")
-        }
+        inputSchema = definition.inputSchema
     }
 }
 

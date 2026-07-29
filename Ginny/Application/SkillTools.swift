@@ -21,9 +21,15 @@ struct DiscoverSkillsTool: GinnyTool {
         ProviderToolDefinition(
             name: "discover_skills",
             description: "Finds relevant local skills for an artefact task.",
-            inputSchema: """
-            {"type":"object","properties":{"query":{"type":"string"},"kind":{"type":"string","enum":["document","code","web","inlineWeb"]}},"additionalProperties":false}
-            """
+            inputSchema: .object(
+                properties: [
+                    "query": JSONSchema(type: .string),
+                    "kind": JSONSchema(
+                        type: .string,
+                        enumValues: ArtefactKind.allCases.map(\.rawValue)
+                    )
+                ]
+            )
         )
     }
 
@@ -59,9 +65,10 @@ struct ReadSkillTool: GinnyTool {
         ProviderToolDefinition(
             name: "read_skill",
             description: "Loads the current instructions for a local skill by ID.",
-            inputSchema: """
-            {"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}
-            """
+            inputSchema: .object(
+                properties: ["id": JSONSchema(type: .string)],
+                required: ["id"]
+            )
         )
     }
 
