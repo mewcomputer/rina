@@ -1,6 +1,6 @@
-# Ginny web
+# Rina web
 
-The public sharing viewer for Ginny.
+The public sharing viewer for Rina.
 
 This app is intentionally separate from the native iOS target. It uses:
 

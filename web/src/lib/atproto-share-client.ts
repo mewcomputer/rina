@@ -75,9 +75,9 @@ export class AtprotoShareClient {
       return parseShareRecord(recordData.value, parsed.collection)
     } catch (error) {
       if (error instanceof Error) {
-        throw new AtprotoShareError(`Invalid Ginny share record: ${error.message}`)
+        throw new AtprotoShareError(`Invalid Rina share record: ${error.message}`)
       }
-      throw new AtprotoShareError('Invalid Ginny share record')
+      throw new AtprotoShareError('Invalid Rina share record')
     }
   }
 

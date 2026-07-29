@@ -132,13 +132,16 @@ export function ShareMessageCard({
   )
 
   return (
-    <article className={isUser ? 'ml-auto max-w-[88%]' : 'max-w-[94%]'}>
+    <article
+      aria-label={isUser ? 'User message' : 'Assistant message'}
+      className={isUser ? 'ml-auto max-w-[88%]' : 'max-w-[94%]'}
+    >
       {isUser ? (
-        <Card className="bg-muted/60">
-          <CardContent className="py-5">{content}</CardContent>
-        </Card>
+        <div className="rounded-2xl border border-border/70 bg-muted/45 px-5 py-5 shadow-sm sm:px-6">
+          {content}
+        </div>
       ) : (
-        <div className="py-1">{content}</div>
+        <div className="py-1 text-[1rem] leading-7">{content}</div>
       )}
     </article>
   )
@@ -168,15 +171,15 @@ function ThinkingDisclosure({
   if (!content && !isRedacted) return null
 
   return (
-    <details className="group mb-4 max-w-[65ch] text-muted-foreground">
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium marker:hidden">
-        <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
-        <Sparkles className="size-4" />
-        Thinking
+    <details className="group mb-5 max-w-[65ch] text-muted-foreground">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors hover:bg-muted/50 marker:hidden">
+        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
+        <Sparkles className="size-3.5 text-primary/70" />
+        <span>Thinking</span>
       </summary>
-      <div className="mt-3 border-l border-border pl-4 [--color-foreground:var(--muted-foreground)]">
+      <div className="mt-2 rounded-lg bg-muted/35 px-4 py-3 [--color-foreground:var(--muted-foreground)]">
         {content ? (
-          <div className="typeset typeset-docs text-sm">
+          <div className="typeset typeset-docs max-w-[65ch] text-sm">
             <MarkdownContent content={content} />
           </div>
         ) : (
@@ -215,12 +218,12 @@ function ShareToolActivityCard({
   const StatusIcon = hasError ? AlertTriangle : isPending ? LoaderCircle : Check
 
   return (
-    <details className="group mt-4 max-w-[65ch] rounded-xl border border-border bg-muted/30">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium marker:hidden">
-        <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
+    <details className="group mt-5 max-w-[65ch] rounded-xl border border-border/70 bg-card/35 shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3.5 text-sm font-medium marker:hidden">
+        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
         <StatusIcon
           className={[
-            'size-4',
+            'size-3.5',
             hasError
               ? 'text-destructive'
               : isPending
@@ -230,17 +233,17 @@ function ShareToolActivityCard({
         />
         {label}
       </summary>
-      <div className="space-y-4 border-t border-border px-4 py-3">
+      <div className="space-y-4 border-t border-border/70 px-4 py-4">
         {activities.map(({ call, result }, index) => (
           <div
             key={call.id ?? `${call.attributes.callID ?? 'tool'}-${index}`}
             className="space-y-2"
           >
-            <div className="text-sm font-medium">
+            <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
               {call.attributes.name || 'Tool'}
             </div>
             {call.payload && (
-              <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-background/70 p-3 text-xs leading-5 text-muted-foreground">
+              <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-background/70 p-3 text-xs leading-5 text-muted-foreground ring-1 ring-inset ring-border/50">
                 {call.payload}
               </pre>
             )}
@@ -256,7 +259,7 @@ function ShareToolActivityCard({
                 >
                   Result
                 </p>
-                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-background/70 p-3 text-xs leading-5 text-muted-foreground">
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-background/70 p-3 text-xs leading-5 text-muted-foreground ring-1 ring-inset ring-border/50">
                   {result.payload}
                 </pre>
               </div>
@@ -277,12 +280,14 @@ export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
   const isWeb = artefact.kind === 'web' || artefact.kind === 'inlineWeb'
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{artefact.title}</CardTitle>
-        <CardDescription>{artefact.kind}</CardDescription>
+    <Card className="overflow-hidden border-border/70 bg-card/35 shadow-sm">
+      <CardHeader className="gap-2 border-b border-border/60 px-5 py-5 sm:px-6">
+        <CardTitle className="text-xl tracking-[-0.025em]">{artefact.title}</CardTitle>
+        <CardDescription className="text-[11px] font-medium uppercase tracking-[0.16em]">
+          {artefact.kind}
+        </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-5 py-5 sm:px-6 sm:py-6">
         {isDocument ? (
           <div className="typeset typeset-docs max-w-[65ch]">
             <MarkdownContent content={artefact.source} />
@@ -303,12 +308,13 @@ export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
 
 function InlineWebPreview({ title, content }: { title: string; content: string }) {
   return (
-    <div className="-mx-6 overflow-hidden sm:-mx-6">
+    <div className="-mx-5 overflow-hidden sm:-mx-6">
       <iframe
         title={`${title} preview`}
         srcDoc={sandboxedWebDocument(content)}
         sandbox="allow-scripts"
         loading="lazy"
+        referrerPolicy="no-referrer"
         className="block h-[min(70vh,32rem)] min-h-64 w-full border-0 bg-background"
       />
     </div>
@@ -407,7 +413,7 @@ function ShareBlockView({ block }: { block: ShareBlock }) {
   ) {
     return (
       <div className="not-typeset">
-        <pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm leading-6">
+    <pre className="overflow-x-auto rounded-lg bg-muted/60 p-4 text-sm leading-6 ring-1 ring-inset ring-border/50">
           {block.payload}
         </pre>
       </div>
@@ -483,26 +489,26 @@ function ShareCitationGroups({
     blocks.flatMap((block) => parseCitations(block.payload)),
   )
   const content = (
-    <div className="space-y-3 rounded-lg bg-background/60 p-3">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Link2 className="size-4 text-muted-foreground" />
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        <Link2 className="size-3.5" />
         Sources
       </div>
       {citations.length === 0 ? (
         <p className="text-sm text-muted-foreground">Sources unavailable</p>
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-border/60 border-y border-border/60">
           {citations.map((citation, index) => (
             <a
               key={citation.id ?? `${citation.url}-${index}`}
               href={citation.url}
               target="_blank"
               rel="noreferrer"
-              className="group block rounded-md p-2 transition-colors hover:bg-muted/70"
+              className="group block px-2 py-3 transition-colors hover:bg-muted/50"
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-sm font-medium">
+                  <p className="line-clamp-2 text-sm font-medium leading-5">
                     {citation.title || citation.url}
                   </p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
@@ -526,12 +532,12 @@ function ShareCitationGroups({
   if (!collapsible) return content
 
   return (
-    <details className="not-typeset mt-4 max-w-[65ch] rounded-xl border border-border bg-muted/30 group">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium marker:hidden">
-        <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
+    <details className="not-typeset group mt-5 max-w-[65ch] rounded-xl border border-border/70 bg-card/35 shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3.5 text-sm font-medium marker:hidden">
+        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
         {citationActivitySummary(blocks)}
       </summary>
-      <div className="border-t border-border p-3">{content}</div>
+      <div className="border-t border-border/70 px-4 py-4">{content}</div>
     </details>
   )
 }

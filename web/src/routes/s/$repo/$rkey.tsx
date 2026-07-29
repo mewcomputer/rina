@@ -8,13 +8,6 @@ import {
   ShareMessageList,
 } from '@/components/share-content'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
   atprotoShareClient,
   AtprotoShareError,
 } from '@/lib/atproto-share-client'
@@ -37,41 +30,54 @@ function SharePage() {
   const [shareStatus, setShareStatus] = useState<ShareStatus>('idle')
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-12 sm:py-20">
-      <div className="mb-10 flex items-start justify-between gap-6">
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-primary">Ginny sharing</p>
-          <h1 className="text-4xl font-semibold tracking-tight">{snapshot.title}</h1>
-          <time
-            className="text-sm text-muted-foreground"
-            dateTime={snapshot.createdAt}
-          >
-            Shared {new Date(snapshot.createdAt).toLocaleDateString()}
-          </time>
+    <section className="min-h-[calc(100svh-3.5rem)]">
+      <div className="mx-auto max-w-4xl px-6 pb-20 sm:pb-28">
+        <div className="flex items-start justify-between gap-6 border-b border-border/70 pb-10 pt-16 sm:pt-24">
+          <div className="min-w-0 space-y-5">
+            <p className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+              Rina conversation
+            </p>
+            <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.045em] sm:text-6xl">
+              {snapshot.title}
+            </h1>
+            <time className="block text-sm text-muted-foreground" dateTime={snapshot.createdAt}>
+              Shared {new Date(snapshot.createdAt).toLocaleDateString()}
+            </time>
+          </div>
+          <ShareMenu onShare={shareCurrentPage} onStatusChange={setShareStatus} />
+          <span className="sr-only" role="status" aria-live="polite">
+            {shareStatus === 'copied' && 'Share link copied.'}
+            {shareStatus === 'shared' && 'Share sheet opened.'}
+            {shareStatus === 'error' && 'Could not share this page.'}
+          </span>
         </div>
-        <ShareMenu onShare={shareCurrentPage} onStatusChange={setShareStatus} />
-        <span className="sr-only" role="status" aria-live="polite">
-          {shareStatus === 'copied' && 'Share link copied.'}
-          {shareStatus === 'shared' && 'Share sheet opened.'}
-          {shareStatus === 'error' && 'Could not share this page.'}
-        </span>
-      </div>
 
-      <div className="space-y-6">
-        <ShareMessageList messages={snapshot.messages} />
-        {snapshot.artefacts.map((artefact, index) => (
-          <ShareArtefactCard
-            key={artefact.id ?? `${artefact.title}-${index}`}
-            artefact={artefact}
-          />
-        ))}
-        {snapshot.messages.length === 0 && snapshot.artefacts.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-sm text-muted-foreground">
+        <div className="mx-auto max-w-3xl space-y-12 pt-10 sm:pt-14">
+          <div className="space-y-10">
+            <ShareMessageList messages={snapshot.messages} />
+          </div>
+          {snapshot.artefacts.length > 0 && (
+            <section className="space-y-5 border-t border-border/70 pt-8">
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Artefacts
+              </p>
+              <div className="space-y-6">
+                {snapshot.artefacts.map((artefact, index) => (
+                  <ShareArtefactCard
+                    key={artefact.id ?? `${artefact.title}-${index}`}
+                    artefact={artefact}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          {snapshot.messages.length === 0 && snapshot.artefacts.length === 0 && (
+            <div className="border border-dashed border-border px-5 py-8 text-sm text-muted-foreground">
               This share has no renderable content.
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   )
@@ -140,12 +146,10 @@ async function shareCurrentPage(): Promise<ShareStatus> {
 
 function SharePending() {
   return (
-    <section className="mx-auto max-w-3xl px-6 py-20">
-      <Card>
-        <CardContent className="py-10 text-sm text-muted-foreground">
-          Loading shared work…
-        </CardContent>
-      </Card>
+    <section className="mx-auto max-w-4xl px-6 py-24">
+      <div className="border-t border-border/70 pt-5 text-sm text-muted-foreground">
+        Loading shared work…
+      </div>
     </section>
   )
 }
@@ -156,24 +160,20 @@ function ShareError({ error }: { error: unknown }) {
       ? error.message
       : error instanceof Error
         ? error.message
-        : 'Ginny could not load this share.'
+        : 'Rina could not load this share.'
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-20">
-      <Card>
-        <CardHeader>
-          <CardTitle>Couldn’t load this share</CardTitle>
-          <CardDescription>{message}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            to="/"
-            className="inline-flex h-9 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
-          >
-            Back to Ginny
-          </Link>
-        </CardContent>
-      </Card>
+    <section className="mx-auto max-w-4xl px-6 py-24">
+      <div className="max-w-xl border-t border-destructive/60 pt-5">
+        <h1 className="text-2xl font-semibold tracking-tight">Couldn’t load this share</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{message}</p>
+        <Link
+          to="/"
+          className="mt-8 inline-flex h-9 items-center border border-border px-3 text-sm font-medium transition-colors hover:bg-muted"
+        >
+          Back to Rina
+        </Link>
+      </div>
     </section>
   )
 }
