@@ -20,6 +20,9 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertTrue(systemMessage.content.contains("create_artefact"))
         XCTAssertTrue(systemMessage.content.contains("pinned Tailwind browser runtime"))
         XCTAssertTrue(systemMessage.content.contains("Do not provide a duplicate shadcn stylesheet"))
+        XCTAssertTrue(systemMessage.content.contains("connect-src 'none'"))
+        XCTAssertTrue(systemMessage.content.contains("Do not use iframes"))
+        XCTAssertTrue(systemMessage.content.contains("host filesystem"))
     }
 
     func testSessionPreservesCompletedUserAndAssistantMessages() async {
