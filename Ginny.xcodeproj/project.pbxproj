@@ -11,6 +11,7 @@
 		14140B1EC5B7607184FF42E6 /* SessionHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682EA6B16D010F5F5D0BCA9D /* SessionHistoryTests.swift */; };
 		1460F8A2A269DAAA4905B4B6 /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DBDCF5A45A5803E2262232 /* Provider.swift */; };
 		18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */; };
+		1A491F02447C88CB1C131547 /* ArtefactStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */; };
 		1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */; };
 		24C1EBB267687B9B38781BB8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22AE8DFC71A2A8813F3DF56 /* Theme.swift */; };
 		25978B844940E79DF16393C9 /* SkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64ADCF866FF2251C911F33C1 /* SkillTests.swift */; };
@@ -31,17 +32,21 @@
 		8D711B7A9BCF2C157427E7AE /* SessionHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5F3D001DDEDF4A6E841857 /* SessionHistoryStore.swift */; };
 		92B12C300FAF9C2E0E3485B3 /* OpenAICompatibleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */; };
 		931DF029769AF70E2FE471EE /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47D54403317B0C02D8EE4F6 /* ChatView.swift */; };
+		95AA2C599BF497F2A4148E22 /* ArtefactPromoter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */; };
 		977F8ABC1324F32138346E20 /* ProviderSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */; };
 		999E2D80366874B0EF14E431 /* Artefact.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2612F3084E164C0A80744CD /* Artefact.swift */; };
 		9B413C9202E8F998E5B5D05A /* StreamingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 515E025BD4E22E6F292A8415 /* StreamingTests.swift */; };
 		B01CFF6ED6A68A558D3CB3FA /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8737F656370217260F93276E /* CredentialStore.swift */; };
+		B6FC532F089D33BA8E427746 /* ArtefactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */; };
 		BA8FB63868CF70FA8D325975 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01DC86C6D4A5429571348B7 /* ThemeTests.swift */; };
 		BB580858294F3113E5668110 /* ToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CB2AD08D5ED8302810E37D /* ToolTests.swift */; };
 		C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA14B4BF60B6010216E83851 /* AppDependencies.swift */; };
+		C65B5081BF58A6412278D4B7 /* ArtefactPromotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B81D41E0DAE7CDBDAA4A928 /* ArtefactPromotionTests.swift */; };
 		CBCF7264B81A5BD1ABA7C0E3 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */; };
 		CFD2820648D9A8933EA72451 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604F428D68F76A14BCE9A5F5 /* RootView.swift */; };
 		D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5B56B84488FBF598916DDB /* Conversation.swift */; };
 		D770B6E0CC668F94B3E39034 /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EB399BEEEDC2B36FB06B201 /* Skill.swift */; };
+		D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */; };
 		D9BEB6E6A505D06E41A6B43D /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FA948BCF63CC7B840A03A1 /* Glass.swift */; };
 		EB3FA2229ACB08DCFC53DCD7 /* ChatSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */; };
 		F074A2C094D69AAD05EDF3F2 /* ArtefactRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */; };
@@ -63,9 +68,11 @@
 		08C8F3956963A5DBB935220F /* ProviderSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettingsTests.swift; sourceTree = "<group>"; };
 		0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettings.swift; sourceTree = "<group>"; };
 		1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactRepositoryTests.swift; sourceTree = "<group>"; };
+		18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactPromoter.swift; sourceTree = "<group>"; };
 		1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identifiers.swift; sourceTree = "<group>"; };
 		1EB399BEEEDC2B36FB06B201 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
 		28CB2AD08D5ED8302810E37D /* ToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolTests.swift; sourceTree = "<group>"; };
+		37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactStoreTests.swift; sourceTree = "<group>"; };
 		383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyApp.swift; sourceTree = "<group>"; };
 		3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSessionTests.swift; sourceTree = "<group>"; };
 		3F5ED5AA1DAFAADAFD217757 /* ModelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTests.swift; sourceTree = "<group>"; };
@@ -81,9 +88,12 @@
 		64ADCF866FF2251C911F33C1 /* SkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTests.swift; sourceTree = "<group>"; };
 		682EA6B16D010F5F5D0BCA9D /* SessionHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHistoryTests.swift; sourceTree = "<group>"; };
 		69FA948BCF63CC7B840A03A1 /* Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glass.swift; sourceTree = "<group>"; };
+		6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactStore.swift; sourceTree = "<group>"; };
+		7B81D41E0DAE7CDBDAA4A928 /* ArtefactPromotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactPromotionTests.swift; sourceTree = "<group>"; };
 		7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicMessagesAdapter.swift; sourceTree = "<group>"; };
 		82BD921B65734CCF8933C9FF /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
 		8737F656370217260F93276E /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
+		89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactViews.swift; sourceTree = "<group>"; };
 		8F4627A6932AFCC922D079F4 /* SSE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSE.swift; sourceTree = "<group>"; };
 		92C5627E3E2ACC39677676CC /* GinnyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GinnyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9707D3DB741C35A3F950FA09 /* ArtefactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactRepository.swift; sourceTree = "<group>"; };
@@ -118,6 +128,8 @@
 			isa = PBXGroup;
 			children = (
 				AA14B4BF60B6010216E83851 /* AppDependencies.swift */,
+				18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */,
+				6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */,
 				D633C99839F2015E2F41F17F /* ChatSession.swift */,
 				0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */,
 				9C5F3D001DDEDF4A6E841857 /* SessionHistoryStore.swift */,
@@ -130,6 +142,7 @@
 		3F2E3A463EC9A0D4CD77FD33 /* Presentation */ = {
 			isa = PBXGroup;
 			children = (
+				89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */,
 				41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */,
 				D47D54403317B0C02D8EE4F6 /* ChatView.swift */,
 				69FA948BCF63CC7B840A03A1 /* Glass.swift */,
@@ -233,7 +246,9 @@
 		DBB2D52842EEE777932F5F26 /* GinnyTests */ = {
 			isa = PBXGroup;
 			children = (
+				7B81D41E0DAE7CDBDAA4A928 /* ArtefactPromotionTests.swift */,
 				1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */,
+				37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */,
 				DA6EBF2B6BCDAACED8E2E932 /* ArtefactTests.swift */,
 				3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */,
 				520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */,
@@ -343,7 +358,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C65B5081BF58A6412278D4B7 /* ArtefactPromotionTests.swift in Sources */,
 				F074A2C094D69AAD05EDF3F2 /* ArtefactRepositoryTests.swift in Sources */,
+				D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */,
 				48DF75E429E34F3701F145A8 /* ArtefactTests.swift in Sources */,
 				EB3FA2229ACB08DCFC53DCD7 /* ChatSessionTests.swift in Sources */,
 				2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */,
@@ -365,7 +382,10 @@
 				56D04DC70D798BA1A6276A61 /* AnthropicMessagesAdapter.swift in Sources */,
 				C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */,
 				999E2D80366874B0EF14E431 /* Artefact.swift in Sources */,
+				95AA2C599BF497F2A4148E22 /* ArtefactPromoter.swift in Sources */,
 				264D29FF249882B12D58FC85 /* ArtefactRepository.swift in Sources */,
+				1A491F02447C88CB1C131547 /* ArtefactStore.swift in Sources */,
+				B6FC532F089D33BA8E427746 /* ArtefactViews.swift in Sources */,
 				18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */,
 				515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */,
 				931DF029769AF70E2FE471EE /* ChatView.swift in Sources */,

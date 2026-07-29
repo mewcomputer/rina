@@ -7,13 +7,30 @@ struct AppDependencies: Sendable {
     let transport: any StreamingTransport
     let modelCatalog: any ModelCatalogProviding
     let conversationRepository: ConversationRepository
+    let artefactRepository: ArtefactRepository
 
     static let live = AppDependencies(
         credentialStore: KeychainCredentialStore(),
         transport: URLSessionStreamingTransport(),
         modelCatalog: URLSessionModelCatalog(),
-        conversationRepository: try! ConversationRepository()
+        conversationRepository: try! ConversationRepository(),
+        artefactRepository: try! ArtefactRepository()
     )
+
+    func makeToolRegistry() -> ToolRegistry {
+        let persistedSkills = (try? artefactRepository.fetchSkills()) ?? []
+        var skillsByID = Dictionary(uniqueKeysWithValues: CuratedSkills.all.map { ($0.id, $0) })
+        for skill in persistedSkills {
+            skillsByID[skill.id] = skill
+        }
+        let catalog = SkillCatalog(skills: Array(skillsByID.values))
+
+        return ToolRegistry(tools: [
+            CurrentTimeTool(),
+            DiscoverSkillsTool(catalog: catalog),
+            ReadSkillTool(catalog: catalog)
+        ])
+    }
 
     func makeProvider(for configuration: ProviderConfiguration) -> any ProviderAdapter {
         switch configuration.provider {

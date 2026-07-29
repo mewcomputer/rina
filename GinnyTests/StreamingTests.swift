@@ -556,7 +556,8 @@ final class StreamingTests: XCTestCase {
             credentialStore: InMemoryCredentialStore(credentials: [:]),
             transport: UnusedStreamingTransport(),
             modelCatalog: URLSessionModelCatalog(),
-            conversationRepository: try! ConversationRepository(isStoredInMemoryOnly: true)
+            conversationRepository: try! ConversationRepository(isStoredInMemoryOnly: true),
+            artefactRepository: try! ArtefactRepository(isStoredInMemoryOnly: true)
         )
         let configuration = ProviderConfiguration(
             provider: .kimiCode,

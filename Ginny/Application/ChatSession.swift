@@ -47,6 +47,36 @@ final class ChatSession: ObservableObject {
         load(conversation: Conversation())
     }
 
+    func attachArtefact(_ artefact: Artefact, to messageID: MessageID) {
+        guard var message = conversation.messages.first(where: { $0.id == messageID }),
+              !message.blocks.contains(where: {
+                  $0.kind == .artefactReference
+                      && $0.attributes["artefactID"] == artefact.id.rawValue.uuidString
+                      && $0.attributes["revisionID"] == artefact.currentRevisionID?.rawValue.uuidString
+              }),
+              let revisionID = artefact.currentRevisionID
+        else {
+            return
+        }
+
+        let presentation: ArtefactReferencePresentation = artefact.kind == .inlineWeb
+            ? .inline
+            : .card
+        message.blocks.append(
+            .artefactReference(
+                artefactID: artefact.id,
+                revisionID: revisionID,
+                presentation: presentation
+            )
+        )
+        do {
+            try conversation.updateMessage(message)
+            persistConversation()
+        } catch {
+            persistenceError = "Couldn’t attach this artefact to the conversation."
+        }
+    }
+
     var isGenerating: Bool {
         switch conversation.generationState {
         case .preparing, .streaming:

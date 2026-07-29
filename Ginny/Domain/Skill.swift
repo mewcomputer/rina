@@ -60,6 +60,20 @@ struct Skill: Codable, Equatable, Identifiable, Sendable {
         revisions.first { $0.id == id }
     }
 
+    mutating func updateMetadata(
+        name: String,
+        summary: String,
+        targetKinds: Set<ArtefactKind>,
+        keywords: [String],
+        isDiscoverable: Bool
+    ) {
+        self.name = name
+        self.summary = summary
+        self.targetKinds = targetKinds
+        self.keywords = keywords
+        self.isDiscoverable = isDiscoverable
+    }
+
     @discardableResult
     mutating func update(
         instructions: String,

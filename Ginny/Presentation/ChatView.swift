@@ -21,10 +21,13 @@ struct ChatView: View {
     @StateObject private var session: ChatSession
     @StateObject private var settings: ProviderSettings
     @StateObject private var history: SessionHistoryStore
+    @StateObject private var artefacts: ArtefactStore
     @State private var draft = ""
     @State private var activeResponse: ActiveResponse?
     @State private var generationTask: Task<Void, Never>?
     @State private var showsSettings = false
+    @State private var showsWorkspace = false
+    @State private var artefactNotice: String?
     @State private var isSidebarPresented = false
     @State private var sidebarDragOffset: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -37,6 +40,7 @@ struct ChatView: View {
         _themeStore = ObservedObject(wrappedValue: themeStore)
         _session = StateObject(
             wrappedValue: ChatSession(
+                toolRegistry: dependencies.makeToolRegistry(),
                 persistence: { conversation in
                     try dependencies.conversationRepository.upsert(conversation)
                 }
@@ -52,6 +56,9 @@ struct ChatView: View {
             wrappedValue: SessionHistoryStore(
                 repository: dependencies.conversationRepository
             )
+        )
+        _artefacts = StateObject(
+            wrappedValue: ArtefactStore(repository: dependencies.artefactRepository)
         )
     }
 
@@ -83,6 +90,7 @@ struct ChatView: View {
                         currentConversationID: session.conversation.id,
                         onSelect: selectConversation,
                         onNewConversation: startNewConversation,
+                        onWorkspace: { showsWorkspace = true },
                         onSettings: { showsSettings = true }
                     )
                     .frame(width: sidebarWidth)
@@ -114,6 +122,22 @@ struct ChatView: View {
             .environment(\.ginnyTheme, theme)
             .preferredColorScheme(theme.mode.colorScheme)
         }
+        .sheet(isPresented: $showsWorkspace) {
+            WorkspaceLibraryView(store: artefacts)
+                .environment(\.ginnyTheme, theme)
+                .preferredColorScheme(theme.mode.colorScheme)
+        }
+        .alert(
+            "Artefact",
+            isPresented: Binding(
+                get: { artefactNotice != nil },
+                set: { if !$0 { artefactNotice = nil } }
+            )
+        ) {
+            Button("Done") { artefactNotice = nil }
+        } message: {
+            Text(artefactNotice ?? "")
+        }
     }
 
     private var chatSurface: some View {
@@ -135,16 +159,24 @@ struct ChatView: View {
                                             case .message(let message):
                                                 ChatMessageView(
                                                     message: message,
+                                                    artefactStore: artefacts,
                                                     markdownConfig: markdownConfig,
-                                                    thinkingMarkdownConfig: thinkingMarkdownConfig
+                                                    thinkingMarkdownConfig: thinkingMarkdownConfig,
+                                                    onPromote: { kind in
+                                                        promote(message: message, kind: kind)
+                                                    }
                                                 )
                                                 .id(item.id)
                                             case .toolActivity(let message, let group):
                                                 ChatMessageView(
                                                     message: message,
                                                     toolActivity: group,
+                                                    artefactStore: artefacts,
                                                     markdownConfig: markdownConfig,
-                                                    thinkingMarkdownConfig: thinkingMarkdownConfig
+                                                    thinkingMarkdownConfig: thinkingMarkdownConfig,
+                                                    onPromote: { kind in
+                                                        promote(message: message, kind: kind)
+                                                    }
                                                 )
                                                 .id(item.id)
                                             }
@@ -495,6 +527,21 @@ struct ChatView: View {
         session.cancel()
         generationTask?.cancel()
     }
+
+    private func promote(message: Message, kind: ArtefactKind) {
+        do {
+            let artefact = try ArtefactPromoter.promote(message: message, kind: kind)
+            artefacts.save(artefact)
+            if artefacts.persistenceError == nil {
+                session.attachArtefact(artefact, to: message.id)
+                artefactNotice = "Saved \(artefact.title) to your workspace."
+            } else {
+                artefactNotice = "Ginny couldn’t save that artefact."
+            }
+        } catch {
+            artefactNotice = "That response doesn’t contain content that can be saved."
+        }
+    }
 }
 
 private enum ChatDisplayItem: Identifiable {
@@ -545,6 +592,7 @@ private struct SessionSidebar: View {
     let currentConversationID: ConversationID
     let onSelect: (Conversation) -> Void
     let onNewConversation: () -> Void
+    let onWorkspace: () -> Void
     let onSettings: () -> Void
     @Environment(\.ginnyTheme) private var theme
 
@@ -563,6 +611,16 @@ private struct SessionSidebar: View {
             .foregroundStyle(theme.color("primary_foreground"))
             .background(theme.color("primary"), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .accessibilityHint("Starts a blank conversation")
+
+            Button(action: onWorkspace) {
+                Label("Artefacts & skills", systemImage: "square.stack.3d.up")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+            }
+            .foregroundStyle(theme.color("text.body"))
+            .accessibilityLabel("Open artefacts and skills")
 
             Menu {
                 Section("Theme") {
@@ -1008,20 +1066,26 @@ private struct ActiveResponse {
 private struct ChatMessageView: View {
     let message: Message
     let toolActivity: ToolActivityGroup?
+    @ObservedObject var artefactStore: ArtefactStore
     let markdownConfig: MarkdownRenderConfig
     let thinkingMarkdownConfig: MarkdownRenderConfig
+    let onPromote: ((ArtefactKind) -> Void)?
     @Environment(\.ginnyTheme) private var theme
 
     init(
         message: Message,
         toolActivity: ToolActivityGroup? = nil,
+        artefactStore: ArtefactStore,
         markdownConfig: MarkdownRenderConfig,
-        thinkingMarkdownConfig: MarkdownRenderConfig
+        thinkingMarkdownConfig: MarkdownRenderConfig,
+        onPromote: ((ArtefactKind) -> Void)? = nil
     ) {
         self.message = message
         self.toolActivity = toolActivity
+        self.artefactStore = artefactStore
         self.markdownConfig = markdownConfig
         self.thinkingMarkdownConfig = thinkingMarkdownConfig
+        self.onPromote = onPromote
     }
 
     var body: some View {
@@ -1058,6 +1122,25 @@ private struct ChatMessageView: View {
                         MarkdownView(text: text, config: markdownConfig)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    ForEach(artefactReferences) { reference in
+                        ArtefactReferenceView(reference: reference, store: artefactStore)
+                    }
+                }
+            }
+        }
+        .contextMenu {
+            if message.role == .assistant, let onPromote {
+                Button("Save as document", systemImage: "doc.text") {
+                    onPromote(.document)
+                }
+                Button("Save as code", systemImage: "chevron.left.forwardslash.chevron.right") {
+                    onPromote(.code)
+                }
+                Button("Save as web artefact", systemImage: "globe") {
+                    onPromote(.web)
+                }
+                Button("Save inline web artefact", systemImage: "rectangle.on.rectangle") {
+                    onPromote(.inlineWeb)
                 }
             }
         }
@@ -1078,6 +1161,10 @@ private struct ChatMessageView: View {
         message.blocks.filter { $0.kind == .toolResult }
     }
 
+    private var artefactReferences: [ArtefactReference] {
+        message.blocks.compactMap(ArtefactReference.init(block:))
+    }
+
     private var hasReasoning: Bool {
         message.providerContinuations.contains { $0.kind == "reasoning" }
     }
@@ -1095,6 +1182,51 @@ private struct ChatMessageView: View {
                 && $0.fields["data"] != nil
                 && $0.fields["thinking"] == nil
                 && $0.fields["text"] == nil
+        }
+    }
+}
+
+private struct ArtefactReferenceView: View {
+    let reference: ArtefactReference
+    @ObservedObject var store: ArtefactStore
+    @Environment(\.ginnyTheme) private var theme
+
+    var body: some View {
+        if let artefact = store.artefacts.first(where: { $0.id == reference.artefactID }),
+           let revision = artefact.revision(id: reference.revisionID) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: artefact.kind == .inlineWeb ? "rectangle.on.rectangle" : "doc.text")
+                    Text(artefact.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Text(artefact.kind.rawValue)
+                        .font(.caption)
+                        .foregroundStyle(theme.color("text.muted"))
+                }
+
+                if reference.presentation == .inline {
+                    WebArtefactPreview(html: revision.renderedContent ?? revision.source, isInline: true)
+                        .frame(minHeight: 180, maxHeight: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                } else {
+                    Text(revision.source)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(theme.color("text.muted"))
+                        .lineLimit(5)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(14)
+            .background(
+                theme.color("card").opacity(0.35),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+        } else {
+            Label("Artefact unavailable", systemImage: "exclamationmark.triangle")
+                .font(.footnote)
+                .foregroundStyle(theme.color("text.muted"))
         }
     }
 }
@@ -1204,7 +1336,7 @@ private struct ThinkingIndicator: View {
                 guard isAnimating, !reduceMotion else { return }
 
                 while !Task.isCancelled {
-                    try? await Task.sleep(for: .milliseconds(1200))
+                    try? await Task.sleep(for: .milliseconds(2100))
                     guard !Task.isCancelled else { return }
 
                     withAnimation(.easeInOut(duration: 0.42)) {

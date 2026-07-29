@@ -89,6 +89,27 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(decoded, conversation)
     }
 
+    func testArtefactReferenceBlockRoundTripsStableIdentity() throws {
+        let artefactID = ArtefactID()
+        let revisionID = RevisionID()
+        let block = ContentBlock.artefactReference(
+            artefactID: artefactID,
+            revisionID: revisionID,
+            presentation: .inline
+        )
+
+        let decoded = try JSONDecoder().decode(
+            ContentBlock.self,
+            from: JSONEncoder().encode(block)
+        )
+
+        XCTAssertEqual(decoded, block)
+        XCTAssertEqual(decoded.kind, .artefactReference)
+        XCTAssertEqual(decoded.attributes["artefactID"], artefactID.rawValue.uuidString)
+        XCTAssertEqual(decoded.attributes["revisionID"], revisionID.rawValue.uuidString)
+        XCTAssertEqual(decoded.attributes["presentation"], "inline")
+    }
+
     func testToolActivityGroupPairsCallsAndResultsByCallID() {
         let firstCall = ContentBlock.toolCall(
             callID: "call-1",

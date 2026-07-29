@@ -11,6 +11,12 @@ enum ContentBlockKind: String, Codable, Equatable, Sendable {
     case text
     case toolCall
     case toolResult
+    case artefactReference
+}
+
+enum ArtefactReferencePresentation: String, Codable, Equatable, Sendable {
+    case card
+    case inline
 }
 
 enum ToolApprovalState: String, Codable, Equatable, Sendable {
@@ -104,6 +110,25 @@ struct ContentBlock: Codable, Equatable, Sendable {
             kind: .toolResult,
             payload: result,
             attributes: attributes,
+            isComplete: true
+        )
+    }
+
+    static func artefactReference(
+        id: ContentBlockID = ContentBlockID(),
+        artefactID: ArtefactID,
+        revisionID: RevisionID,
+        presentation: ArtefactReferencePresentation
+    ) -> ContentBlock {
+        ContentBlock(
+            id: id,
+            kind: .artefactReference,
+            payload: "",
+            attributes: [
+                "artefactID": artefactID.rawValue.uuidString,
+                "revisionID": revisionID.rawValue.uuidString,
+                "presentation": presentation.rawValue
+            ],
             isComplete: true
         )
     }

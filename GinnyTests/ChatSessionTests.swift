@@ -56,6 +56,26 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertEqual(session.streamingReasoningText, "plan then answer")
     }
 
+    func testSessionCanAttachArtefactReferenceToAnAssistantMessage() {
+        let message = Message.assistant("Saved answer")
+        let conversation = Conversation(messages: [message], generationState: .completed)
+        let session = ChatSession(conversation: conversation)
+        let artefact = Artefact(title: "Saved answer", kind: .document)
+        var artefactWithRevision = artefact
+        let revisionID = artefactWithRevision.checkpoint(source: "Saved answer")
+
+        session.attachArtefact(artefactWithRevision, to: message.id)
+
+        XCTAssertEqual(
+            session.conversation.messages[0].blocks.last?.kind,
+            .artefactReference
+        )
+        XCTAssertEqual(
+            session.conversation.messages[0].blocks.last?.attributes["revisionID"],
+            revisionID.rawValue.uuidString
+        )
+    }
+
     func testSessionPreservesPartialContentWhenProviderFails() async {
         let provider = StubProvider(
             events: [.responseStarted, .textDelta("Partial")],

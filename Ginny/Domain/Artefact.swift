@@ -20,6 +20,31 @@ struct ArtefactRevision: Codable, Equatable, Identifiable, Sendable {
     let metadata: [String: String]
 }
 
+struct ArtefactReference: Equatable, Identifiable, Sendable {
+    let id: ContentBlockID
+    let artefactID: ArtefactID
+    let revisionID: RevisionID
+    let presentation: ArtefactReferencePresentation
+
+    init?(block: ContentBlock) {
+        guard block.kind == .artefactReference,
+              let artefactValue = block.attributes["artefactID"],
+              let artefactUUID = UUID(uuidString: artefactValue),
+              let revisionValue = block.attributes["revisionID"],
+              let revisionUUID = UUID(uuidString: revisionValue),
+              let presentationValue = block.attributes["presentation"],
+              let presentation = ArtefactReferencePresentation(rawValue: presentationValue)
+        else {
+            return nil
+        }
+
+        id = block.id
+        artefactID = ArtefactID(rawValue: artefactUUID)
+        revisionID = RevisionID(rawValue: revisionUUID)
+        self.presentation = presentation
+    }
+}
+
 struct Artefact: Codable, Equatable, Identifiable, Sendable {
     let id: ArtefactID
     let createdAt: Date
