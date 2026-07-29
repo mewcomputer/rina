@@ -1194,39 +1194,44 @@ private struct ArtefactReferenceView: View {
     let reference: ArtefactReference
     @ObservedObject var store: ArtefactStore
     @Environment(\.ginnyTheme) private var theme
+    @State private var inlineHeight: CGFloat = 180
 
     var body: some View {
         if let artefact = store.artefacts.first(where: { $0.id == reference.artefactID }),
            let revision = artefact.revision(id: reference.revisionID) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: artefact.kind == .inlineWeb ? "rectangle.on.rectangle" : "doc.text")
-                    Text(artefact.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(artefact.kind.rawValue)
-                        .font(.caption)
-                        .foregroundStyle(theme.color("text.muted"))
-                }
+            if reference.presentation == .inline {
+                WebArtefactPreview(
+                    html: revision.renderedContent ?? revision.source,
+                    isInline: true,
+                    contentHeight: $inlineHeight
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: inlineHeight)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: artefact.kind == .inlineWeb ? "rectangle.on.rectangle" : "doc.text")
+                        Text(artefact.title)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Text(artefact.kind.rawValue)
+                            .font(.caption)
+                            .foregroundStyle(theme.color("text.muted"))
+                    }
 
-                if reference.presentation == .inline {
-                    WebArtefactPreview(html: revision.renderedContent ?? revision.source, isInline: true)
-                        .frame(minHeight: 180, maxHeight: 300)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                } else {
                     Text(revision.source)
                         .font(.caption.monospaced())
                         .foregroundStyle(theme.color("text.muted"))
                         .lineLimit(5)
                         .textSelection(.enabled)
                 }
+                .padding(14)
+                .background(
+                    theme.color("card").opacity(0.35),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
             }
-            .padding(14)
-            .background(
-                theme.color("card").opacity(0.35),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
         } else {
             Label("Artefact unavailable", systemImage: "exclamationmark.triangle")
                 .font(.footnote)

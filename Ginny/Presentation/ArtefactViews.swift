@@ -385,7 +385,18 @@ private struct SkillEditorView: View {
 struct WebArtefactPreview: UIViewRepresentable {
     let html: String
     let isInline: Bool
+    @Binding private var contentHeight: CGFloat
     @Environment(\.ginnyTheme) private var theme
+
+    init(
+        html: String,
+        isInline: Bool,
+        contentHeight: Binding<CGFloat> = .constant(220)
+    ) {
+        self.html = html
+        self.isInline = isInline
+        _contentHeight = contentHeight
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -398,11 +409,17 @@ struct WebArtefactPreview: UIViewRepresentable {
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
+        view.scrollView.isScrollEnabled = !isInline
         view.navigationDelegate = context.coordinator
         return view
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        let contentHeight = $contentHeight
+        context.coordinator.onContentHeightChange = { height in
+            guard abs(contentHeight.wrappedValue - height) > 1 else { return }
+            contentHeight.wrappedValue = height
+        }
         let renderKey = "\(theme.id)|\(isInline)|\(html)"
         guard context.coordinator.lastRenderKey != renderKey else { return }
         context.coordinator.lastRenderKey = renderKey
@@ -601,6 +618,18 @@ struct WebArtefactPreview: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var lastRenderKey: String?
+        var onContentHeightChange: ((CGFloat) -> Void)?
+
+        @MainActor
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard webView.scrollView.isScrollEnabled == false else { return }
+            webView.evaluateJavaScript(
+                "Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)"
+            ) { [weak self] result, _ in
+                guard let height = result as? NSNumber else { return }
+                self?.onContentHeightChange?(max(1, CGFloat(height.doubleValue)))
+            }
+        }
 
         @MainActor
         func webView(

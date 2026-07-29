@@ -229,6 +229,20 @@ struct CreateArtefactTool: GinnyTool {
     }
 
     var approvalRequirement: ToolApprovalRequirement { .requiresApproval }
+
+    func approvalRequirement(for arguments: String) -> ToolApprovalRequirement {
+        struct ApprovalArguments: Decodable {
+            let kind: ArtefactKind?
+        }
+
+        guard let data = arguments.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode(ApprovalArguments.self, from: data)
+        else {
+            return approvalRequirement
+        }
+
+        return decoded.kind == .inlineWeb ? .automatic : approvalRequirement
+    }
 }
 
 struct UpdateArtefactTool: GinnyTool {

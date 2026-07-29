@@ -15,11 +15,17 @@ protocol GinnyTool: Sendable {
     var definition: ProviderToolDefinition { get }
     var approvalRequirement: ToolApprovalRequirement { get }
 
+    func approvalRequirement(for arguments: String) -> ToolApprovalRequirement
+
     func execute(arguments: String) async throws -> String
 }
 
 extension GinnyTool {
     var approvalRequirement: ToolApprovalRequirement { .requiresApproval }
+
+    func approvalRequirement(for arguments: String) -> ToolApprovalRequirement {
+        approvalRequirement
+    }
 }
 
 enum ToolExecutionError: Error, Equatable, Sendable {
@@ -53,6 +59,10 @@ struct ToolRegistry: Sendable {
 
     func approvalRequirement(for name: String) -> ToolApprovalRequirement? {
         tools.first(where: { $0.definition.name == name })?.approvalRequirement
+    }
+
+    func approvalRequirement(for name: String, arguments: String) -> ToolApprovalRequirement? {
+        tools.first(where: { $0.definition.name == name })?.approvalRequirement(for: arguments)
     }
 
     func execute(name: String, arguments: String) async throws -> String {

@@ -364,7 +364,7 @@ final class ChatSession: ObservableObject {
 
             do {
                 let approvalState: ToolApprovalState
-                switch toolRegistry.approvalRequirement(for: name) {
+                switch toolRegistry.approvalRequirement(for: name, arguments: call.payload) {
                 case .automatic:
                     approvalState = .automatic
                 case .requiresApproval:

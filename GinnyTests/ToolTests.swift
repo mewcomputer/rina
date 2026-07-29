@@ -128,6 +128,30 @@ final class ToolTests: XCTestCase {
         XCTAssertEqual(updated.source, "<button>Save changes</button>")
         XCTAssertEqual(registry.approvalRequirement(for: "update_artefact"), .requiresApproval)
     }
+
+    func testInlineWebCreationIsAutomaticButDurableDocumentCreationRequiresApproval() throws {
+        let repository = try ArtefactRepository(isStoredInMemoryOnly: true)
+        let registry = ToolRegistry(tools: ArtefactToolSet(repository: repository).tools)
+
+        XCTAssertEqual(
+            registry.approvalRequirement(
+                for: "create_artefact",
+                arguments: "{\"kind\":\"inlineWeb\"}"
+            ),
+            .automatic
+        )
+        XCTAssertEqual(
+            registry.approvalRequirement(
+                for: "create_artefact",
+                arguments: "{\"kind\":\"document\"}"
+            ),
+            .requiresApproval
+        )
+        XCTAssertEqual(
+            registry.approvalRequirement(for: "create_artefact"),
+            .requiresApproval
+        )
+    }
 }
 
 private struct RequiresApprovalTool: GinnyTool {
