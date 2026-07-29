@@ -174,7 +174,7 @@ final class ArtefactRepository {
     }
 
     func upsert(_ artefact: Artefact) throws {
-        let idValue = artefact.id.rawValue.uuidString
+        let idValue = artefact.id.rawValue.rawValue
         let descriptor = FetchDescriptor<ArtefactRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -188,7 +188,7 @@ final class ArtefactRepository {
                 kindRaw: artefact.kind.rawValue,
                 title: artefact.title,
                 metadataData: try encoder.encode(artefact.metadata),
-                currentRevisionValue: artefact.currentRevisionID?.rawValue.uuidString
+                currentRevisionValue: artefact.currentRevisionID?.rawValue.rawValue
             )
             context.insert(record)
         }
@@ -197,13 +197,13 @@ final class ArtefactRepository {
         record.kindRaw = artefact.kind.rawValue
         record.title = artefact.title
         record.metadataData = try encoder.encode(artefact.metadata)
-        record.currentRevisionValue = artefact.currentRevisionID?.rawValue.uuidString
+        record.currentRevisionValue = artefact.currentRevisionID?.rawValue.rawValue
         try syncArtefactRevisions(artefact.revisions, into: record)
         try context.save()
     }
 
     func delete(_ artefact: Artefact) throws {
-        let idValue = artefact.id.rawValue.uuidString
+        let idValue = artefact.id.rawValue.rawValue
         let descriptor = FetchDescriptor<ArtefactRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -238,7 +238,7 @@ final class ArtefactRepository {
                 keywordsData: try encoder.encode(skill.keywords),
                 isDiscoverable: skill.isDiscoverable,
                 isBuiltIn: skill.isBuiltIn,
-                currentRevisionValue: skill.currentRevisionID.rawValue.uuidString
+                currentRevisionValue: skill.currentRevisionID.rawValue.rawValue
             )
             context.insert(record)
         }
@@ -250,7 +250,7 @@ final class ArtefactRepository {
         record.keywordsData = try encoder.encode(skill.keywords)
         record.isDiscoverable = skill.isDiscoverable
         record.isBuiltIn = skill.isBuiltIn
-        record.currentRevisionValue = skill.currentRevisionID.rawValue.uuidString
+        record.currentRevisionValue = skill.currentRevisionID.rawValue.rawValue
         try syncSkillRevisions(skill.revisions, into: record)
         try context.save()
     }
@@ -270,7 +270,7 @@ final class ArtefactRepository {
         _ revisions: [ArtefactRevision],
         into record: ArtefactRecord
     ) throws {
-        let expectedIDs = Set(revisions.map { $0.id.rawValue.uuidString })
+        let expectedIDs = Set(revisions.map { $0.id.rawValue.rawValue })
         for revisionRecord in record.revisionRecords
             where !expectedIDs.contains(revisionRecord.idValue)
         {
@@ -279,7 +279,7 @@ final class ArtefactRepository {
 
         var revisionRecords: [ArtefactRevisionRecord] = []
         for (sortIndex, revision) in revisions.enumerated() {
-            let idValue = revision.id.rawValue.uuidString
+            let idValue = revision.id.rawValue.rawValue
             let existing = record.revisionRecords.first { $0.idValue == idValue }
             let revisionRecord: ArtefactRevisionRecord
             if let existing {
@@ -287,7 +287,7 @@ final class ArtefactRepository {
             } else {
                 revisionRecord = ArtefactRevisionRecord(
                     idValue: idValue,
-                    parentIDValue: revision.parentID?.rawValue.uuidString,
+                    parentIDValue: revision.parentID?.rawValue.rawValue,
                     createdAt: revision.createdAt,
                     source: revision.source,
                     renderedContent: revision.renderedContent,
@@ -297,7 +297,7 @@ final class ArtefactRepository {
                 context.insert(revisionRecord)
             }
 
-            revisionRecord.parentIDValue = revision.parentID?.rawValue.uuidString
+            revisionRecord.parentIDValue = revision.parentID?.rawValue.rawValue
             revisionRecord.createdAt = revision.createdAt
             revisionRecord.source = revision.source
             revisionRecord.renderedContent = revision.renderedContent
@@ -313,7 +313,7 @@ final class ArtefactRepository {
         _ revisions: [SkillRevision],
         into record: SkillRecord
     ) throws {
-        let expectedIDs = Set(revisions.map { $0.id.rawValue.uuidString })
+        let expectedIDs = Set(revisions.map { $0.id.rawValue.rawValue })
         for revisionRecord in record.revisionRecords
             where !expectedIDs.contains(revisionRecord.idValue)
         {
@@ -322,7 +322,7 @@ final class ArtefactRepository {
 
         var revisionRecords: [SkillRevisionRecord] = []
         for (sortIndex, revision) in revisions.enumerated() {
-            let idValue = revision.id.rawValue.uuidString
+            let idValue = revision.id.rawValue.rawValue
             let existing = record.revisionRecords.first { $0.idValue == idValue }
             let revisionRecord: SkillRevisionRecord
             if let existing {
@@ -330,7 +330,7 @@ final class ArtefactRepository {
             } else {
                 revisionRecord = SkillRevisionRecord(
                     idValue: idValue,
-                    parentIDValue: revision.parentID?.rawValue.uuidString,
+                    parentIDValue: revision.parentID?.rawValue.rawValue,
                     createdAt: revision.createdAt,
                     instructions: revision.instructions,
                     sortIndex: sortIndex
@@ -338,7 +338,7 @@ final class ArtefactRepository {
                 context.insert(revisionRecord)
             }
 
-            revisionRecord.parentIDValue = revision.parentID?.rawValue.uuidString
+            revisionRecord.parentIDValue = revision.parentID?.rawValue.rawValue
             revisionRecord.createdAt = revision.createdAt
             revisionRecord.instructions = revision.instructions
             revisionRecord.sortIndex = sortIndex
@@ -349,7 +349,7 @@ final class ArtefactRepository {
     }
 
     private func domainArtefact(from record: ArtefactRecord) throws -> Artefact {
-        guard let id = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw ArtefactRepositoryError.invalidArtefactID
         }
         guard let kind = ArtefactKind(rawValue: record.kindRaw) else {
@@ -360,10 +360,10 @@ final class ArtefactRepository {
             .sorted { $0.sortIndex < $1.sortIndex }
             .map(domainArtefactRevision(from:))
         let currentRevisionID = try record.currentRevisionValue.map { value in
-            guard let uuid = UUID(uuidString: value) else {
+            guard let id = try? TID(string: value) else {
                 throw ArtefactRepositoryError.invalidRevisionID
             }
-            return RevisionID(rawValue: uuid)
+            return RevisionID(rawValue: id)
         }
 
         return Artefact(
@@ -378,14 +378,14 @@ final class ArtefactRepository {
     }
 
     private func domainArtefactRevision(from record: ArtefactRevisionRecord) throws -> ArtefactRevision {
-        guard let id = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw ArtefactRepositoryError.invalidRevisionID
         }
         let parentID = try record.parentIDValue.map { value in
-            guard let uuid = UUID(uuidString: value) else {
+            guard let id = try? TID(string: value) else {
                 throw ArtefactRepositoryError.invalidRevisionID
             }
-            return RevisionID(rawValue: uuid)
+            return RevisionID(rawValue: id)
         }
 
         return ArtefactRevision(
@@ -402,7 +402,7 @@ final class ArtefactRepository {
         let revisions = try record.revisionRecords
             .sorted { $0.sortIndex < $1.sortIndex }
             .map(domainSkillRevision(from:))
-        guard let currentRevisionUUID = UUID(uuidString: record.currentRevisionValue) else {
+        guard let currentRevisionID = try? TID(string: record.currentRevisionValue) else {
             throw ArtefactRepositoryError.invalidSkillRevisionID
         }
 
@@ -417,19 +417,19 @@ final class ArtefactRepository {
             isBuiltIn: record.isBuiltIn,
             createdAt: record.createdAt,
             revisions: revisions,
-            currentRevisionID: RevisionID(rawValue: currentRevisionUUID)
+            currentRevisionID: RevisionID(rawValue: currentRevisionID)
         )
     }
 
     private func domainSkillRevision(from record: SkillRevisionRecord) throws -> SkillRevision {
-        guard let id = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw ArtefactRepositoryError.invalidSkillRevisionID
         }
         let parentID = try record.parentIDValue.map { value in
-            guard let uuid = UUID(uuidString: value) else {
+            guard let id = try? TID(string: value) else {
                 throw ArtefactRepositoryError.invalidSkillRevisionID
             }
-            return RevisionID(rawValue: uuid)
+            return RevisionID(rawValue: id)
         }
 
         return SkillRevision(

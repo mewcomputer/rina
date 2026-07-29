@@ -170,7 +170,9 @@ struct ChatView: View {
                 ProviderSettingsView(
                     settings: settings,
                     authService: dependencies.atprotoAuth,
-                    themeStore: themeStore
+                    themeStore: themeStore,
+                    dataResetter: dependencies.localDataResetter,
+                    onDataReset: resetLocalData
                 )
             }
             .environment(\.ginnyTheme, theme)
@@ -206,9 +208,10 @@ struct ChatView: View {
         .sheet(isPresented: $showsSharePreview) {
             ConversationSharePreviewSheet(
                 conversation: session.conversation,
+                artefacts: artefacts.artefacts,
                 publication: publicationStore.publications.first {
                     $0.collection == AtprotoRecordCollection.conversation
-                        && $0.subjectID == session.conversation.id.rawValue.uuidString
+                        && $0.subjectID == session.conversation.id.rawValue.rawValue
                 },
                 sharingService: dependencies.atprotoSharing,
                 publicationStore: publicationStore
@@ -544,6 +547,17 @@ struct ChatView: View {
         setSidebarPresented(false)
     }
 
+    private func resetLocalData() {
+        session.reset()
+        history.refresh()
+        artefacts.refresh()
+        contextStore.refresh()
+        publicationStore.removeAll()
+        selectedContextID = nil
+        activeResponse = nil
+        draft = ""
+    }
+
     private func configureSelectedContext() {
         guard let selectedContextID,
               let context = contextStore.contexts.first(where: { $0.id == selectedContextID })
@@ -657,7 +671,7 @@ struct ChatView: View {
 
         generationTask = Task { @MainActor in
             await LiveActivityController.shared.start(
-                conversationID: session.conversation.id.rawValue,
+                conversationID: session.conversation.id.rawValue.rawValue,
                 model: settings.modelText,
                 thinkingLevel: settings.thinkingLevel.displayName
             )
@@ -849,6 +863,7 @@ private struct ChatHeader: View {
 @MainActor
 private struct ConversationSharePreviewSheet: View {
     let conversation: Conversation
+    let artefacts: [Artefact]
     let publication: AtprotoPublication?
     let sharingService: AtprotoSharingService
     @ObservedObject var publicationStore: AtprotoPublicationStore
@@ -875,7 +890,7 @@ private struct ConversationSharePreviewSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Public snapshot", systemImage: "globe")
                         .font(.headline)
-                    Text("Visible messages and saved content are included. Hidden reasoning and raw tool payloads stay local.")
+                    Text("Visible messages and referenced artefacts are included. Hidden reasoning and raw tool payloads stay local.")
                         .font(.footnote)
                         .foregroundStyle(theme.color("text.muted"))
                 }
@@ -887,11 +902,12 @@ private struct ConversationSharePreviewSheet: View {
                 Button(action: publish) {
                     HStack {
                         if isWorking { ProgressView().tint(theme.color("primary_foreground")) }
-                        Text(publication == nil ? "Publish publicly" : "Update public snapshot")
+                        Text(publication == nil ? "Publish" : "Update record")
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
+                .shimmering(active: isWorking)
                 .disabled(isWorking || conversation.messages.isEmpty)
 
                 if let publicURL = publishedPublication?.publicWebURL ?? publication?.publicWebURL {
@@ -933,11 +949,43 @@ private struct ConversationSharePreviewSheet: View {
         isWorking = true
         Task {
             do {
-                let snapshot = AtprotoSnapshotBuilder.conversation(conversation)
+                var publishedArtefactReferences: [RinaArtefactReference] = []
+                for reference in referencedArtefactReferences {
+                    guard let artefact = artefacts.first(where: { $0.id == reference.artefactID }) else {
+                        throw AtprotoSharingError.missingReferencedArtefact(reference.artefactID)
+                    }
+                    let subjectID = publicationSubjectID(for: reference)
+                    let existingPublication = publicationStore.publications.first {
+                        $0.collection == AtprotoRecordCollection.artefact
+                            && $0.subjectID == subjectID
+                    }
+                    let artefactSnapshot = try AtprotoSnapshotBuilder.artefact(
+                        artefact,
+                        revisionID: reference.revisionID
+                    )
+                    let publishedArtefact = try await sharingService.publish(
+                        artefactSnapshot,
+                        publication: existingPublication,
+                        subjectID: subjectID
+                    )
+                    publicationStore.save(publishedArtefact)
+                    publishedArtefactReferences.append(
+                        RinaArtefactReference(
+                            id: reference.artefactID.rawValue.rawValue,
+                            revisionID: reference.revisionID.rawValue.rawValue,
+                            uri: publishedArtefact.uri
+                        )
+                    )
+                }
+
+                let snapshot = AtprotoSnapshotBuilder.conversation(
+                    conversation,
+                    artefactReferences: publishedArtefactReferences
+                )
                 let published = try await sharingService.publish(
                     snapshot,
                     publication: publication,
-                    subjectID: conversation.id.rawValue.uuidString
+                    subjectID: conversation.id.rawValue.rawValue
                 )
                 publicationStore.save(published)
                 publishedPublication = published
@@ -953,6 +1001,18 @@ private struct ConversationSharePreviewSheet: View {
         isWorking = true
         Task {
             do {
+                let childSubjectIDs = Set(referencedArtefactReferences.map(publicationSubjectID))
+                let childPublications = publicationStore.publications.filter {
+                    $0.collection == AtprotoRecordCollection.artefact
+                        && childSubjectIDs.contains($0.subjectID ?? "")
+                }
+                for childPublication in childPublications {
+                    try await sharingService.delete(childPublication)
+                    publicationStore.remove(
+                        collection: childPublication.collection,
+                        rkey: childPublication.rkey
+                    )
+                }
                 try await sharingService.delete(publication)
                 publicationStore.remove(collection: publication.collection, rkey: publication.rkey)
                 dismiss()
@@ -961,6 +1021,21 @@ private struct ConversationSharePreviewSheet: View {
             }
             isWorking = false
         }
+    }
+
+    private var referencedArtefactReferences: [ArtefactReference] {
+        var seen = Set<String>()
+        return conversation.messages
+            .flatMap(\.blocks)
+            .compactMap(ArtefactReference.init(block:))
+            .filter { reference in
+                let key = publicationSubjectID(for: reference)
+                return seen.insert(key).inserted
+            }
+    }
+
+    private func publicationSubjectID(for reference: ArtefactReference) -> String {
+        "\(reference.artefactID.rawValue.rawValue):\(reference.revisionID.rawValue.rawValue)"
     }
 }
 
@@ -1892,8 +1967,13 @@ private struct ProviderSettingsView: View {
     @ObservedObject var settings: ProviderSettings
     let authService: AtprotoAuthService
     @ObservedObject var themeStore: ThemeStore
+    let dataResetter: LocalDataResetter
+    let onDataReset: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.ginnyTheme) private var theme
+    @State private var showsClearDataConfirmation = false
+    @State private var isClearingData = false
+    @State private var dataErrorMessage: String?
 
     var body: some View {
         List {
@@ -1951,6 +2031,19 @@ private struct ProviderSettingsView: View {
                 }
             }
 
+            Section("Data") {
+                Button(role: .destructive) {
+                    showsClearDataConfirmation = true
+                } label: {
+                    Label("Clear local data", systemImage: "trash")
+                }
+                .disabled(isClearingData)
+
+                Text("Deletes sessions, artefacts, imported sources, contexts, search data, and local attachments. Provider credentials and your atproto sign-in stay in place.")
+                    .font(.footnote)
+                    .foregroundStyle(theme.color("text.muted"))
+            }
+
             Section {
                 Text("Credentials stay in the system Keychain. Remote endpoints require HTTPS; localhost HTTP is allowed for local development.")
                     .font(.footnote)
@@ -1970,8 +2063,42 @@ private struct ProviderSettingsView: View {
                 }
             }
         }
+        .alert("Clear local data?", isPresented: $showsClearDataConfirmation) {
+            Button("Clear local data", role: .destructive) {
+                clearLocalData()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes all locally stored workspace content. It cannot be undone.")
+        }
+        .alert(
+            "Could not clear local data",
+            isPresented: Binding(
+                get: { dataErrorMessage != nil },
+                set: { if !$0 { dataErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(dataErrorMessage ?? "Try again.")
+        }
         .task {
             await settings.refreshModels()
+        }
+    }
+
+    private func clearLocalData() {
+        isClearingData = true
+        Task { @MainActor in
+            do {
+                try await dataResetter.reset()
+                isClearingData = false
+                onDataReset()
+                dismiss()
+            } catch {
+                isClearingData = false
+                dataErrorMessage = error.localizedDescription
+            }
         }
     }
 

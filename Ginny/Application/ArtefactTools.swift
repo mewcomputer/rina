@@ -164,11 +164,11 @@ struct ListArtefactsTool: GinnyTool {
             }
             .map { artefact in
                 ArtefactToolSummary(
-                    id: artefact.id.rawValue.uuidString,
+                    id: artefact.id.rawValue.rawValue,
                     title: artefact.title,
                     kind: artefact.kind,
                     createdAt: artefact.createdAt.ISO8601Format(),
-                    revisionID: artefact.currentRevisionID?.rawValue.uuidString,
+                    revisionID: artefact.currentRevisionID?.rawValue.rawValue,
                     sourcePreview: sourcePreview(for: artefact.currentRevision?.source)
                 )
             }
@@ -427,15 +427,15 @@ struct UpdateArtefactTool: GinnyTool {
 }
 
 private func parseArtefactID(_ value: String) throws -> ArtefactID {
-    guard let uuid = UUID(uuidString: value) else {
+    guard let id = try? TID(string: value) else {
         throw ToolExecutionError.invalidArguments("Expected a valid artefact ID.")
     }
-    return ArtefactID(rawValue: uuid)
+    return ArtefactID(rawValue: id)
 }
 
 private func findRevision(id: String, in artefact: Artefact) throws -> ArtefactRevision {
-    guard let uuid = UUID(uuidString: id),
-          let revision = artefact.revision(id: RevisionID(rawValue: uuid))
+    guard let revisionID = try? TID(string: id),
+          let revision = artefact.revision(id: RevisionID(rawValue: revisionID))
     else {
         throw ToolExecutionError.invalidArguments("No revision exists with ID \(id).")
     }
@@ -443,10 +443,10 @@ private func findRevision(id: String, in artefact: Artefact) throws -> ArtefactR
 }
 
 private func findArtefact(id: String, using store: ArtefactToolStore) async throws -> Artefact {
-    guard let uuid = UUID(uuidString: id) else {
+    guard let artefactTID = try? TID(string: id) else {
         throw ToolExecutionError.invalidArguments("Expected a valid artefact ID.")
     }
-    let artefactID = ArtefactID(rawValue: uuid)
+    let artefactID = ArtefactID(rawValue: artefactTID)
     guard let artefact = try await store.fetchArtefacts().first(where: { $0.id == artefactID }) else {
         throw ToolExecutionError.invalidArguments("No artefact exists with ID \(id).")
     }
@@ -459,12 +459,12 @@ private func details(
     displayImmediately: Bool = false
 ) -> ArtefactToolDetails {
     ArtefactToolDetails(
-        id: artefact.id.rawValue.uuidString,
+        id: artefact.id.rawValue.rawValue,
         title: artefact.title,
         kind: artefact.kind,
         createdAt: artefact.createdAt.ISO8601Format(),
-        revisionID: revision.id.rawValue.uuidString,
-        parentRevisionID: revision.parentID?.rawValue.uuidString,
+        revisionID: revision.id.rawValue.rawValue,
+        parentRevisionID: revision.parentID?.rawValue.rawValue,
         source: revision.source,
         renderedContent: revision.renderedContent,
         metadata: revision.metadata,

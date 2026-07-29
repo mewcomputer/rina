@@ -72,7 +72,7 @@ final class CitationRepository {
     }
 
     func upsert(_ citation: Citation) throws {
-        let idValue = citation.id.rawValue.uuidString
+        let idValue = citation.id.rawValue.rawValue
         let descriptor = FetchDescriptor<CitationRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -108,7 +108,7 @@ final class CitationRepository {
     }
 
     func delete(_ citation: Citation) throws {
-        let idValue = citation.id.rawValue.uuidString
+        let idValue = citation.id.rawValue.rawValue
         let descriptor = FetchDescriptor<CitationRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -119,14 +119,14 @@ final class CitationRepository {
     }
 
     private func domainCitation(from record: CitationRecord) throws -> Citation {
-        guard let uuid = UUID(uuidString: record.idValue),
+        guard let id = try? TID(string: record.idValue),
               let provider = WebSearchProviderID(rawValue: record.providerRaw)
         else {
             throw CitationRepositoryError.invalidCitationID
         }
 
         return Citation(
-            id: CitationID(rawValue: uuid),
+            id: CitationID(rawValue: id),
             createdAt: record.createdAt,
             query: record.query,
             result: WebSearchResult(

@@ -85,8 +85,8 @@ final class ChatSession: ObservableObject {
         guard var message = conversation.messages.first(where: { $0.id == messageID }),
               !message.blocks.contains(where: {
                   $0.kind == .artefactReference
-                      && $0.attributes["artefactID"] == artefact.id.rawValue.uuidString
-                      && $0.attributes["revisionID"] == artefact.currentRevisionID?.rawValue.uuidString
+                      && $0.attributes["artefactID"] == artefact.id.rawValue.rawValue
+                      && $0.attributes["revisionID"] == artefact.currentRevisionID?.rawValue.rawValue
               }),
               let revisionID = artefact.currentRevisionID
         else {
@@ -602,8 +602,8 @@ final class ChatSession: ObservableObject {
                   from: Data(result.utf8)
               ),
               details.displayImmediately || details.kind == .inlineWeb,
-              let artefactUUID = UUID(uuidString: details.id),
-              let revisionUUID = UUID(uuidString: details.revisionID),
+              let artefactTID = try? TID(string: details.id),
+              let revisionTID = try? TID(string: details.revisionID),
               var assistant = conversation.messages.first(where: {
                   $0.id == assistantMessageID && $0.role == .assistant
               })
@@ -611,12 +611,12 @@ final class ChatSession: ObservableObject {
             return
         }
 
-        let artefactID = ArtefactID(rawValue: artefactUUID)
-        let revisionID = RevisionID(rawValue: revisionUUID)
+        let artefactID = ArtefactID(rawValue: artefactTID)
+        let revisionID = RevisionID(rawValue: revisionTID)
         guard !assistant.blocks.contains(where: {
             $0.kind == .artefactReference
-                && $0.attributes["artefactID"] == artefactID.rawValue.uuidString
-                && $0.attributes["revisionID"] == revisionID.rawValue.uuidString
+                && $0.attributes["artefactID"] == artefactID.rawValue.rawValue
+                && $0.attributes["revisionID"] == revisionID.rawValue.rawValue
         })
         else {
             return

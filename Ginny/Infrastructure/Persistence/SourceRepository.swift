@@ -81,7 +81,7 @@ final class SourceRepository {
     }
 
     func upsert(_ source: Source) throws {
-        let idValue = source.id.rawValue.uuidString
+        let idValue = source.id.rawValue.rawValue
         let descriptor = FetchDescriptor<SourceRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -123,7 +123,7 @@ final class SourceRepository {
     }
 
     func delete(_ source: Source) throws {
-        let idValue = source.id.rawValue.uuidString
+        let idValue = source.id.rawValue.rawValue
         let descriptor = FetchDescriptor<SourceRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -134,13 +134,13 @@ final class SourceRepository {
     }
 
     private func domainSource(from record: SourceRecord) throws -> Source {
-        guard let uuid = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw SourceRepositoryError.invalidSourceID
         }
 
         do {
             return Source(
-                id: SourceID(rawValue: uuid),
+                id: SourceID(rawValue: id),
                 createdAt: record.createdAt,
                 displayName: record.displayName,
                 contentTypeIdentifier: record.contentTypeIdentifier,

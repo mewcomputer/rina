@@ -46,7 +46,7 @@ final class AtprotoSharingTests: XCTestCase {
 
     func testArtefactRecordUsesCurrentRevision() throws {
         var artefact = Artefact(title: "Accessible card", kind: .code)
-        _ = artefact.checkpoint(
+        let revisionID = artefact.checkpoint(
             source: "<button>Save</button>",
             renderedContent: "<button>Save</button>",
             metadata: ["language": "html"]
@@ -56,8 +56,46 @@ final class AtprotoSharingTests: XCTestCase {
 
         XCTAssertEqual(record.title, "Accessible card")
         XCTAssertEqual(record.kind, .code)
+        XCTAssertEqual(record.id, artefact.id.rawValue.rawValue)
+        XCTAssertEqual(record.revisionID, revisionID.rawValue.rawValue)
         XCTAssertEqual(record.source, "<button>Save</button>")
         XCTAssertEqual(record.metadata["language"], "html")
+    }
+
+    func testConversationSnapshotCarriesPublishedArtefactReferences() throws {
+        var conversation = Conversation(title: "A shared session")
+        let artefactID = ArtefactID()
+        let revisionID = RevisionID()
+        try conversation.appendMessage(
+            Message(
+                role: .assistant,
+                blocks: [
+                    .text("Here is the saved preview."),
+                    .artefactReference(
+                        artefactID: artefactID,
+                        revisionID: revisionID,
+                        presentation: .inline
+                    )
+                ]
+            )
+        )
+
+        let reference = RinaArtefactReference(
+            id: artefactID.rawValue.rawValue,
+            revisionID: revisionID.rawValue.rawValue,
+            uri: "at://did:plc:example/computer.mew.rina.artefact/3mabc234xyzab"
+        )
+        let snapshot = AtprotoSnapshotBuilder.conversation(
+            conversation,
+            artefactReferences: [reference]
+        )
+
+        XCTAssertEqual(snapshot.artefacts, [reference])
+        let decoded = try JSONDecoder().decode(
+            RinaConversationSnapshot.self,
+            from: JSONEncoder().encode(snapshot)
+        )
+        XCTAssertEqual(decoded.artefacts, [reference])
     }
 
     func testPublicationStateRoundTrips() throws {

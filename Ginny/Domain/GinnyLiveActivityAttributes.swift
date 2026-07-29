@@ -16,6 +16,6 @@ struct GinnyLiveActivityAttributes: ActivityAttributes {
         let startedAt: Date
     }
 
-    let conversationID: UUID
+    let conversationID: String
     let model: String
 }

@@ -77,7 +77,7 @@ final class RelationshipRepository {
     }
 
     func upsert(_ edge: RelationshipEdge) throws {
-        let idValue = edge.id.rawValue.uuidString
+        let idValue = edge.id.rawValue.rawValue
         let descriptor = FetchDescriptor<RelationshipRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -105,7 +105,7 @@ final class RelationshipRepository {
     }
 
     func delete(_ edge: RelationshipEdge) throws {
-        let idValue = edge.id.rawValue.uuidString
+        let idValue = edge.id.rawValue.rawValue
         let descriptor = FetchDescriptor<RelationshipRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -130,7 +130,7 @@ final class RelationshipRepository {
     }
 
     private func domainEdge(from record: RelationshipRecord) throws -> RelationshipEdge {
-        guard let uuid = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw RelationshipRepositoryError.invalidRelationshipID
         }
         guard let predicate = RelationshipPredicate(rawValue: record.predicateRaw) else {
@@ -139,7 +139,7 @@ final class RelationshipRepository {
 
         do {
             return RelationshipEdge(
-                id: RelationshipID(rawValue: uuid),
+                id: RelationshipID(rawValue: id),
                 createdAt: record.createdAt,
                 source: try decoder.decode(GraphNodeID.self, from: record.sourceData),
                 predicate: predicate,

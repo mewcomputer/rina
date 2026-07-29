@@ -127,7 +127,7 @@ final class ConversationRepository {
     }
 
     func upsert(_ conversation: Conversation) throws {
-        let idValue = conversation.id.rawValue.uuidString
+        let idValue = conversation.id.rawValue.rawValue
         let descriptor = FetchDescriptor<ConversationRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -150,7 +150,7 @@ final class ConversationRepository {
         record.generationStateRaw = conversation.generationState.rawValue
         record.updatedAt = lastActivity(of: conversation)
 
-        let expectedIDs = Set(conversation.messages.map { $0.id.rawValue.uuidString })
+        let expectedIDs = Set(conversation.messages.map { $0.id.rawValue.rawValue })
         for messageRecord in record.messageRecords
             where !expectedIDs.contains(messageRecord.idValue)
         {
@@ -159,7 +159,7 @@ final class ConversationRepository {
 
         var messageRecords: [MessageRecord] = []
         for (sortIndex, message) in conversation.messages.enumerated() {
-            let messageID = message.id.rawValue.uuidString
+            let messageID = message.id.rawValue.rawValue
             let existing = record.messageRecords.first { $0.idValue == messageID }
             let messageRecord: MessageRecord
             if let existing {
@@ -189,7 +189,7 @@ final class ConversationRepository {
     }
 
     func delete(_ conversation: Conversation) throws {
-        let idValue = conversation.id.rawValue.uuidString
+        let idValue = conversation.id.rawValue.rawValue
         let descriptor = FetchDescriptor<ConversationRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -228,7 +228,7 @@ final class ConversationRepository {
     }
 
     private func domainConversation(from record: ConversationRecord) throws -> Conversation {
-        guard let id = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw ConversationPersistenceError.invalidConversationID
         }
         guard let generationState = GenerationState(rawValue: record.generationStateRaw) else {
@@ -249,7 +249,7 @@ final class ConversationRepository {
     }
 
     private func domainMessage(from record: MessageRecord) throws -> Message {
-        guard let id = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw ConversationPersistenceError.invalidMessageID
         }
         guard let role = MessageRole(rawValue: record.roleRaw) else {
@@ -274,5 +274,46 @@ final class ConversationRepository {
 
     private func lastActivity(of conversation: Conversation) -> Date {
         conversation.messages.last?.createdAt ?? conversation.createdAt
+    }
+}
+
+@MainActor
+final class LocalDataResetter {
+    private let context: ModelContext
+    private let attachmentStore: any AttachmentStore
+    private let searchIndex: LocalSearchIndex?
+    private let defaults: UserDefaults
+
+    init(
+        container: ModelContainer,
+        attachmentStore: any AttachmentStore,
+        searchIndex: LocalSearchIndex? = nil,
+        defaults: UserDefaults = .standard
+    ) {
+        context = ModelContext(container)
+        self.attachmentStore = attachmentStore
+        self.searchIndex = searchIndex
+        self.defaults = defaults
+    }
+
+    func reset() async throws {
+        try deleteAll(ConversationRecord.self)
+        try deleteAll(ArtefactRecord.self)
+        try deleteAll(SkillRecord.self)
+        try deleteAll(SourceRecord.self)
+        try deleteAll(RelationshipRecord.self)
+        try deleteAll(CitationRecord.self)
+        try deleteAll(ContextRecord.self)
+        try context.save()
+
+        defaults.removeObject(forKey: "session.history")
+        try await attachmentStore.removeAll()
+        await searchIndex?.clear()
+    }
+
+    private func deleteAll<Model: PersistentModel>(_ model: Model.Type) throws {
+        for record in try context.fetch(FetchDescriptor<Model>()) {
+            context.delete(record)
+        }
     }
 }

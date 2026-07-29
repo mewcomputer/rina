@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { EllipsisVertical, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { ShareArtefactCard, ShareMessageCard } from '@/components/share-content'
 import {
   Card,
   CardContent,
@@ -14,8 +15,6 @@ import { AtprotoShareError, atprotoShareClient } from '@/lib/atproto-share-clien
 import {
   ARTEFACT_COLLECTION,
   CONVERSATION_COLLECTION,
-  type ShareBlock,
-  type ShareMessage,
 } from '@/lib/share'
 
 export const Route = createFileRoute('/s/$repo/$collection/$rkey')({
@@ -61,20 +60,16 @@ function TypedSharePage() {
 
       <div className="space-y-6">
         {snapshot.messages.map((message, index) => (
-          <MessageCard key={message.id ?? `${message.role}-${index}`} message={message} />
+          <ShareMessageCard
+            key={message.id ?? `${message.role}-${index}`}
+            message={message}
+          />
         ))}
         {snapshot.artefacts.map((artefact, index) => (
-          <Card key={artefact.id ?? `${artefact.title}-${index}`}>
-            <CardHeader>
-              <CardTitle>{artefact.title}</CardTitle>
-              <CardDescription>{artefact.kind}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <pre className="overflow-x-auto whitespace-pre-wrap text-sm leading-6">
-                {artefact.renderedContent ?? artefact.source}
-              </pre>
-            </CardContent>
-          </Card>
+          <ShareArtefactCard
+            key={artefact.id ?? `${artefact.title}-${index}`}
+            artefact={artefact}
+          />
         ))}
         {snapshot.messages.length === 0 && snapshot.artefacts.length === 0 && (
           <Card>
@@ -136,30 +131,6 @@ async function shareCurrentPage(): Promise<ShareStatus> {
   } catch {
     return 'error'
   }
-}
-
-function MessageCard({ message }: { message: ShareMessage }) {
-  return (
-    <article className={message.role === 'user' ? 'ml-auto max-w-[88%]' : 'max-w-[94%]'}>
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {message.role}
-      </p>
-      <Card className={message.role === 'user' ? 'bg-muted/60' : undefined}>
-        <CardContent className="space-y-4 py-5">
-          {message.blocks.map((block, index) => (
-            <ShareBlockView key={block.id ?? `${block.kind}-${index}`} block={block} />
-          ))}
-        </CardContent>
-      </Card>
-    </article>
-  )
-}
-
-function ShareBlockView({ block }: { block: ShareBlock }) {
-  if (block.kind === 'code') {
-    return <pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm leading-6">{block.payload}</pre>
-  }
-  return <p className="whitespace-pre-wrap text-[0.95rem] leading-7">{block.payload}</p>
 }
 
 function SharePending() {

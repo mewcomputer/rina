@@ -33,7 +33,7 @@ final class ContentBlockTests: XCTestCase {
     func testUnknownBlockKindsRemainPreservable() throws {
         let json = """
         {
-          "id": { "rawValue": "00000000-0000-0000-0000-000000000001" },
+          "id": { "rawValue": "3aaaaaaaaaaaa" },
           "kind": "futureBlock",
           "payload": "future payload",
           "attributes": { "schemaVersion": "4" },
@@ -58,7 +58,7 @@ final class ContentBlockTests: XCTestCase {
     func testLegacyStructuredBlockWithoutAttributesMigratesWithDefaults() throws {
         let json = """
         {
-          "id": { "rawValue": "00000000-0000-0000-0000-000000000002" },
+          "id": { "rawValue": "3bbbbbbbbbbbb" },
           "kind": "citationGroup",
           "payload": "[]",
           "isComplete": true

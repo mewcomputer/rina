@@ -117,7 +117,7 @@ struct WorkspaceLibraryView: View {
                 artefact: artefact,
                 publication: publicationStore.publications.first {
                     $0.collection == AtprotoRecordCollection.artefact
-                        && $0.subjectID == artefact.id.rawValue.uuidString
+                        && $0.subjectID == artefact.id.rawValue.rawValue
                 },
                 sharingService: sharingService,
                 publicationStore: publicationStore
@@ -701,7 +701,7 @@ private struct ArtefactSharePreviewSheet: View {
                 let published = try await sharingService.publish(
                     snapshot,
                     publication: publication,
-                    subjectID: artefact.id.rawValue.uuidString
+                    subjectID: artefact.id.rawValue.rawValue
                 )
                 publicationStore.save(published)
                 publishedPublication = published

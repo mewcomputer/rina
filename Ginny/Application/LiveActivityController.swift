@@ -11,7 +11,7 @@ final class LiveActivityController {
         activity = Activity<GinnyLiveActivityAttributes>.activities.first
     }
 
-    func start(conversationID: UUID, model: String, thinkingLevel: String) async {
+    func start(conversationID: String, model: String, thinkingLevel: String) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         if let activity {

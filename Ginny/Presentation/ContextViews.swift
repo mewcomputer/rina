@@ -238,7 +238,7 @@ private struct ContextEditorView: View {
                                 ) {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(artefact.title)
-                                        Text("Revision \(revision.id.rawValue.uuidString.prefix(8))")
+                                        Text("Revision \(revision.id.rawValue.rawValue.prefix(8))")
                                             .font(.caption)
                                             .foregroundStyle(theme.color("text.muted"))
                                     }

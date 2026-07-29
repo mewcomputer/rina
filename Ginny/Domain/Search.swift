@@ -97,7 +97,7 @@ enum SearchDocumentFactory {
                 content: message.blocks.map(content).joined(separator: "\n"),
                 metadata: [
                     "role": message.role.rawValue,
-                    "conversationID": conversation.id.rawValue.uuidString
+                    "conversationID": conversation.id.rawValue.rawValue
                 ],
                 createdAt: message.createdAt
             )
@@ -122,8 +122,8 @@ enum SearchDocumentFactory {
                 title: artefact.title,
                 content: revision.source,
                 metadata: [
-                    "artefactID": artefact.id.rawValue.uuidString,
-                    "revisionID": revision.id.rawValue.uuidString
+                    "artefactID": artefact.id.rawValue.rawValue,
+                    "revisionID": revision.id.rawValue.rawValue
                 ],
                 createdAt: revision.createdAt
             )
@@ -203,10 +203,10 @@ enum SearchDocumentFactory {
 
     private static func memberLabel(_ member: ContextMember) -> String {
         switch member {
-        case .message(let id): "message:\(id.rawValue.uuidString)"
+        case .message(let id): "message:\(id.rawValue.rawValue)"
         case .artefactRevision(let artefactID, let revisionID):
-            "artefactRevision:\(artefactID.rawValue.uuidString):\(revisionID.rawValue.uuidString)"
-        case .source(let id): "source:\(id.rawValue.uuidString)"
+            "artefactRevision:\(artefactID.rawValue.rawValue):\(revisionID.rawValue.rawValue)"
+        case .source(let id): "source:\(id.rawValue.rawValue)"
         }
     }
 
@@ -222,16 +222,16 @@ enum SearchDocumentFactory {
 
     private static func nodeLabel(_ nodeID: GraphNodeID) -> String {
         switch nodeID {
-        case .conversation(let id): "conversation:\(id.rawValue.uuidString)"
-        case .message(let id): "message:\(id.rawValue.uuidString)"
-        case .contentBlock(let id): "contentBlock:\(id.rawValue.uuidString)"
-        case .artefact(let id): "artefact:\(id.rawValue.uuidString)"
+        case .conversation(let id): "conversation:\(id.rawValue.rawValue)"
+        case .message(let id): "message:\(id.rawValue.rawValue)"
+        case .contentBlock(let id): "contentBlock:\(id.rawValue.rawValue)"
+        case .artefact(let id): "artefact:\(id.rawValue.rawValue)"
         case .artefactRevision(let artefactID, let revisionID):
-            "artefactRevision:\(artefactID.rawValue.uuidString):\(revisionID.rawValue.uuidString)"
-        case .source(let id): "source:\(id.rawValue.uuidString)"
-        case .citation(let id): "citation:\(id.rawValue.uuidString)"
-        case .context(let id): "context:\(id.rawValue.uuidString)"
-        case .relationship(let id): "relationship:\(id.rawValue.uuidString)"
+            "artefactRevision:\(artefactID.rawValue.rawValue):\(revisionID.rawValue.rawValue)"
+        case .source(let id): "source:\(id.rawValue.rawValue)"
+        case .citation(let id): "citation:\(id.rawValue.rawValue)"
+        case .context(let id): "context:\(id.rawValue.rawValue)"
+        case .relationship(let id): "relationship:\(id.rawValue.rawValue)"
         case .skill(let name): "skill:\(name)"
         }
     }
@@ -268,6 +268,14 @@ actor LocalSearchIndex {
             }
         }
         pendingChanges.removeAll(keepingCapacity: true)
+        indexedVersion = sourceVersion
+    }
+
+    func clear() {
+        documents.removeAll(keepingCapacity: true)
+        relationships.removeAll(keepingCapacity: true)
+        pendingChanges.removeAll(keepingCapacity: true)
+        sourceVersion += 1
         indexedVersion = sourceVersion
     }
 
@@ -415,16 +423,16 @@ actor LocalSearchIndex {
 
     private static func nodeSortKey(_ nodeID: GraphNodeID) -> String {
         switch nodeID {
-        case .conversation(let id): "conversation:\(id.rawValue.uuidString)"
-        case .message(let id): "message:\(id.rawValue.uuidString)"
-        case .contentBlock(let id): "contentBlock:\(id.rawValue.uuidString)"
-        case .artefact(let id): "artefact:\(id.rawValue.uuidString)"
+        case .conversation(let id): "conversation:\(id.rawValue.rawValue)"
+        case .message(let id): "message:\(id.rawValue.rawValue)"
+        case .contentBlock(let id): "contentBlock:\(id.rawValue.rawValue)"
+        case .artefact(let id): "artefact:\(id.rawValue.rawValue)"
         case .artefactRevision(let artefactID, let revisionID):
-            "artefactRevision:\(artefactID.rawValue.uuidString):\(revisionID.rawValue.uuidString)"
-        case .source(let id): "source:\(id.rawValue.uuidString)"
-        case .citation(let id): "citation:\(id.rawValue.uuidString)"
-        case .context(let id): "context:\(id.rawValue.uuidString)"
-        case .relationship(let id): "relationship:\(id.rawValue.uuidString)"
+            "artefactRevision:\(artefactID.rawValue.rawValue):\(revisionID.rawValue.rawValue)"
+        case .source(let id): "source:\(id.rawValue.rawValue)"
+        case .citation(let id): "citation:\(id.rawValue.rawValue)"
+        case .context(let id): "context:\(id.rawValue.rawValue)"
+        case .relationship(let id): "relationship:\(id.rawValue.rawValue)"
         case .skill(let name): "skill:\(name)"
         }
     }
@@ -570,7 +578,7 @@ struct Citation: Codable, Equatable, Identifiable, Sendable {
         createdAt: Date = Date()
     ) -> Citation {
         Citation(
-            id: CitationID(rawValue: stableUUID(for: result.citationID)),
+            id: CitationID(rawValue: TID.stable(from: result.citationID)),
             createdAt: createdAt,
             query: query,
             result: result
@@ -581,26 +589,9 @@ struct Citation: Codable, Equatable, Identifiable, Sendable {
         messageID: MessageID,
         citationID: CitationID
     ) -> RelationshipID {
-        RelationshipID(rawValue: stableUUID(
-            for: "message:\(messageID.rawValue.uuidString)|citation:\(citationID.rawValue.uuidString)"
+        RelationshipID(rawValue: TID.stable(
+            from: "message:\(messageID.rawValue.rawValue)|citation:\(citationID.rawValue.rawValue)"
         ))
-    }
-
-    private static func stableUUID(for value: String) -> UUID {
-        var hash = value.utf8.reduce(into: (UInt64(1469598103934665603), UInt64(1099511628211))) {
-            $0.0 ^= UInt64($1)
-            $0.0 &*= $0.1
-        }.0
-        var bytes = [UInt8](repeating: 0, count: 16)
-        for index in 0..<16 {
-            hash ^= hash >> 7
-            hash &*= 0x9E3779B185EBCA87
-            bytes[index] = UInt8(truncatingIfNeeded: hash)
-        }
-        bytes[6] = (bytes[6] & 0x0F) | 0x50
-        bytes[8] = (bytes[8] & 0x3F) | 0x80
-        let hex = bytes.map { String(format: "%02x", $0) }.joined()
-        return UUID(uuidString: "\(hex.prefix(8))-\(hex.dropFirst(8).prefix(4))-\(hex.dropFirst(12).prefix(4))-\(hex.dropFirst(16).prefix(4))-\(hex.dropFirst(20))")!
     }
 }
 

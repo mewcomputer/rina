@@ -105,8 +105,8 @@ final class ConversationTests: XCTestCase {
 
         XCTAssertEqual(decoded, block)
         XCTAssertEqual(decoded.kind, .artefactReference)
-        XCTAssertEqual(decoded.attributes["artefactID"], artefactID.rawValue.uuidString)
-        XCTAssertEqual(decoded.attributes["revisionID"], revisionID.rawValue.uuidString)
+        XCTAssertEqual(decoded.attributes["artefactID"], artefactID.rawValue.rawValue)
+        XCTAssertEqual(decoded.attributes["revisionID"], revisionID.rawValue.rawValue)
         XCTAssertEqual(decoded.attributes["presentation"], "inline")
     }
 

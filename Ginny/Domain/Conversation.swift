@@ -212,7 +212,7 @@ struct ContentBlock: Codable, Equatable, Sendable {
             kind: .fileReference,
             payload: "",
             attributes: [
-                "sourceID": sourceID.rawValue.uuidString,
+                "sourceID": sourceID.rawValue.rawValue,
                 "displayName": displayName
             ],
             isComplete: isComplete
@@ -289,8 +289,8 @@ struct ContentBlock: Codable, Equatable, Sendable {
             kind: .artefactReference,
             payload: "",
             attributes: [
-                "artefactID": artefactID.rawValue.uuidString,
-                "revisionID": revisionID.rawValue.uuidString,
+                "artefactID": artefactID.rawValue.rawValue,
+                "revisionID": revisionID.rawValue.rawValue,
                 "presentation": presentation.rawValue
             ],
             isComplete: true

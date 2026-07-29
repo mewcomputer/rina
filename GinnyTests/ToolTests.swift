@@ -153,11 +153,11 @@ final class ToolTests: XCTestCase {
 
         let result = try await registry.execute(
             name: "display_artefact",
-            arguments: "{\"id\":\"" + artefact.id.rawValue.uuidString + "\"}"
+            arguments: "{\"id\":\"" + artefact.id.rawValue.rawValue + "\"}"
         )
         let details = try JSONDecoder().decode(ArtefactToolDetails.self, from: Data(result.utf8))
 
-        XCTAssertEqual(details.revisionID, revisionID.rawValue.uuidString)
+        XCTAssertEqual(details.revisionID, revisionID.rawValue.rawValue)
         XCTAssertEqual(details.kind, .code)
         XCTAssertTrue(details.displayImmediately)
         XCTAssertEqual(registry.approvalRequirement(for: "display_artefact"), .automatic)

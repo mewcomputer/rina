@@ -51,7 +51,7 @@ final class ContextRepository {
     }
 
     func upsert(_ value: Context) throws {
-        let idValue = value.id.rawValue.uuidString
+        let idValue = value.id.rawValue.rawValue
         let descriptor = FetchDescriptor<ContextRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -75,7 +75,7 @@ final class ContextRepository {
     }
 
     func delete(_ value: Context) throws {
-        let idValue = value.id.rawValue.uuidString
+        let idValue = value.id.rawValue.rawValue
         let descriptor = FetchDescriptor<ContextRecord>(
             predicate: #Predicate { $0.idValue == idValue }
         )
@@ -86,13 +86,13 @@ final class ContextRepository {
     }
 
     private func domainContext(from record: ContextRecord) throws -> Context {
-        guard let uuid = UUID(uuidString: record.idValue) else {
+        guard let id = try? TID(string: record.idValue) else {
             throw ContextRepositoryError.invalidContextID
         }
 
         do {
             return Context(
-                id: ContextID(rawValue: uuid),
+                id: ContextID(rawValue: id),
                 createdAt: record.createdAt,
                 name: record.name,
                 members: try decoder.decode([ContextMember].self, from: record.membersData)

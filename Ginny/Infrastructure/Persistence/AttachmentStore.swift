@@ -10,6 +10,11 @@ enum AttachmentStoreError: Error, Equatable, Sendable {
 protocol AttachmentStore: Sendable {
     func put(_ data: Data) async throws -> SourceAttachment
     func load(_ attachment: SourceAttachment) async throws -> Data
+    func removeAll() async throws
+}
+
+extension AttachmentStore {
+    func removeAll() async throws {}
 }
 
 actor FileAttachmentStore: AttachmentStore {
@@ -74,6 +79,16 @@ actor FileAttachmentStore: AttachmentStore {
             )
         }
         return data
+    }
+
+    func removeAll() async throws {
+        for item in try fileManager.contentsOfDirectory(
+            at: rootURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) {
+            try fileManager.removeItem(at: item)
+        }
     }
 
     private func destinationURL(for digest: String) throws -> URL {

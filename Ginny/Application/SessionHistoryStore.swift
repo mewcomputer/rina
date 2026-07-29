@@ -113,6 +113,15 @@ final class SessionHistoryStore: ObservableObject {
         }
     }
 
+    func refresh() {
+        do {
+            conversations = try repository.fetch()
+            persistenceError = nil
+        } catch {
+            persistenceError = error.localizedDescription
+        }
+    }
+
     func save(_ conversation: Conversation) {
         guard !conversation.messages.isEmpty else { return }
 

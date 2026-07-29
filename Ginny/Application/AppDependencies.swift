@@ -14,6 +14,7 @@ struct AppDependencies: Sendable {
     let citationRepository: CitationRepository?
     let searchIndex: LocalSearchIndex?
     let contextRepository: ContextRepository?
+    let localDataResetter: LocalDataResetter
     let atprotoAuth: AtprotoAuthService
     let atprotoSharing: AtprotoSharingService
 
@@ -29,6 +30,7 @@ struct AppDependencies: Sendable {
         citationRepository: CitationRepository? = nil,
         searchIndex: LocalSearchIndex? = nil,
         contextRepository: ContextRepository? = nil,
+        localDataResetter: LocalDataResetter? = nil,
         atprotoAuth: AtprotoAuthService = AtprotoAuthService(),
         atprotoSharing: AtprotoSharingService? = nil
     ) {
@@ -43,6 +45,11 @@ struct AppDependencies: Sendable {
         self.citationRepository = citationRepository
         self.searchIndex = searchIndex
         self.contextRepository = contextRepository
+        self.localDataResetter = localDataResetter ?? LocalDataResetter(
+            container: conversationRepository.container,
+            attachmentStore: attachmentStore,
+            searchIndex: searchIndex
+        )
         self.atprotoAuth = atprotoAuth
         self.atprotoSharing = atprotoSharing ?? AtprotoSharingService(authService: atprotoAuth)
     }

@@ -129,7 +129,7 @@ final class ChatSessionTests: XCTestCase {
         )
         XCTAssertEqual(
             session.conversation.messages[0].blocks.last?.attributes["revisionID"],
-            revisionID.rawValue.uuidString
+            revisionID.rawValue.rawValue
         )
     }
 
@@ -766,8 +766,8 @@ private struct CreateInlineArtefactFixtureTool: GinnyTool {
 }
 
 private final class InlineArtefactLoopProvider: ProviderAdapter, @unchecked Sendable {
-    static let artefactID = "11111111-1111-1111-1111-111111111111"
-    static let revisionID = "22222222-2222-2222-2222-222222222222"
+    static let artefactID = "3cccccccccccc"
+    static let revisionID = "3dddddddddddd"
 
     var supportsTools: Bool { true }
 
@@ -818,8 +818,8 @@ private struct DisplayCodeArtefactFixtureTool: GinnyTool {
 }
 
 private final class DisplayArtefactLoopProvider: ProviderAdapter, @unchecked Sendable {
-    static let artefactID = "33333333-3333-3333-3333-333333333333"
-    static let revisionID = "44444444-4444-4444-4444-444444444444"
+    static let artefactID = "3eeeeeeeeeeee"
+    static let revisionID = "3ffffffffffff"
 
     var supportsTools: Bool { true }
 

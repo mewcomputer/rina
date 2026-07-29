@@ -11,9 +11,7 @@ struct RinaRecordKey: Atproto.RecordKey, Codable, Equatable {
     let rawValue: String
 
     init(string: String) throws {
-        guard string.count == 13,
-              string.allSatisfy("234567abcdefghijklmnopqrstuvwxyz".contains)
-        else {
+        guard (try? TID(string: string)) != nil else {
             throw AtprotoSharingError.invalidRecordKey
         }
         rawValue = string
@@ -44,6 +42,12 @@ struct RinaRecordMessage: Codable, Equatable, Sendable {
     let createdAt: String
 }
 
+struct RinaArtefactReference: Codable, Equatable, Sendable {
+    let id: String
+    let revisionID: String
+    let uri: String
+}
+
 struct RinaConversationSnapshot: Codable, Equatable, Sendable {
     static let schemaVersion = 1
 
@@ -52,12 +56,53 @@ struct RinaConversationSnapshot: Codable, Equatable, Sendable {
     let createdAt: String
     let updatedAt: String
     let messages: [RinaRecordMessage]
+    let artefacts: [RinaArtefactReference]
+
+    init(
+        schemaVersion: Int,
+        title: String,
+        createdAt: String,
+        updatedAt: String,
+        messages: [RinaRecordMessage],
+        artefacts: [RinaArtefactReference] = []
+    ) {
+        self.schemaVersion = schemaVersion
+        self.title = title
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.messages = messages
+        self.artefacts = artefacts
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case title
+        case createdAt
+        case updatedAt
+        case messages
+        case artefacts
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        title = try container.decode(String.self, forKey: .title)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+        messages = try container.decode([RinaRecordMessage].self, forKey: .messages)
+        artefacts = try container.decodeIfPresent(
+            [RinaArtefactReference].self,
+            forKey: .artefacts
+        ) ?? []
+    }
 }
 
 struct RinaArtefactSnapshot: Codable, Equatable, Sendable {
     static let schemaVersion = 1
 
     let schemaVersion: Int
+    let id: String?
+    let revisionID: String?
     let title: String
     let kind: ArtefactKind
     let createdAt: String
@@ -117,6 +162,8 @@ struct AtprotoPublication: Codable, Equatable, Sendable, Identifiable {
 enum AtprotoSharingError: Error, Equatable, LocalizedError, Sendable {
     case invalidRecordKey
     case missingCurrentRevision
+    case missingReferencedArtefact(ArtefactID)
+    case missingReferencedRevision(ArtefactID, RevisionID)
     case notAuthenticated
     case unsupportedCollection
 
@@ -124,6 +171,10 @@ enum AtprotoSharingError: Error, Equatable, LocalizedError, Sendable {
         switch self {
         case .invalidRecordKey: "The atproto record key is invalid."
         case .missingCurrentRevision: "This artefact has no saved revision to publish."
+        case .missingReferencedArtefact(let id):
+            "The referenced artefact \(id.rawValue.rawValue) is not available locally."
+        case .missingReferencedRevision(let artefactID, let revisionID):
+            "The referenced revision \(revisionID.rawValue.rawValue) for artefact \(artefactID.rawValue.rawValue) is not available locally."
         case .notAuthenticated: "Sign in to atproto before publishing."
         case .unsupportedCollection: "This atproto collection is not supported by Ginny."
         }
@@ -133,6 +184,7 @@ enum AtprotoSharingError: Error, Equatable, LocalizedError, Sendable {
 enum AtprotoSnapshotBuilder {
     static func conversation(
         _ conversation: Conversation,
+        artefactReferences: [RinaArtefactReference] = [],
         now: Date = Date()
     ) -> RinaConversationSnapshot {
         RinaConversationSnapshot(
@@ -144,7 +196,7 @@ enum AtprotoSnapshotBuilder {
                 let blocks = message.blocks.compactMap { block -> RinaRecordBlock? in
                     guard block.kind != .toolCall, block.kind != .toolResult else { return nil }
                     return RinaRecordBlock(
-                        id: block.id.rawValue.uuidString,
+                        id: block.id.rawValue.rawValue,
                         kind: block.kind.rawValue,
                         payload: block.payload,
                         attributes: block.attributes.filter { key, _ in
@@ -154,24 +206,37 @@ enum AtprotoSnapshotBuilder {
                 }
                 guard !blocks.isEmpty else { return nil }
                 return RinaRecordMessage(
-                    id: message.id.rawValue.uuidString,
+                    id: message.id.rawValue.rawValue,
                     role: message.role,
                     blocks: blocks,
                     createdAt: timestamp(message.createdAt)
                 )
-            }
+            },
+            artefacts: artefactReferences
         )
     }
 
     static func artefact(
         _ artefact: Artefact,
+        revisionID: RevisionID? = nil,
         now: Date = Date()
     ) throws -> RinaArtefactSnapshot {
-        guard let revision = artefact.currentRevision else {
-            throw AtprotoSharingError.missingCurrentRevision
+        let revision: ArtefactRevision
+        if let revisionID {
+            guard let requestedRevision = artefact.revision(id: revisionID) else {
+                throw AtprotoSharingError.missingReferencedRevision(artefact.id, revisionID)
+            }
+            revision = requestedRevision
+        } else {
+            guard let currentRevision = artefact.currentRevision else {
+                throw AtprotoSharingError.missingCurrentRevision
+            }
+            revision = currentRevision
         }
         return RinaArtefactSnapshot(
             schemaVersion: RinaArtefactSnapshot.schemaVersion,
+            id: artefact.id.rawValue.rawValue,
+            revisionID: revision.id.rawValue.rawValue,
             title: artefact.title,
             kind: artefact.kind,
             createdAt: timestamp(artefact.createdAt),
@@ -213,6 +278,11 @@ final class AtprotoPublicationStore: ObservableObject {
 
     func remove(collection: String, rkey: String) {
         publications.removeAll { $0.collection == collection && $0.rkey == rkey }
+        persist()
+    }
+
+    func removeAll() {
+        publications.removeAll()
         persist()
     }
 
@@ -304,7 +374,6 @@ actor AtprotoSharingService {
     }
 
     private static func newRecordKey() -> String {
-        let alphabet = Array("234567abcdefghijklmnopqrstuvwxyz")
-        return "3" + String((0..<12).compactMap { _ in alphabet.randomElement() })
+        TID().rawValue
     }
 }

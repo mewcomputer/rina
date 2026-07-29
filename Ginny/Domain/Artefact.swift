@@ -182,9 +182,9 @@ struct ArtefactReference: Equatable, Identifiable, Sendable {
     init?(block: ContentBlock) {
         guard block.kind == .artefactReference,
               let artefactValue = block.attributes["artefactID"],
-              let artefactUUID = UUID(uuidString: artefactValue),
+              let artefactID = try? TID(string: artefactValue),
               let revisionValue = block.attributes["revisionID"],
-              let revisionUUID = UUID(uuidString: revisionValue),
+              let revisionID = try? TID(string: revisionValue),
               let presentationValue = block.attributes["presentation"],
               let presentation = ArtefactReferencePresentation(rawValue: presentationValue)
         else {
@@ -192,8 +192,8 @@ struct ArtefactReference: Equatable, Identifiable, Sendable {
         }
 
         id = block.id
-        artefactID = ArtefactID(rawValue: artefactUUID)
-        revisionID = RevisionID(rawValue: revisionUUID)
+        self.artefactID = ArtefactID(rawValue: artefactID)
+        self.revisionID = RevisionID(rawValue: revisionID)
         self.presentation = presentation
     }
 }
