@@ -191,6 +191,59 @@ final class ProviderSettingsTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
+    func testCodexUsesStoredOAuthTokensWithoutExposingThemAsAnAPIKey() throws {
+        let suiteName = "GinnyTests.ProviderSettings.Codex.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let credentials = TestCredentialStore()
+        let tokens = CodexOAuthTokens(
+            accessToken: "access",
+            refreshToken: "refresh",
+            idToken: nil,
+            expiresAt: Date().addingTimeInterval(3600)
+        )
+        credentials.values[CodexOAuthService.credentialID] = String(
+            data: try JSONEncoder().encode(tokens),
+            encoding: .utf8
+        )
+
+        let settings = ProviderSettings(defaults: defaults, credentialStore: credentials)
+        settings.selectProvider(.codex)
+
+        XCTAssertEqual(settings.endpointText, "https://chatgpt.com/backend-api/codex")
+        XCTAssertEqual(settings.modelText, "gpt-5.6-sol")
+        XCTAssertEqual(settings.credentialText, "")
+        XCTAssertNotNil(settings.configuration)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    func testSavingCodexCustomEndpointIsRejectedBeforeOAuthConfiguration() throws {
+        let suiteName = "GinnyTests.ProviderSettings.Codex.Custom.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let credentials = TestCredentialStore()
+        credentials.values[CodexOAuthService.credentialID] = String(
+            data: try JSONEncoder().encode(CodexOAuthTokens(
+                accessToken: "access",
+                refreshToken: "refresh",
+                idToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )),
+            encoding: .utf8
+        )
+
+        let settings = ProviderSettings(defaults: defaults, credentialStore: credentials)
+        settings.selectProvider(.codex)
+        settings.endpointText = "https://proxy.example/codex"
+
+        XCTAssertFalse(settings.save())
+        XCTAssertEqual(
+            settings.validationMessage,
+            "Codex only supports the official ChatGPT endpoint."
+        )
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
     func testKimiCodeThinkingLevelIsModelAwareAndPersistent() throws {
         let suiteName = "GinnyTests.ProviderSettings.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

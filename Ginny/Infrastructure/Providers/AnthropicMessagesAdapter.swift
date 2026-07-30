@@ -89,7 +89,8 @@ struct AnthropicMessagesStreamParser: Sendable {
                         kind: "reasoning",
                         field: "data",
                         value: data,
-                        operation: .replace
+                        operation: .replace,
+                        isPrivate: true
                     )
                 )]
             default:
@@ -131,7 +132,8 @@ struct AnthropicMessagesStreamParser: Sendable {
                         kind: "reasoning",
                         field: "signature",
                         value: signature,
-                        operation: .append
+                        operation: .append,
+                        isPrivate: true
                     )
                 )]
             case "text_delta":
@@ -545,7 +547,7 @@ private extension ThinkingLevel {
         switch self {
         case .off:
             nil
-        case .on, .low, .medium, .high, .max:
+        case .on, .low, .medium, .high, .xhigh, .max, .ultra:
             AnthropicThinking(type: "adaptive")
         }
     }
@@ -554,7 +556,7 @@ private extension ThinkingLevel {
         switch self {
         case .off, .on:
             nil
-        case .low, .medium, .high, .max:
+        case .low, .medium, .high, .xhigh, .max, .ultra:
             AnthropicOutputConfig(effort: rawValue)
         }
     }

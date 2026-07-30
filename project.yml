@@ -7,6 +7,24 @@ options:
   developmentLanguage: en
 
 packages:
+  AtprotoOAuth:
+    url: https://github.com/germ-network/AtprotoOAuth.git
+    from: 0.5.11
+  AtprotoClient:
+    url: https://github.com/germ-network/AtprotoClient.git
+    from: 0.6.0
+  AtprotoTypes:
+    url: https://github.com/germ-network/AtprotoTypes.git
+    from: 0.4.6
+  GermConvenience:
+    url: https://github.com/germ-network/GermConvenience.git
+    from: 0.2.4
+  OAuth4Swift:
+    url: https://github.com/germ-network/oauth4swift.git
+    from: 0.5.0
+  SwiftAtproto:
+    url: https://github.com/nnabeyang/swift-atproto.git
+    from: 0.42.2
   SwiftStreamingMarkdown:
     url: https://github.com/espeon/SwiftStreamingMarkdown.git
     branch: feature/fast-fade
@@ -27,6 +45,11 @@ targets:
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLSchemes:
+              - computer.mew.rina
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
@@ -41,6 +64,18 @@ targets:
       - path: theme_manifest.json
         buildPhase: resources
     dependencies:
+      - package: AtprotoOAuth
+        product: AtprotoOAuth
+      - package: AtprotoClient
+        product: AtprotoClient
+      - package: AtprotoTypes
+        product: AtprotoTypes
+      - package: GermConvenience
+        product: GermConvenience
+      - package: OAuth4Swift
+        product: OAuth4Swift
+      - package: SwiftAtproto
+        product: SwiftAtproto
       - package: SwiftStreamingMarkdown
         product: SwiftStreamingMarkdown
     settings:

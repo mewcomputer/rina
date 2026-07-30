@@ -64,7 +64,8 @@ final class ConversationTests: XCTestCase {
             provider: .umans,
             id: "block-0",
             kind: "reasoning",
-            fields: ["thinking": "plan", "signature": "opaque"]
+            fields: ["thinking": "plan", "signature": "opaque"],
+            privateFields: ["signature"]
         )
         let conversation = Conversation(
             messages: [
@@ -87,6 +88,38 @@ final class ConversationTests: XCTestCase {
         let decoded = try JSONDecoder().decode(Conversation.self, from: data)
 
         XCTAssertEqual(decoded, conversation)
+    }
+
+    func testPrivateContinuationFieldsArePreservedSeparatelyFromVisibleFields() throws {
+        let continuation = ProviderContinuation(
+            provider: .codex,
+            id: "reasoning-1",
+            kind: "reasoning",
+            fields: [
+                "text": "summary",
+                "encrypted_content": "opaque-provider-state"
+            ],
+            privateFields: ["encrypted_content"]
+        )
+
+        let decoded = try JSONDecoder().decode(
+            ProviderContinuation.self,
+            from: JSONEncoder().encode(continuation)
+        )
+
+        XCTAssertEqual(decoded.shareableFields, ["text": "summary"])
+        XCTAssertEqual(decoded.privateFields, ["encrypted_content"])
+    }
+
+    func testLegacyContinuationDataTreatsProviderStateFieldsAsPrivate() throws {
+        let data = Data(
+            "{\"provider\":\"codex\",\"id\":\"reasoning-1\",\"kind\":\"reasoning\",\"fields\":{\"text\":\"summary\",\"encrypted_content\":\"opaque\",\"signature\":\"opaque-signature\"}}".utf8
+        )
+
+        let decoded = try JSONDecoder().decode(ProviderContinuation.self, from: data)
+
+        XCTAssertEqual(decoded.shareableFields, ["text": "summary"])
+        XCTAssertEqual(decoded.privateFields, ["encrypted_content", "signature"])
     }
 
     func testArtefactReferenceBlockRoundTripsStableIdentity() throws {

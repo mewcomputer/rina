@@ -151,6 +151,494 @@ final class StreamingTests: XCTestCase {
         }
     }
 
+    func testCodexStreamParserMapsReasoningToolCallsAndCompletion() throws {
+        var parser = CodexResponsesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.reasoning_summary_text.delta\",\"item_id\":\"rs-1\",\"delta\":\"plan\"}")),
+            [.continuationDelta(
+                ProviderContinuationDelta(
+                    provider: .codex,
+                    id: "rs-1",
+                    kind: "reasoning",
+                    field: "text",
+                    value: "plan",
+                    operation: .append
+                )
+            )]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"current_time\"}}")),
+            [.toolCallDelta(
+                ProviderToolCallDelta(
+                    provider: .codex,
+                    id: "call-1",
+                    name: "current_time",
+                    arguments: nil
+                )
+            )]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"item-1\",\"delta\":\"{}\"}")),
+            [.toolCallDelta(
+                ProviderToolCallDelta(
+                    provider: .codex,
+                    id: "call-1",
+                    name: "current_time",
+                    arguments: "{}"
+                )
+            )]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"item-1\",\"name\":\"current_time\",\"arguments\":\"{}\"}")),
+            []
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.completed\"}")),
+            [.finish(reason: "tool_calls"), .responseEnded]
+        )
+        XCTAssertThrowsError(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_text.delta\",\"delta\":\"late\"}"))
+        ) { error in
+            XCTAssertEqual(error as? ProviderError, .invalidResponse)
+        }
+    }
+
+    func testCodexStreamParserCapturesEncryptedReasoningAsPrivateState() throws {
+        var parser = CodexResponsesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"reasoning\",\"id\":\"rs-1\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"plan\"}],\"encrypted_content\":\"opaque\"}}")),
+            [
+                .continuationDelta(
+                    ProviderContinuationDelta(
+                        provider: .codex,
+                        id: "rs-1",
+                        kind: "reasoning",
+                        field: "text",
+                        value: "plan",
+                        operation: .replace
+                    )
+                ),
+                .continuationDelta(
+                    ProviderContinuationDelta(
+                        provider: .codex,
+                        id: "rs-1",
+                        kind: "reasoning",
+                        field: "encrypted_content",
+                        value: "opaque",
+                        operation: .replace,
+                        isPrivate: true
+                    )
+                )
+            ]
+        )
+    }
+
+    func testCodexStreamParserCombinesReasoningSummaryParts() throws {
+        var parser = CodexResponsesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"reasoning\",\"id\":\"rs-1\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"plan\"},{\"type\":\"summary_text\",\"text\":\"result\"}]}}")),
+            [
+                .continuationDelta(
+                    ProviderContinuationDelta(
+                        provider: .codex,
+                        id: "rs-1",
+                        kind: "reasoning",
+                        field: "text",
+                        value: "plan\n\nresult",
+                        operation: .replace
+                    )
+                )
+            ]
+        )
+    }
+
+    func testCodexStreamParserIgnoresCompletedFunctionCallItem() throws {
+        var parser = CodexResponsesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"current_time\"}}")),
+            [
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .codex,
+                        id: "call-1",
+                        name: "current_time",
+                        arguments: nil
+                    )
+                )
+            ]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.function_call_arguments.delta\",\"call_id\":\"call-1\",\"delta\":\"{}\"}")),
+            [
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .codex,
+                        id: "call-1",
+                        name: "current_time",
+                        arguments: "{}"
+                    )
+                )
+            ]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"current_time\",\"arguments\":\"{}\"}}")),
+            []
+        )
+    }
+
+    func testCodexStreamParserDefersArgumentsUntilFunctionNameArrives() throws {
+        var parser = CodexResponsesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"\"}}")),
+            []
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.function_call_arguments.delta\",\"call_id\":\"call-1\",\"delta\":\"{}\"}")),
+            []
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"search_web\",\"arguments\":\"{}\"}}")),
+            [
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .codex,
+                        id: "call-1",
+                        name: "search_web",
+                        arguments: "{}"
+                    )
+                )
+            ]
+        )
+    }
+
+    func testCodexStreamParserCompletesFunctionCallArgumentsDoneEvents() throws {
+        var parser = CodexResponsesStreamParser()
+
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"search_web\"}}")),
+            [
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .codex,
+                        id: "call-1",
+                        name: "search_web",
+                        arguments: nil
+                    )
+                )
+            ]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: #"{"type":"response.function_call_arguments.delta","item_id":"item-1","delta":"{\"query\":"}"#)),
+            [
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .codex,
+                        id: "call-1",
+                        name: "search_web",
+                        arguments: "{\"query\":"
+                    )
+                )
+            ]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"item-1\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\":\\\"swift\\\"}\"}")),
+            [
+                .toolCallDelta(
+                    ProviderToolCallDelta(
+                        provider: .codex,
+                        id: "call-1",
+                        name: "search_web",
+                        arguments: "\"swift\"}"
+                    )
+                )
+            ]
+        )
+        XCTAssertEqual(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.completed\"}")),
+            [.finish(reason: "tool_calls"), .responseEnded]
+        )
+    }
+
+    func testCodexStreamParserRejectsMalformedEventsAndEmptyIDs() throws {
+        var parser = CodexResponsesStreamParser()
+
+        XCTAssertThrowsError(try parser.parse(ServerSentEvent(data: "not json"))) { error in
+            XCTAssertEqual(error as? ProviderError, .malformedEvent)
+        }
+        XCTAssertThrowsError(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"\",\"name\":\"search_web\"}}"))
+        ) { error in
+            XCTAssertEqual(error as? ProviderError, .malformedEvent)
+        }
+        XCTAssertThrowsError(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.done\"}"))
+        ) { error in
+            XCTAssertEqual(error as? ProviderError, .malformedEvent)
+        }
+        XCTAssertThrowsError(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"name\":\"search_web\"}}"))
+        ) { error in
+            XCTAssertEqual(error as? ProviderError, .malformedEvent)
+        }
+        XCTAssertThrowsError(
+            try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"search_web\"}}"))
+        ) { error in
+            XCTAssertEqual(error as? ProviderError, .malformedEvent)
+        }
+    }
+
+    func testCodexStreamParserRequiresFinalArgumentsBeforeCompletion() throws {
+        var parser = CodexResponsesStreamParser()
+
+        _ = try parser.parse(ServerSentEvent(data: "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"item-1\",\"call_id\":\"call-1\",\"name\":\"search_web\"}}"))
+        _ = try parser.parse(ServerSentEvent(data: #"{"type":"response.function_call_arguments.delta","call_id":"call-1","delta":"{\"query\":"}"#))
+
+        XCTAssertThrowsError(try parser.parse(ServerSentEvent(data: "{\"type\":\"response.completed\"}"))) { error in
+            XCTAssertEqual(
+                error as? ProviderError,
+                .remote(message: "Codex returned an incomplete tool call.")
+            )
+        }
+        XCTAssertThrowsError(try parser.parse(ServerSentEvent(data: "[DONE]"))) { error in
+            XCTAssertEqual(
+                error as? ProviderError,
+                .invalidResponse
+            )
+        }
+    }
+
+    func testCodexStreamParserRejectsTruncatedResponseStream() async throws {
+        let tokens = CodexOAuthTokens(
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            idToken: nil,
+            expiresAt: Date().addingTimeInterval(3600)
+        )
+        let credentialStore = InMemoryCredentialStore(credentials: [
+            CodexOAuthService.credentialID: String(
+                data: try JSONEncoder().encode(tokens),
+                encoding: .utf8
+            )!
+        ])
+        let adapter = CodexResponsesAdapter(
+            configuration: ProviderConfiguration(
+                provider: .codex,
+                endpoint: URL(string: "https://chatgpt.com/backend-api/codex/responses")!,
+                model: "gpt-5.6-sol",
+                credentialID: CodexOAuthService.credentialID
+            ),
+            oauthService: CodexOAuthService(credentialStore: credentialStore),
+            transport: FixtureStreamingTransport(
+                statusCode: 200,
+                body: "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\n"
+            )
+        )
+
+        do {
+            for try await _ in adapter.stream(for: ProviderRequest(messages: [.user("Hello")])) {}
+            XCTFail("Expected truncated response to fail")
+        } catch {
+            XCTAssertEqual(error as? ProviderError, .invalidResponse)
+        }
+    }
+
+    func testCodexRequestRejectsCustomEndpointBeforeSendingOAuthToken() throws {
+        let service = CodexOAuthService(credentialStore: InMemoryCredentialStore(credentials: [:]))
+        let adapter = CodexResponsesAdapter(
+            configuration: ProviderConfiguration(
+                provider: .codex,
+                endpoint: URL(string: "https://proxy.example/codex/responses")!,
+                model: "gpt-5.6-sol",
+                credentialID: CodexOAuthService.credentialID
+            ),
+            oauthService: service,
+            transport: UnusedStreamingTransport()
+        )
+
+        XCTAssertThrowsError(
+            try adapter.makeRequest(
+                for: ProviderRequest(messages: [.user("Hello")]),
+                accessToken: "oauth-access"
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? ProviderError,
+                .invalidConfiguration("Codex only supports the official ChatGPT endpoint.")
+            )
+        }
+    }
+
+    func testCodexRequestRejectsToolCallsWithoutNamesBeforeNetworkWork() throws {
+        let service = CodexOAuthService(credentialStore: InMemoryCredentialStore(credentials: [:]))
+        let configuration = ProviderConfiguration(
+            provider: .codex,
+            endpoint: URL(string: "https://chatgpt.com/backend-api/codex/responses")!,
+            model: "gpt-5.5",
+            credentialID: CodexOAuthService.credentialID
+        )
+        let adapter = CodexResponsesAdapter(
+            configuration: configuration,
+            oauthService: service,
+            transport: UnusedStreamingTransport()
+        )
+
+        XCTAssertThrowsError(
+            try adapter.makeRequest(
+                for: ProviderRequest(messages: [
+                    .assistant(
+                        "",
+                        toolCalls: [
+                            ProviderToolCall(
+                                id: "call-1",
+                                name: "",
+                                arguments: "{}",
+                                isComplete: true
+                            )
+                        ]
+                    )
+                ]),
+                accessToken: "oauth-access"
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? ProviderError,
+                .invalidConfiguration("Codex received a tool call without a name.")
+            )
+        }
+
+        XCTAssertThrowsError(
+            try adapter.makeRequest(
+                for: ProviderRequest(messages: [.user("Search")], tools: [
+                    ProviderToolDefinition(
+                        name: "",
+                        description: "Invalid tool",
+                        inputSchema: .object(properties: [:])
+                    )
+                ]),
+                accessToken: "oauth-access"
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? ProviderError,
+                .invalidConfiguration("Codex received a tool definition without a name.")
+            )
+        }
+
+        XCTAssertThrowsError(
+            try adapter.makeRequest(
+                for: ProviderRequest(messages: [
+                    .assistant(
+                        "",
+                        toolCalls: [
+                            ProviderToolCall(
+                                id: "",
+                                name: "current_time",
+                                arguments: "{}",
+                                isComplete: true
+                            )
+                        ]
+                    )
+                ]),
+                accessToken: "oauth-access"
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? ProviderError,
+                .invalidConfiguration("Codex received a tool call without an ID.")
+            )
+        }
+    }
+
+    func testCodexRequestUsesResponsesShapeAndOAuthBearerToken() throws {
+        let service = CodexOAuthService(credentialStore: InMemoryCredentialStore(credentials: [:]))
+        let configuration = ProviderConfiguration(
+            provider: .codex,
+            endpoint: URL(string: "https://chatgpt.com/backend-api/codex/responses")!,
+            model: "gpt-5.5",
+            credentialID: CodexOAuthService.credentialID,
+            thinkingLevel: .high
+        )
+        let adapter = CodexResponsesAdapter(
+            configuration: configuration,
+            oauthService: service,
+            transport: UnusedStreamingTransport()
+        )
+        let tool = ProviderToolDefinition(
+            name: "current_time",
+            description: "Returns the current time.",
+            inputSchema: .object(properties: [:])
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [.system("Be concise"), .user("Hello")], tools: [tool]),
+            accessToken: "oauth-access"
+        )
+
+        XCTAssertEqual(request.url?.absoluteString, configuration.endpoint.absoluteString)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer oauth-access")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "originator"), "codex_cli_rs")
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(object["model"] as? String, "gpt-5.5")
+        XCTAssertEqual(object["instructions"] as? String, "Be concise")
+        XCTAssertEqual(object["stream"] as? Bool, true)
+        XCTAssertEqual(object["store"] as? Bool, false)
+        XCTAssertEqual(object["include"] as? [String], ["reasoning.encrypted_content"])
+        XCTAssertEqual((object["reasoning"] as? [String: Any])?["effort"] as? String, "high")
+        XCTAssertEqual((object["tools"] as? [[String: Any]])?.first?["type"] as? String, "function")
+        XCTAssertEqual((object["tools"] as? [[String: Any]])?.first?["name"] as? String, "current_time")
+    }
+
+    func testCodexRequestPreservesReasoningSummaryAndEncryptedState() throws {
+        let service = CodexOAuthService(credentialStore: InMemoryCredentialStore(credentials: [:]))
+        let configuration = ProviderConfiguration(
+            provider: .codex,
+            endpoint: URL(string: "https://chatgpt.com/backend-api/codex/responses")!,
+            model: "gpt-5.5",
+            credentialID: CodexOAuthService.credentialID
+        )
+        let adapter = CodexResponsesAdapter(
+            configuration: configuration,
+            oauthService: service,
+            transport: UnusedStreamingTransport()
+        )
+        let continuation = ProviderContinuation(
+            provider: .codex,
+            id: "rs-1",
+            kind: "reasoning",
+            fields: [
+                "text": "plan",
+                "encrypted_content": "opaque",
+                "model": "gpt-5.5"
+            ],
+            privateFields: ["encrypted_content", "model"]
+        )
+
+        let request = try adapter.makeRequest(
+            for: ProviderRequest(messages: [
+                .assistant("answer", continuations: [continuation])
+            ]),
+            accessToken: "oauth-access"
+        )
+
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let input = try XCTUnwrap(object["input"] as? [[String: Any]])
+        XCTAssertEqual(input.first?["type"] as? String, "reasoning")
+        XCTAssertEqual(input.first?["id"] as? String, "rs-1")
+        XCTAssertEqual(input.first?["encrypted_content"] as? String, "opaque")
+        XCTAssertEqual(
+            (input.first?["summary"] as? [[String: Any]])?.first?["text"] as? String,
+            "plan"
+        )
+        XCTAssertEqual(input.last?["type"] as? String, "message")
+    }
+
     func testOpenAIAdapterSurfacesRateLimitMessage() async throws {
         let adapter = OpenAICompatibleAdapter(
             configuration: ProviderConfiguration(
@@ -221,7 +709,8 @@ final class StreamingTests: XCTestCase {
                     kind: "reasoning",
                     field: "signature",
                     value: "opaque",
-                    operation: .append
+                    operation: .append,
+                    isPrivate: true
                 )
             )]
         )

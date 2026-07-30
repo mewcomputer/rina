@@ -242,7 +242,7 @@ private struct OpenAICompatibleMessage: Encodable {
         content = message.content.isEmpty ? nil : message.content
         let reasoning = message.continuations
             .filter { $0.provider == provider && $0.kind == "reasoning" }
-            .compactMap { $0.fields["text"] }
+            .compactMap { $0.shareableFields["text"] }
             .joined()
         reasoningContent = reasoning.isEmpty ? nil : reasoning
         toolCalls = message.toolCalls.isEmpty
@@ -343,7 +343,7 @@ private struct KimiThinking: Encodable {
 private extension ThinkingLevel {
     var reasoningEffort: String? {
         switch self {
-        case .low, .medium, .high, .max:
+        case .low, .medium, .high, .xhigh, .max, .ultra:
             rawValue
         case .off, .on:
             nil
@@ -356,7 +356,7 @@ private extension ThinkingLevel {
             KimiThinking(type: "disabled")
         case .on:
             KimiThinking(type: "enabled")
-        case .low, .medium, .high, .max:
+        case .low, .medium, .high, .xhigh, .max, .ultra:
             nil
         }
     }

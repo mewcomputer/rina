@@ -139,15 +139,27 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
             return knownModels
         }
 
+        if provider == .codex,
+           !CodexOAuthService.isOfficialBackendURL(baseURL)
+        {
+            throw ProviderError.invalidConfiguration(
+                "Codex only supports the official ChatGPT endpoint."
+            )
+        }
+
         var request = URLRequest(url: provider.catalogURL(for: baseURL))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        if provider != .umans {
+        if provider != .umans && provider != .codex {
             guard let credential, !credential.isEmpty else {
                 throw ProviderError.missingCredential
             }
             request.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization")
+        } else if let credential, !credential.isEmpty {
+            request.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization")
+        } else if provider == .codex {
+            return CodexModelsManifest.fallback.providerModels
         }
 
         let data: Data
@@ -162,6 +174,9 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
             {
                 return cachedModels
             }
+            if provider == .codex {
+                return cachedCodexModels(for: baseURL) ?? CodexModelsManifest.fallback.providerModels
+            }
             throw error
         }
 
@@ -170,6 +185,9 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
                let cachedModels = cachedUmansModels()
             {
                 return cachedModels
+            }
+            if provider == .codex {
+                return cachedCodexModels(for: baseURL) ?? CodexModelsManifest.fallback.providerModels
             }
             throw ProviderError.invalidResponse
         }
@@ -180,6 +198,12 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
             {
                 return cachedModels
             }
+            if provider == .codex, httpResponse.statusCode == 401 {
+                throw error
+            }
+            if provider == .codex {
+                return cachedCodexModels(for: baseURL) ?? CodexModelsManifest.fallback.providerModels
+            }
             throw error
         }
 
@@ -189,6 +213,9 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
             if provider == .umans {
                 models = Array(try decoder.decode([String: ProviderModel].self, from: data).values)
                 cache.defaults.set(data, forKey: Self.umansCacheKey)
+            } else if provider == .codex {
+                models = try decoder.decode(CodexModelsManifest.self, from: data).providerModels
+                cache.defaults.set(data, forKey: Self.codexCacheKey(for: baseURL))
             } else {
                 let response = try decoder.decode(OpenAIModelListResponse.self, from: data)
                 models = response.data.map {
@@ -203,6 +230,9 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
                let cachedModels = cachedUmansModels()
             {
                 return cachedModels
+            }
+            if provider == .codex {
+                return cachedCodexModels(for: baseURL) ?? CodexModelsManifest.fallback.providerModels
             }
             throw ProviderError.invalidResponse
         }
@@ -220,7 +250,19 @@ struct URLSessionModelCatalog: ModelCatalogProviding {
             }
     }
 
+    private func cachedCodexModels(for baseURL: URL) -> [ProviderModel]? {
+        guard let data = cache.defaults.data(forKey: Self.codexCacheKey(for: baseURL)) else {
+            return nil
+        }
+        return try? JSONDecoder()
+            .decode(CodexModelsManifest.self, from: data)
+            .providerModels
+    }
+
     private static let umansCacheKey = "provider.umans.modelCatalog"
+    private static func codexCacheKey(for baseURL: URL) -> String {
+        "provider.codex.modelCatalog.\(baseURL.absoluteString.lowercased())"
+    }
 }
 
 private final class ModelCatalogCache: @unchecked Sendable {
@@ -238,6 +280,8 @@ extension ProviderID {
             baseURL.appendingProviderPath("v1/messages")
         case .kimi, .kimiCode, .openAICompatible:
             baseURL.appendingProviderPath("v1/chat/completions")
+        case .codex:
+            baseURL.appendingProviderPath("responses")
         }
     }
 
@@ -247,6 +291,8 @@ extension ProviderID {
             Self.umansModelCatalogURL
         case .kimi, .kimiCode, .openAICompatible:
             baseURL.appendingProviderPath("v1/models")
+        case .codex:
+            baseURL.appendingProviderPath("models")
         }
     }
 
@@ -262,7 +308,7 @@ extension ProviderID {
                     displayName: "Kimi for Coding Highspeed"
                 )
             ]
-        case .umans, .kimi, .openAICompatible:
+        case .umans, .kimi, .openAICompatible, .codex:
             nil
         }
     }

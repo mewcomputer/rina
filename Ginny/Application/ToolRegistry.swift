@@ -28,9 +28,18 @@ extension GinnyTool {
     }
 }
 
-enum ToolExecutionError: Error, Equatable, Sendable {
+enum ToolExecutionError: Error, Equatable, Sendable, LocalizedError {
     case unknownTool(String)
     case invalidArguments(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unknownTool(let name):
+            "Unknown tool: \(name)."
+        case .invalidArguments(let message):
+            message
+        }
+    }
 }
 
 struct ToolRegistry: Sendable {

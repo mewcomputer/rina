@@ -19,21 +19,25 @@ final class ProviderSettings: ObservableObject {
     @Published var autoApproveArtefactWrites: Bool
     @Published private(set) var availableModels: [ProviderModel] = []
     @Published private(set) var isLoadingModels = false
+    @Published private(set) var isCodexSignedIn = false
     @Published private(set) var catalogMessage: String?
     @Published private(set) var validationMessage: String?
 
     private let defaults: UserDefaults
     private let credentialStore: any CredentialStore
     private let modelCatalog: any ModelCatalogProviding
+    let codexOAuth: CodexOAuthService
 
     init(
         defaults: UserDefaults = .standard,
         credentialStore: any CredentialStore = KeychainCredentialStore(),
-        modelCatalog: any ModelCatalogProviding = URLSessionModelCatalog()
+        modelCatalog: any ModelCatalogProviding = URLSessionModelCatalog(),
+        codexOAuth: CodexOAuthService? = nil
     ) {
         self.defaults = defaults
         self.credentialStore = credentialStore
         self.modelCatalog = modelCatalog
+        self.codexOAuth = codexOAuth ?? CodexOAuthService(credentialStore: credentialStore)
         allowAllArtefactWebRequests = defaults.bool(forKey: ArtefactPreferences.allowAllNetworkRequestsKey)
         autoApproveArtefactWrites = defaults.bool(forKey: ArtefactPreferences.autoApproveWritesKey)
         let storedProvider = defaults.string(forKey: "provider.id")
@@ -49,7 +53,9 @@ final class ProviderSettings: ObservableObject {
         endpointText = Self.normalizedBaseURLText(storedBaseURL, provider: selectedProvider)
             ?? selectedProvider.defaultBaseURL
         modelText = storedModel ?? selectedProvider.defaultModel
-        credentialText = (try? credentialStore.credential(for: selectedProvider.credentialID))
+        credentialText = selectedProvider == .codex
+            ? ""
+            : (try? credentialStore.credential(for: selectedProvider.credentialID))
             ?? (storedProvider == nil
                 ? (try? credentialStore.credential(for: Self.legacyCredentialID))
                 : nil)
@@ -73,8 +79,11 @@ final class ProviderSettings: ObservableObject {
 
     var configuration: ProviderConfiguration? {
         guard let baseURL = validBaseURL,
+              provider != .codex || CodexOAuthService.isOfficialBackendURL(baseURL),
               !modelText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !credentialText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+              (provider == .codex
+                  ? hasStoredCodexCredential
+                  : !credentialText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         else {
             return nil
         }
@@ -129,7 +138,10 @@ final class ProviderSettings: ObservableObject {
         self.provider = provider
         endpointText = defaults.string(forKey: provider.baseURLKey) ?? provider.defaultBaseURL
         modelText = defaults.string(forKey: provider.modelKey) ?? provider.defaultModel
-        credentialText = (try? credentialStore.credential(for: provider.credentialID)) ?? ""
+        credentialText = provider == .codex
+            ? ""
+            : (try? credentialStore.credential(for: provider.credentialID)) ?? ""
+        isCodexSignedIn = false
         thinkingLevel = Self.storedThinkingLevel(
             defaults: defaults,
             provider: provider,
@@ -163,7 +175,23 @@ final class ProviderSettings: ObservableObject {
         defer { isLoadingModels = false }
 
         do {
-            let credential = try? credentialStore.credential(for: provider.credentialID)
+            let credential: String?
+            if provider == .codex {
+                isCodexSignedIn = await codexOAuth.isSignedIn()
+                do {
+                    credential = try await codexOAuth.accessToken()
+                } catch CodexOAuthError.signedOut {
+                    isCodexSignedIn = false
+                    throw ProviderError.missingCredential
+                } catch {
+                    isCodexSignedIn = false
+                    availableModels = []
+                    catalogMessage = "ChatGPT sign-in needs attention. Sign in again."
+                    return
+                }
+            } else {
+                credential = try? credentialStore.credential(for: provider.credentialID)
+            }
             availableModels = try await modelCatalog.models(
                 for: provider,
                 baseURL: baseURL,
@@ -180,11 +208,39 @@ final class ProviderSettings: ObservableObject {
             catalogMessage = nil
         } catch ProviderError.missingCredential {
             availableModels = []
-            catalogMessage = "Add an API key to load models."
+            if provider == .codex {
+                isCodexSignedIn = false
+            }
+            catalogMessage = provider == .codex
+                ? "Sign in with ChatGPT to load models."
+                : "Add an API key to load models."
+        } catch let error as ProviderError {
+            availableModels = []
+            if provider == .codex,
+               case .httpStatus(401, _) = error
+            {
+                await codexOAuth.signOut()
+                isCodexSignedIn = false
+                catalogMessage = "ChatGPT sign-in expired. Sign in again."
+            } else {
+                catalogMessage = "Models could not be refreshed."
+            }
         } catch {
             availableModels = []
             catalogMessage = "Models could not be refreshed."
         }
+    }
+
+    func signInToCodex() async throws {
+        try await codexOAuth.signIn()
+        isCodexSignedIn = true
+        await refreshModels()
+    }
+
+    func signOutOfCodex() async {
+        await codexOAuth.signOut()
+        isCodexSignedIn = false
+        availableModels = []
     }
 
     func selectModel(_ model: String) {
@@ -207,6 +263,12 @@ final class ProviderSettings: ObservableObject {
             validationMessage = "Use HTTPS, or a localhost endpoint for local development."
             return false
         }
+        guard provider != .codex
+            || CodexOAuthService.isOfficialBackendURL(baseURL)
+        else {
+            validationMessage = "Codex only supports the official ChatGPT endpoint."
+            return false
+        }
         let endpoint = baseURL.absoluteString
         let model = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !model.isEmpty else {
@@ -220,16 +282,23 @@ final class ProviderSettings: ObservableObject {
             return false
         }
         let credential = credentialText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !credential.isEmpty else {
-            validationMessage = "Enter a provider credential."
-            return false
-        }
+        if provider == .codex {
+            guard hasStoredCodexCredential else {
+                validationMessage = "Sign in with ChatGPT before saving Codex."
+                return false
+            }
+        } else {
+            guard !credential.isEmpty else {
+                validationMessage = "Enter a provider credential."
+                return false
+            }
 
-        do {
-            try credentialStore.save(credential, for: provider.credentialID)
-        } catch {
-            validationMessage = "The credential could not be saved securely."
-            return false
+            do {
+                try credentialStore.save(credential, for: provider.credentialID)
+            } catch {
+                validationMessage = "The credential could not be saved securely."
+                return false
+            }
         }
 
         defaults.set(provider.rawValue, forKey: "provider.id")
@@ -241,7 +310,7 @@ final class ProviderSettings: ObservableObject {
         persistWebSearchPreferences()
         endpointText = endpoint
         modelText = model
-        credentialText = credential
+        credentialText = provider == .codex ? "" : credential
         validationMessage = nil
         return true
     }
@@ -305,6 +374,8 @@ final class ProviderSettings: ObservableObject {
             endpointSuffix = "/v1/messages"
         case .kimi, .kimiCode, .openAICompatible:
             endpointSuffix = "/v1/chat/completions"
+        case .codex:
+            endpointSuffix = "/responses"
         }
 
         guard url.path.hasSuffix(endpointSuffix) else {
@@ -318,6 +389,13 @@ final class ProviderSettings: ObservableObject {
 
     private var selectedModel: ProviderModel? {
         availableModels.first { $0.id == modelText }
+    }
+
+    private var hasStoredCodexCredential: Bool {
+        guard let credential = try? credentialStore.credential(for: provider.credentialID) else {
+            return false
+        }
+        return !credential.isEmpty
     }
 
     private func synchronizeThinkingLevel() {
@@ -387,6 +465,8 @@ private extension ProviderID {
             "https://api.kimi.com/coding/v1"
         case .openAICompatible:
             "https://api.openai.com/v1"
+        case .codex:
+            "https://chatgpt.com/backend-api/codex"
         }
     }
 
@@ -398,6 +478,8 @@ private extension ProviderID {
             "kimi-for-coding"
         case .kimi, .openAICompatible:
             ""
+        case .codex:
+            "gpt-5.6-sol"
         }
     }
 
@@ -411,6 +493,8 @@ private extension ProviderID {
             "kimi-code-api-key"
         case .openAICompatible:
             "openai-compatible-primary"
+        case .codex:
+            CodexOAuthService.credentialID
         }
     }
 

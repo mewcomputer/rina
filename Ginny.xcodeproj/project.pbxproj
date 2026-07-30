@@ -10,8 +10,11 @@
 		064FD2EEF2D193565C2F38A3 /* theme_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = DC2D3D50F5F50ABAC6DD772D /* theme_manifest.json */; };
 		07B69295F978199836DD398D /* SourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A2FB8E617D55DBAD72F68F /* SourceTests.swift */; };
 		0BCB53711FDA300330BAE305 /* RelationshipRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310A3DB03DF8987619E3210 /* RelationshipRepository.swift */; };
+		0F0802ECC4CBF16BD7086165 /* AtprotoAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD32DF78B19EE0D2D67F35BB /* AtprotoAuthTests.swift */; };
+		1277C78E258B367E27899C91 /* AtprotoTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 0C2B50492388AAAFD8B9BB36 /* AtprotoTypes */; };
 		14140B1EC5B7607184FF42E6 /* SessionHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682EA6B16D010F5F5D0BCA9D /* SessionHistoryTests.swift */; };
 		1460F8A2A269DAAA4905B4B6 /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DBDCF5A45A5803E2262232 /* Provider.swift */; };
+		16F7D00D5BB31B1D5D0A6BEA /* CitationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87FBFE198EEF005156AEBA8A /* CitationRepository.swift */; };
 		18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */; };
 		1A491F02447C88CB1C131547 /* ArtefactStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */; };
 		1B1F268C9B72AC255309FA8E /* IdentifiersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */; };
@@ -21,29 +24,43 @@
 		264D29FF249882B12D58FC85 /* ArtefactRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9707D3DB741C35A3F950FA09 /* ArtefactRepository.swift */; };
 		2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */; };
 		2C3B8186145EFFC7C01176BA /* AttachmentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE1B83C9D89D35DA02D78AA /* AttachmentStore.swift */; };
+		3146CB76F404F73EB168CD09 /* OAuth4Swift in Frameworks */ = {isa = PBXBuildFile; productRef = 772EA495CDA0A7CEE0C18871 /* OAuth4Swift */; };
 		33AED704E1BCE03E6E0E09E0 /* ContentBlockRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB2447D13B76740668BC849 /* ContentBlockRendering.swift */; };
+		36AD154590FCDAC0C6F394ED /* AtprotoSharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9AEC4C9489407BFFF60DB8 /* AtprotoSharing.swift */; };
+		3962121E4047FFF9E8AF99A5 /* AtprotoOAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3359839B3A0D8F6180A19EB4 /* AtprotoOAuthAdapter.swift */; };
 		3ACCCA454086C9CF5F82A19C /* Context.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C80E07053B6C5F27ED28C6 /* Context.swift */; };
+		41A083C1D8A7F8A3D9209B12 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5685529F1AF2DD05A755368 /* GinnyLiveActivityAttributes.swift */; };
 		41D19214FF2E191CE77F83A1 /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82BD921B65734CCF8933C9FF /* ModelCatalog.swift */; };
 		43C0DF8434750116FD40D971 /* SSE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4627A6932AFCC922D079F4 /* SSE.swift */; };
+		445BE946D7E85555FD806A8F /* WorkspaceSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7736A9880077629EC9365EC3 /* WorkspaceSearchView.swift */; };
 		47AF6ADD4E85E1518803F318 /* ImportExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E049B26B880CD376A0C74E /* ImportExportTests.swift */; };
 		48581DCD3065254370E583FE /* ConversationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B99BD93E51D059B8620CBAE /* ConversationRepository.swift */; };
 		48DF75E429E34F3701F145A8 /* ArtefactTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6EBF2B6BCDAACED8E2E932 /* ArtefactTests.swift */; };
+		48EF6B1CD9F26AC3020C6ACF /* CodexResponsesAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496759EF4359DC2B1E317A3C /* CodexResponsesAdapter.swift */; };
+		4B4A2B90A0399B9830C1B5AD /* AtprotoAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172088839633ED711A4328CC /* AtprotoAuth.swift */; };
 		4EB0B4515BC0E4574B9E8117 /* DiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A119BABCCC0541A86F0FEE /* DiagnosticsTests.swift */; };
 		4F31C594778B2E83D581A951 /* ModelCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F5ED5AA1DAFAADAFD217757 /* ModelCatalogTests.swift */; };
 		515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D633C99839F2015E2F41F17F /* ChatSession.swift */; };
+		51717BA1028B232869E778BA /* WebSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448CA4914B4B2B1159882472 /* WebSearch.swift */; };
+		52B71215F0DCE3AF6F0D4A92 /* CodexModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD476F287D45CE2AFC6958E /* CodexModels.swift */; };
 		553DD5EAE82065CA355E2514 /* SourceRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA42A0C4D93B1D683ED9688 /* SourceRepository.swift */; };
 		56D04DC70D798BA1A6276A61 /* AnthropicMessagesAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */; };
 		586A6E3717047F4B33BFDB71 /* StreamingTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE47BB9A631374B3EDB80A39 /* StreamingTransport.swift */; };
 		59E547C398526A5FF6A0347B /* RelationshipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A29CDA78FB9A8DA89D6C38C /* RelationshipTests.swift */; };
 		5CB9D914FFB636615F434EC6 /* ToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01F16D2B7BFAA0C3A560D9FE /* ToolRegistry.swift */; };
 		66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */; };
+		712E5C626126D9F55C575F4C /* CodexOAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C660ABA0392AD3D0A6D4FC /* CodexOAuthService.swift */; };
 		7664DB8F08EAF056798B9779 /* SkillTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5511EF9430788AD21AC18B4D /* SkillTools.swift */; };
 		774CAC785BCE6DFA310C6AAB /* ContentBlockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D071DD6B51C7DC0FE829F737 /* ContentBlockTests.swift */; };
 		78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */; };
 		803BD71F77F13C6ED1BD96F0 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396160192E7309F0F87B1324 /* Diagnostics.swift */; };
+		867EEED10B4E2C94704A9C10 /* CodexOAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D3AFD9CE3FF941302E6306 /* CodexOAuthTests.swift */; };
 		88021DA26FD94883FBC66302 /* ArtefactTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20373ABD2111756D7456726E /* ArtefactTools.swift */; };
+		890993ACD4F7C42BA28341A2 /* ContextRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02EB56F5BBA966A0A7166D7 /* ContextRepository.swift */; };
 		8C35A6719FB2C60C52EB783B /* Relationship.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5EC4A9CD4C888672B6F3F3 /* Relationship.swift */; };
+		8C54DF6C8EFE5E3190E623F8 /* ContextViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB05732B0ADC73822A880B2E /* ContextViews.swift */; };
 		8D711B7A9BCF2C157427E7AE /* SessionHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5F3D001DDEDF4A6E841857 /* SessionHistoryStore.swift */; };
+		918B75A501249EE141813E2A /* AtprotoClient in Frameworks */ = {isa = PBXBuildFile; productRef = EAD9B18FB2D76DA923939243 /* AtprotoClient */; };
 		92B12C300FAF9C2E0E3485B3 /* OpenAICompatibleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */; };
 		931DF029769AF70E2FE471EE /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47D54403317B0C02D8EE4F6 /* ChatView.swift */; };
 		95AA2C599BF497F2A4148E22 /* ArtefactPromoter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */; };
@@ -51,53 +68,36 @@
 		999E2D80366874B0EF14E431 /* Artefact.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2612F3084E164C0A80744CD /* Artefact.swift */; };
 		9B413C9202E8F998E5B5D05A /* StreamingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 515E025BD4E22E6F292A8415 /* StreamingTests.swift */; };
 		9D26EBCA00DE43693BF285B6 /* SourceImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6AB4AB0A1282F6EC908919 /* SourceImporter.swift */; };
-		A10000000000000000000001 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
-		A10000000000000000000002 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* LiveActivityController.swift */; };
-		A10000000000000000000003 /* GinnyLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */; };
-		A10000000000000000000004 /* GinnyLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* GinnyLiveActivityWidget.swift */; };
-		A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* GinnyLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		A20000000000000000000001 /* WebSearchTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* WebSearchTools.swift */; };
-		A20000000000000000000002 /* WebSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* WebSearch.swift */; };
-		A20000000000000000000003 /* CitationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* CitationRepository.swift */; };
-		A20000000000000000000004 /* ContextRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* ContextRepository.swift */; };
-		A20000000000000000000005 /* ContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* ContextStore.swift */; };
-		A30000000000000000000001 /* ChatActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* ChatActivityViews.swift */; };
-		A30000000000000000000002 /* ContextViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000002 /* ContextViews.swift */; };
-		A30000000000000000000003 /* WorkspaceSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000003 /* WorkspaceSearchView.swift */; };
-		A40000000000000000000001 /* AtprotoAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000002 /* AtprotoAuthService.swift */; };
-		A40000000000000000000007 /* AtprotoSharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000008 /* AtprotoSharing.swift */; };
-		A40000000000000000000003 /* AtprotoAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000004 /* AtprotoAuth.swift */; };
-		A40000000000000000000005 /* AtprotoAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000006 /* AtprotoAuthTests.swift */; };
-		A40000000000000000000009 /* AtprotoSharingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4000000000000000000000A /* AtprotoSharingTests.swift */; };
-		A60000000000000000000010 /* AtprotoOAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000011 /* AtprotoOAuthAdapter.swift */; };
-		A70000000000000000000001 /* SwiftAtproto in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000002 /* SwiftAtproto */; };
-		A60000000000000000000001 /* AtprotoOAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A60000000000000000000002 /* AtprotoOAuth */; };
-		A60000000000000000000004 /* AtprotoClient in Frameworks */ = {isa = PBXBuildFile; productRef = A60000000000000000000005 /* AtprotoClient */; };
-		A60000000000000000000007 /* AtprotoTypes in Frameworks */ = {isa = PBXBuildFile; productRef = A60000000000000000000008 /* AtprotoTypes */; };
-		A6000000000000000000000A /* GermConvenience in Frameworks */ = {isa = PBXBuildFile; productRef = A6000000000000000000000B /* GermConvenience */; };
-		A6000000000000000000000D /* OAuth4Swift in Frameworks */ = {isa = PBXBuildFile; productRef = A6000000000000000000000E /* OAuth4Swift */; };
+		A73C9120BAB279E20F283C21 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78779E9D7B065FE567C9BC4 /* LiveActivityController.swift */; };
+		ADF8715A9B4FA05AAB353996 /* WebSearchTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9777B6F5B59F56933FEA1D /* WebSearchTools.swift */; };
 		B01CFF6ED6A68A558D3CB3FA /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8737F656370217260F93276E /* CredentialStore.swift */; };
 		B6FC532F089D33BA8E427746 /* ArtefactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */; };
 		BA8FB63868CF70FA8D325975 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01DC86C6D4A5429571348B7 /* ThemeTests.swift */; };
 		BB580858294F3113E5668110 /* ToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CB2AD08D5ED8302810E37D /* ToolTests.swift */; };
 		BE022E83591A9DFB8B61E301 /* Source.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D339A7F3570FEF614C98A96 /* Source.swift */; };
+		BFE195CF4DD568C80716CE06 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */; };
 		C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA14B4BF60B6010216E83851 /* AppDependencies.swift */; };
 		C65B5081BF58A6412278D4B7 /* ArtefactPromotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B81D41E0DAE7CDBDAA4A928 /* ArtefactPromotionTests.swift */; };
-		CBCF7264B81A5BD1ABA7C0E3 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */; };
+		C7DEB81EED6D176372F8F295 /* SwiftAtproto in Frameworks */ = {isa = PBXBuildFile; productRef = B8290BA911DA96E5511DE33C /* SwiftAtproto */; };
+		CBCF7264B81A5BD1ABA7C0E3 /* AtprotoOAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 0FB4E45F7FEC426C94BDFC28 /* AtprotoOAuth */; };
 		CC5B35E88C8788DE8EF35BBA /* SearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E49C2F53C4FB8D035BE842 /* SearchTests.swift */; };
 		CFD2820648D9A8933EA72451 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604F428D68F76A14BCE9A5F5 /* RootView.swift */; };
 		D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5B56B84488FBF598916DDB /* Conversation.swift */; };
+		D4D4C6F579548B33CC204BB2 /* GermConvenience in Frameworks */ = {isa = PBXBuildFile; productRef = 120DA9AE37878ACADC05C5D5 /* GermConvenience */; };
 		D58E385144AC57D91049E636 /* ContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B805DE7BA30FB3F2455025C1 /* ContextTests.swift */; };
 		D60072509CB892EDD6D1F83A /* DiagramCraftSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DFD9A01E29499FED37F1DA2 /* DiagramCraftSkill.swift */; };
+		D72113741E150DB70385B2B1 /* AtprotoSharingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83439D1E81B23926AE18F303 /* AtprotoSharingTests.swift */; };
 		D770B6E0CC668F94B3E39034 /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EB399BEEEDC2B36FB06B201 /* Skill.swift */; };
 		D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */; };
 		D9BEB6E6A505D06E41A6B43D /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FA948BCF63CC7B840A03A1 /* Glass.swift */; };
 		DD5DABB68CE6EB932D5A65BF /* AgentInstructions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4ACDAF24D1C1D2DF8B64C20 /* AgentInstructions.swift */; };
+		E620DBF7A2767B31805E0147 /* AtprotoAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48FEAAB50040C15D9E09430D /* AtprotoAuthService.swift */; };
+		EAD2E1C5BA13AA52B804F4F2 /* ChatActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE87901C65A45845DC54C662 /* ChatActivityViews.swift */; };
 		EB3FA2229ACB08DCFC53DCD7 /* ChatSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */; };
 		F074A2C094D69AAD05EDF3F2 /* ArtefactRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */; };
 		F0DE5293B1A15136EED8AC3E /* ProviderSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C8F3956963A5DBB935220F /* ProviderSettingsTests.swift */; };
-		F20000000000000000000001 /* GinnyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* GinnyUITests.swift */; };
 		F71A84DAAC1E6004B0BF2BE4 /* Search.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3350EE57DD17E55714512F7 /* Search.swift */; };
+		F9741A7D4635E6AF4BD0579E /* ContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F22AC8BAD851313853356A8 /* ContextStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -108,35 +108,7 @@
 			remoteGlobalIDString = 0AEBED158889DE2A3984B81A;
 			remoteInfo = Ginny;
 		};
-		110000000000000000000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 623794BEDAB75D309DC84F2C /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = E10000000000000000000001;
-			remoteInfo = GinnyLiveActivity;
-		};
-		F90000000000000000000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 623794BEDAB75D309DC84F2C /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 0AEBED158889DE2A3984B81A;
-			remoteInfo = Ginny;
-		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		D10000000000000000000004 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				A10000000000000000000005 /* GinnyLiveActivity.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		01F16D2B7BFAA0C3A560D9FE /* ToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
@@ -147,18 +119,27 @@
 		0DFD9A01E29499FED37F1DA2 /* DiagramCraftSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagramCraftSkill.swift; sourceTree = "<group>"; };
 		15C80E07053B6C5F27ED28C6 /* Context.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Context.swift; sourceTree = "<group>"; };
 		1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactRepositoryTests.swift; sourceTree = "<group>"; };
+		172088839633ED711A4328CC /* AtprotoAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuth.swift; sourceTree = "<group>"; };
 		18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactPromoter.swift; sourceTree = "<group>"; };
+		18C660ABA0392AD3D0A6D4FC /* CodexOAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexOAuthService.swift; sourceTree = "<group>"; };
 		1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identifiers.swift; sourceTree = "<group>"; };
+		1BD476F287D45CE2AFC6958E /* CodexModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexModels.swift; sourceTree = "<group>"; };
+		1D9AEC4C9489407BFFF60DB8 /* AtprotoSharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoSharing.swift; sourceTree = "<group>"; };
 		1EB399BEEEDC2B36FB06B201 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
 		20373ABD2111756D7456726E /* ArtefactTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactTools.swift; sourceTree = "<group>"; };
 		28CB2AD08D5ED8302810E37D /* ToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolTests.swift; sourceTree = "<group>"; };
 		2BA42A0C4D93B1D683ED9688 /* SourceRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceRepository.swift; sourceTree = "<group>"; };
+		2F22AC8BAD851313853356A8 /* ContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextStore.swift; sourceTree = "<group>"; };
+		3359839B3A0D8F6180A19EB4 /* AtprotoOAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoOAuthAdapter.swift; sourceTree = "<group>"; };
 		37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactStoreTests.swift; sourceTree = "<group>"; };
 		383B7AAA97C2542AB5ED6BC5 /* GinnyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyApp.swift; sourceTree = "<group>"; };
 		396160192E7309F0F87B1324 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
 		3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSessionTests.swift; sourceTree = "<group>"; };
 		3F5ED5AA1DAFAADAFD217757 /* ModelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTests.swift; sourceTree = "<group>"; };
 		41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatResponseSource.swift; sourceTree = "<group>"; };
+		448CA4914B4B2B1159882472 /* WebSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearch.swift; sourceTree = "<group>"; };
+		48FEAAB50040C15D9E09430D /* AtprotoAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuthService.swift; sourceTree = "<group>"; };
+		496759EF4359DC2B1E317A3C /* CodexResponsesAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexResponsesAdapter.swift; sourceTree = "<group>"; };
 		4ADDAAEE37F3676CCF6CD42C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		515E025BD4E22E6F292A8415 /* StreamingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTests.swift; sourceTree = "<group>"; };
 		51AC0E71897F926D3E66A445 /* IdentifiersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentifiersTests.swift; sourceTree = "<group>"; };
@@ -173,59 +154,49 @@
 		6AE1B83C9D89D35DA02D78AA /* AttachmentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentStore.swift; sourceTree = "<group>"; };
 		6D339A7F3570FEF614C98A96 /* Source.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Source.swift; sourceTree = "<group>"; };
 		6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactStore.swift; sourceTree = "<group>"; };
+		7736A9880077629EC9365EC3 /* WorkspaceSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSearchView.swift; sourceTree = "<group>"; };
 		7A6AB4AB0A1282F6EC908919 /* SourceImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceImporter.swift; sourceTree = "<group>"; };
 		7B81D41E0DAE7CDBDAA4A928 /* ArtefactPromotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactPromotionTests.swift; sourceTree = "<group>"; };
 		7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicMessagesAdapter.swift; sourceTree = "<group>"; };
 		82BD921B65734CCF8933C9FF /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
 		82E49C2F53C4FB8D035BE842 /* SearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTests.swift; sourceTree = "<group>"; };
 		8310A3DB03DF8987619E3210 /* RelationshipRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipRepository.swift; sourceTree = "<group>"; };
+		83439D1E81B23926AE18F303 /* AtprotoSharingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoSharingTests.swift; sourceTree = "<group>"; };
 		8737F656370217260F93276E /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
+		87FBFE198EEF005156AEBA8A /* CitationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationRepository.swift; sourceTree = "<group>"; };
 		89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactViews.swift; sourceTree = "<group>"; };
 		8F4627A6932AFCC922D079F4 /* SSE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSE.swift; sourceTree = "<group>"; };
 		92C5627E3E2ACC39677676CC /* GinnyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GinnyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9707D3DB741C35A3F950FA09 /* ArtefactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactRepository.swift; sourceTree = "<group>"; };
 		9BB2447D13B76740668BC849 /* ContentBlockRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentBlockRendering.swift; sourceTree = "<group>"; };
 		9C5F3D001DDEDF4A6E841857 /* SessionHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHistoryStore.swift; sourceTree = "<group>"; };
-		A40000000000000000000002 /* AtprotoAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuthService.swift; sourceTree = "<group>"; };
-		A40000000000000000000004 /* AtprotoAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuth.swift; sourceTree = "<group>"; };
-		A40000000000000000000006 /* AtprotoAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuthTests.swift; sourceTree = "<group>"; };
-		A40000000000000000000008 /* AtprotoSharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoSharing.swift; sourceTree = "<group>"; };
-		A4000000000000000000000A /* AtprotoSharingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoSharingTests.swift; sourceTree = "<group>"; };
-		A60000000000000000000011 /* AtprotoOAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoOAuthAdapter.swift; sourceTree = "<group>"; };
 		A4ACDAF24D1C1D2DF8B64C20 /* AgentInstructions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentInstructions.swift; sourceTree = "<group>"; };
 		AA14B4BF60B6010216E83851 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		AC5EC4A9CD4C888672B6F3F3 /* Relationship.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Relationship.swift; sourceTree = "<group>"; };
-		B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityAttributes.swift; sourceTree = "<group>"; };
-		B10000000000000000000002 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
-		B10000000000000000000003 /* GinnyLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityWidget.swift; sourceTree = "<group>"; };
-		B10000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		B10000000000000000000005 /* GinnyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GinnyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		B20000000000000000000001 /* WebSearchTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchTools.swift; sourceTree = "<group>"; };
-		B20000000000000000000002 /* WebSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearch.swift; sourceTree = "<group>"; };
-		B20000000000000000000003 /* CitationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationRepository.swift; sourceTree = "<group>"; };
-		B20000000000000000000004 /* ContextRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextRepository.swift; sourceTree = "<group>"; };
-		B20000000000000000000005 /* ContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextStore.swift; sourceTree = "<group>"; };
 		B2612F3084E164C0A80744CD /* Artefact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Artefact.swift; sourceTree = "<group>"; };
-		B30000000000000000000001 /* ChatActivityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatActivityViews.swift; sourceTree = "<group>"; };
-		B30000000000000000000002 /* ContextViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextViews.swift; sourceTree = "<group>"; };
-		B30000000000000000000003 /* WorkspaceSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSearchView.swift; sourceTree = "<group>"; };
 		B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAICompatibleAdapter.swift; sourceTree = "<group>"; };
 		B6A2FB8E617D55DBAD72F68F /* SourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceTests.swift; sourceTree = "<group>"; };
 		B805DE7BA30FB3F2455025C1 /* ContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTests.swift; sourceTree = "<group>"; };
 		BC3BE2A68BF26E51089F0FA0 /* Exporters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exporters.swift; sourceTree = "<group>"; };
+		BE87901C65A45845DC54C662 /* ChatActivityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatActivityViews.swift; sourceTree = "<group>"; };
 		C01DC86C6D4A5429571348B7 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		C22AE8DFC71A2A8813F3DF56 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		C3350EE57DD17E55714512F7 /* Search.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Search.swift; sourceTree = "<group>"; };
 		C4622D72389852D888EE9495 /* Ginny.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ginny.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5685529F1AF2DD05A755368 /* GinnyLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		C78779E9D7B065FE567C9BC4 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		CD32DF78B19EE0D2D67F35BB /* AtprotoAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtprotoAuthTests.swift; sourceTree = "<group>"; };
 		D071DD6B51C7DC0FE829F737 /* ContentBlockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentBlockTests.swift; sourceTree = "<group>"; };
 		D47D54403317B0C02D8EE4F6 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		D633C99839F2015E2F41F17F /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSession.swift; sourceTree = "<group>"; };
 		D7E049B26B880CD376A0C74E /* ImportExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportExportTests.swift; sourceTree = "<group>"; };
 		DA6EBF2B6BCDAACED8E2E932 /* ArtefactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtefactTests.swift; sourceTree = "<group>"; };
 		DC2D3D50F5F50ABAC6DD772D /* theme_manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = theme_manifest.json; sourceTree = "<group>"; };
+		DF9777B6F5B59F56933FEA1D /* WebSearchTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchTools.swift; sourceTree = "<group>"; };
+		E02EB56F5BBA966A0A7166D7 /* ContextRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextRepository.swift; sourceTree = "<group>"; };
+		E2D3AFD9CE3FF941302E6306 /* CodexOAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexOAuthTests.swift; sourceTree = "<group>"; };
+		EB05732B0ADC73822A880B2E /* ContextViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextViews.swift; sourceTree = "<group>"; };
 		ED5B56B84488FBF598916DDB /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
-		F30000000000000000000001 /* GinnyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GinnyUITests.swift; sourceTree = "<group>"; };
-		F30000000000000000000002 /* GinnyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GinnyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE47BB9A631374B3EDB80A39 /* StreamingTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTransport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -234,20 +205,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A6000000000000000000000D /* OAuth4Swift in Frameworks */,
-				A6000000000000000000000A /* GermConvenience in Frameworks */,
-				A60000000000000000000007 /* AtprotoTypes in Frameworks */,
-				A60000000000000000000004 /* AtprotoClient in Frameworks */,
-				A60000000000000000000001 /* AtprotoOAuth in Frameworks */,
-				A70000000000000000000001 /* SwiftAtproto in Frameworks */,
-				CBCF7264B81A5BD1ABA7C0E3 /* SwiftStreamingMarkdown in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D10000000000000000000003 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				CBCF7264B81A5BD1ABA7C0E3 /* AtprotoOAuth in Frameworks */,
+				918B75A501249EE141813E2A /* AtprotoClient in Frameworks */,
+				1277C78E258B367E27899C91 /* AtprotoTypes in Frameworks */,
+				D4D4C6F579548B33CC204BB2 /* GermConvenience in Frameworks */,
+				3146CB76F404F73EB168CD09 /* OAuth4Swift in Frameworks */,
+				C7DEB81EED6D176372F8F295 /* SwiftAtproto in Frameworks */,
+				BFE195CF4DD568C80716CE06 /* SwiftStreamingMarkdown in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -259,22 +223,23 @@
 			children = (
 				A4ACDAF24D1C1D2DF8B64C20 /* AgentInstructions.swift */,
 				AA14B4BF60B6010216E83851 /* AppDependencies.swift */,
-				A60000000000000000000011 /* AtprotoOAuthAdapter.swift */,
-				A40000000000000000000002 /* AtprotoAuthService.swift */,
-				A40000000000000000000008 /* AtprotoSharing.swift */,
 				18956D9C42A96009AD474B6E /* ArtefactPromoter.swift */,
 				6E55D1E35AE24CE87E8252A3 /* ArtefactStore.swift */,
 				20373ABD2111756D7456726E /* ArtefactTools.swift */,
+				48FEAAB50040C15D9E09430D /* AtprotoAuthService.swift */,
+				3359839B3A0D8F6180A19EB4 /* AtprotoOAuthAdapter.swift */,
+				1D9AEC4C9489407BFFF60DB8 /* AtprotoSharing.swift */,
 				D633C99839F2015E2F41F17F /* ChatSession.swift */,
-				B20000000000000000000005 /* ContextStore.swift */,
-				B10000000000000000000002 /* LiveActivityController.swift */,
+				18C660ABA0392AD3D0A6D4FC /* CodexOAuthService.swift */,
+				2F22AC8BAD851313853356A8 /* ContextStore.swift */,
 				BC3BE2A68BF26E51089F0FA0 /* Exporters.swift */,
+				C78779E9D7B065FE567C9BC4 /* LiveActivityController.swift */,
 				0BE22D2E536A10834A57D8E5 /* ProviderSettings.swift */,
 				9C5F3D001DDEDF4A6E841857 /* SessionHistoryStore.swift */,
 				5511EF9430788AD21AC18B4D /* SkillTools.swift */,
 				7A6AB4AB0A1282F6EC908919 /* SourceImporter.swift */,
 				01F16D2B7BFAA0C3A560D9FE /* ToolRegistry.swift */,
-				B20000000000000000000001 /* WebSearchTools.swift */,
+				DF9777B6F5B59F56933FEA1D /* WebSearchTools.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -283,15 +248,15 @@
 			isa = PBXGroup;
 			children = (
 				89F5545BB8D07A7335627AE0 /* ArtefactViews.swift */,
-				B30000000000000000000001 /* ChatActivityViews.swift */,
-				B30000000000000000000002 /* ContextViews.swift */,
-				B30000000000000000000003 /* WorkspaceSearchView.swift */,
+				BE87901C65A45845DC54C662 /* ChatActivityViews.swift */,
 				41A80C57DCA323CF3BFD719D /* ChatResponseSource.swift */,
 				D47D54403317B0C02D8EE4F6 /* ChatView.swift */,
 				9BB2447D13B76740668BC849 /* ContentBlockRendering.swift */,
+				EB05732B0ADC73822A880B2E /* ContextViews.swift */,
 				69FA948BCF63CC7B840A03A1 /* Glass.swift */,
 				604F428D68F76A14BCE9A5F5 /* RootView.swift */,
 				C22AE8DFC71A2A8813F3DF56 /* Theme.swift */,
+				7736A9880077629EC9365EC3 /* WorkspaceSearchView.swift */,
 			);
 			path = Presentation;
 			sourceTree = "<group>";
@@ -301,9 +266,7 @@
 			children = (
 				DC2D3D50F5F50ABAC6DD772D /* theme_manifest.json */,
 				6367FEC595B74A9399415B18 /* Ginny */,
-				C10000000000000000000001 /* GinnyLiveActivity */,
 				DBB2D52842EEE777932F5F26 /* GinnyTests */,
-				F40000000000000000000001 /* GinnyUITests */,
 				B2FEE8F6D7EAB5211AE095BC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -311,10 +274,10 @@
 		62FA47A6D31169E02A185374 /* Persistence */ = {
 			isa = PBXGroup;
 			children = (
-				B20000000000000000000003 /* CitationRepository.swift */,
-				B20000000000000000000004 /* ContextRepository.swift */,
 				9707D3DB741C35A3F950FA09 /* ArtefactRepository.swift */,
 				6AE1B83C9D89D35DA02D78AA /* AttachmentStore.swift */,
+				87FBFE198EEF005156AEBA8A /* CitationRepository.swift */,
+				E02EB56F5BBA966A0A7166D7 /* ContextRepository.swift */,
 				5B99BD93E51D059B8620CBAE /* ConversationRepository.swift */,
 				8310A3DB03DF8987619E3210 /* RelationshipRepository.swift */,
 				2BA42A0C4D93B1D683ED9688 /* SourceRepository.swift */,
@@ -339,9 +302,11 @@
 			isa = PBXGroup;
 			children = (
 				7F797541B4A8887B439C6F87 /* AnthropicMessagesAdapter.swift */,
+				1BD476F287D45CE2AFC6958E /* CodexModels.swift */,
+				496759EF4359DC2B1E317A3C /* CodexResponsesAdapter.swift */,
 				82BD921B65734CCF8933C9FF /* ModelCatalog.swift */,
 				B443D54FD19829036654EEFA /* OpenAICompatibleAdapter.swift */,
-				B20000000000000000000002 /* WebSearch.swift */,
+				448CA4914B4B2B1159882472 /* WebSearch.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -358,12 +323,12 @@
 			isa = PBXGroup;
 			children = (
 				B2612F3084E164C0A80744CD /* Artefact.swift */,
-				A40000000000000000000004 /* AtprotoAuth.swift */,
+				172088839633ED711A4328CC /* AtprotoAuth.swift */,
 				15C80E07053B6C5F27ED28C6 /* Context.swift */,
 				ED5B56B84488FBF598916DDB /* Conversation.swift */,
 				396160192E7309F0F87B1324 /* Diagnostics.swift */,
 				0DFD9A01E29499FED37F1DA2 /* DiagramCraftSkill.swift */,
-				B10000000000000000000001 /* GinnyLiveActivityAttributes.swift */,
+				C5685529F1AF2DD05A755368 /* GinnyLiveActivityAttributes.swift */,
 				1A0C75269F06EC3B0AAD2756 /* Identifiers.swift */,
 				56DBDCF5A45A5803E2262232 /* Provider.swift */,
 				AC5EC4A9CD4C888672B6F3F3 /* Relationship.swift */,
@@ -378,9 +343,7 @@
 			isa = PBXGroup;
 			children = (
 				C4622D72389852D888EE9495 /* Ginny.app */,
-				B10000000000000000000005 /* GinnyLiveActivity.appex */,
 				92C5627E3E2ACC39677676CC /* GinnyTests.xctest */,
-				F30000000000000000000002 /* GinnyUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -392,15 +355,6 @@
 				FE47BB9A631374B3EDB80A39 /* StreamingTransport.swift */,
 			);
 			path = Streaming;
-			sourceTree = "<group>";
-		};
-		C10000000000000000000001 /* GinnyLiveActivity */ = {
-			isa = PBXGroup;
-			children = (
-				B10000000000000000000003 /* GinnyLiveActivityWidget.swift */,
-				B10000000000000000000004 /* Info.plist */,
-			);
-			path = GinnyLiveActivity;
 			sourceTree = "<group>";
 		};
 		DA04ADBF3E90386BABE4CDC9 /* Infrastructure */ = {
@@ -418,12 +372,13 @@
 			isa = PBXGroup;
 			children = (
 				7B81D41E0DAE7CDBDAA4A928 /* ArtefactPromotionTests.swift */,
-				A40000000000000000000006 /* AtprotoAuthTests.swift */,
-				A4000000000000000000000A /* AtprotoSharingTests.swift */,
 				1630D093BE954BE1D98C3247 /* ArtefactRepositoryTests.swift */,
 				37ED071981CBE306A01F9924 /* ArtefactStoreTests.swift */,
 				DA6EBF2B6BCDAACED8E2E932 /* ArtefactTests.swift */,
+				CD32DF78B19EE0D2D67F35BB /* AtprotoAuthTests.swift */,
+				83439D1E81B23926AE18F303 /* AtprotoSharingTests.swift */,
 				3F051BDD1547D31ADD6227CA /* ChatSessionTests.swift */,
+				E2D3AFD9CE3FF941302E6306 /* CodexOAuthTests.swift */,
 				D071DD6B51C7DC0FE829F737 /* ContentBlockTests.swift */,
 				B805DE7BA30FB3F2455025C1 /* ContextTests.swift */,
 				520D06FDC0F3C84E76CDE302 /* ConversationTests.swift */,
@@ -444,14 +399,6 @@
 			path = GinnyTests;
 			sourceTree = "<group>";
 		};
-		F40000000000000000000001 /* GinnyUITests */ = {
-			isa = PBXGroup;
-			children = (
-				F30000000000000000000001 /* GinnyUITests.swift */,
-			);
-			path = GinnyUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -462,21 +409,19 @@
 				0A8F43BD9A49FAEC78FFBF4A /* Sources */,
 				90D46DC83C3CF727525A8408 /* Resources */,
 				2705513022430BE01CA0510C /* Frameworks */,
-				D10000000000000000000004 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				D10000000000000000000006 /* PBXTargetDependency */,
 			);
 			name = Ginny;
 			packageProductDependencies = (
-				A60000000000000000000002 /* AtprotoOAuth */,
-				A60000000000000000000005 /* AtprotoClient */,
-				A60000000000000000000008 /* AtprotoTypes */,
-				A6000000000000000000000B /* GermConvenience */,
-				A6000000000000000000000E /* OAuth4Swift */,
-				A70000000000000000000002 /* SwiftAtproto */,
+				0FB4E45F7FEC426C94BDFC28 /* AtprotoOAuth */,
+				EAD9B18FB2D76DA923939243 /* AtprotoClient */,
+				0C2B50492388AAAFD8B9BB36 /* AtprotoTypes */,
+				120DA9AE37878ACADC05C5D5 /* GermConvenience */,
+				772EA495CDA0A7CEE0C18871 /* OAuth4Swift */,
+				B8290BA911DA96E5511DE33C /* SwiftAtproto */,
 				BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */,
 			);
 			productName = Ginny;
@@ -501,39 +446,6 @@
 			productReference = 92C5627E3E2ACC39677676CC /* GinnyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		E10000000000000000000001 /* GinnyLiveActivity */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F10000000000000000000003 /* Build configuration list for PBXNativeTarget "GinnyLiveActivity" */;
-			buildPhases = (
-				D10000000000000000000001 /* Sources */,
-				D10000000000000000000002 /* Resources */,
-				D10000000000000000000003 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = GinnyLiveActivity;
-			productName = GinnyLiveActivity;
-			productReference = B10000000000000000000005 /* GinnyLiveActivity.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
-		F60000000000000000000001 /* GinnyUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F70000000000000000000001 /* Build configuration list for PBXNativeTarget "GinnyUITests" */;
-			buildPhases = (
-				F50000000000000000000001 /* Sources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				F90000000000000000000002 /* PBXTargetDependency */,
-			);
-			name = GinnyUITests;
-			productName = GinnyUITests;
-			productReference = F30000000000000000000002 /* GinnyUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -544,9 +456,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0AEBED158889DE2A3984B81A = {
-						DevelopmentTeam = P2B3GABB6H;
-					};
-					E10000000000000000000001 = {
 						DevelopmentTeam = P2B3GABB6H;
 					};
 				};
@@ -561,12 +470,12 @@
 			mainGroup = 5557745ADCC3C1C0940861A6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				A60000000000000000000003 /* XCRemoteSwiftPackageReference "AtprotoOAuth" */,
-				A60000000000000000000006 /* XCRemoteSwiftPackageReference "AtprotoClient" */,
-				A60000000000000000000009 /* XCRemoteSwiftPackageReference "AtprotoTypes" */,
-				A6000000000000000000000C /* XCRemoteSwiftPackageReference "GermConvenience" */,
-				A6000000000000000000000F /* XCRemoteSwiftPackageReference "oauth4swift" */,
-				A70000000000000000000003 /* XCRemoteSwiftPackageReference "swift-atproto" */,
+				0DCB67B6B95CEC680545DF70 /* XCRemoteSwiftPackageReference "AtprotoClient" */,
+				117E0E71EC4550BCA4B73B5F /* XCRemoteSwiftPackageReference "AtprotoOAuth" */,
+				D00FC355078BA31ED7C869E6 /* XCRemoteSwiftPackageReference "AtprotoTypes" */,
+				D41ED9CBAEE6630E41A20773 /* XCRemoteSwiftPackageReference "GermConvenience" */,
+				5C053614B4D438CA0C5622D5 /* XCRemoteSwiftPackageReference "oauth4swift" */,
+				888A99DF700B0A7AF258BAAE /* XCRemoteSwiftPackageReference "swift-atproto" */,
 				05FDBFA513F800E81A112DA8 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -575,9 +484,7 @@
 			projectRoot = "";
 			targets = (
 				0AEBED158889DE2A3984B81A /* Ginny */,
-				E10000000000000000000001 /* GinnyLiveActivity */,
 				38639F0C01A9B32D52BBFA47 /* GinnyTests */,
-				F60000000000000000000001 /* GinnyUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -591,13 +498,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D10000000000000000000002 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -605,13 +505,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A40000000000000000000005 /* AtprotoAuthTests.swift in Sources */,
-				A40000000000000000000009 /* AtprotoSharingTests.swift in Sources */,
 				C65B5081BF58A6412278D4B7 /* ArtefactPromotionTests.swift in Sources */,
 				F074A2C094D69AAD05EDF3F2 /* ArtefactRepositoryTests.swift in Sources */,
 				D86BD3AF52C650FAE51945C4 /* ArtefactStoreTests.swift in Sources */,
 				48DF75E429E34F3701F145A8 /* ArtefactTests.swift in Sources */,
+				0F0802ECC4CBF16BD7086165 /* AtprotoAuthTests.swift in Sources */,
+				D72113741E150DB70385B2B1 /* AtprotoSharingTests.swift in Sources */,
 				EB3FA2229ACB08DCFC53DCD7 /* ChatSessionTests.swift in Sources */,
+				867EEED10B4E2C94704A9C10 /* CodexOAuthTests.swift in Sources */,
 				774CAC785BCE6DFA310C6AAB /* ContentBlockTests.swift in Sources */,
 				D58E385144AC57D91049E636 /* ContextTests.swift in Sources */,
 				2905AF83E4199D45F911F9A9 /* ConversationTests.swift in Sources */,
@@ -638,37 +539,41 @@
 				DD5DABB68CE6EB932D5A65BF /* AgentInstructions.swift in Sources */,
 				56D04DC70D798BA1A6276A61 /* AnthropicMessagesAdapter.swift in Sources */,
 				C1B902A10125675DBDF43027 /* AppDependencies.swift in Sources */,
-				A40000000000000000000003 /* AtprotoAuth.swift in Sources */,
-				A40000000000000000000001 /* AtprotoAuthService.swift in Sources */,
-				A60000000000000000000010 /* AtprotoOAuthAdapter.swift in Sources */,
-				A40000000000000000000007 /* AtprotoSharing.swift in Sources */,
 				999E2D80366874B0EF14E431 /* Artefact.swift in Sources */,
 				95AA2C599BF497F2A4148E22 /* ArtefactPromoter.swift in Sources */,
 				264D29FF249882B12D58FC85 /* ArtefactRepository.swift in Sources */,
 				1A491F02447C88CB1C131547 /* ArtefactStore.swift in Sources */,
 				88021DA26FD94883FBC66302 /* ArtefactTools.swift in Sources */,
 				B6FC532F089D33BA8E427746 /* ArtefactViews.swift in Sources */,
+				4B4A2B90A0399B9830C1B5AD /* AtprotoAuth.swift in Sources */,
+				E620DBF7A2767B31805E0147 /* AtprotoAuthService.swift in Sources */,
+				3962121E4047FFF9E8AF99A5 /* AtprotoOAuthAdapter.swift in Sources */,
+				36AD154590FCDAC0C6F394ED /* AtprotoSharing.swift in Sources */,
 				2C3B8186145EFFC7C01176BA /* AttachmentStore.swift in Sources */,
-				A30000000000000000000001 /* ChatActivityViews.swift in Sources */,
-				A30000000000000000000002 /* ContextViews.swift in Sources */,
-				A30000000000000000000003 /* WorkspaceSearchView.swift in Sources */,
+				EAD2E1C5BA13AA52B804F4F2 /* ChatActivityViews.swift in Sources */,
 				18323BF2E3DE03BD2E9D2E95 /* ChatResponseSource.swift in Sources */,
 				515F15C24F514223EE7C06AC /* ChatSession.swift in Sources */,
-				A20000000000000000000005 /* ContextStore.swift in Sources */,
 				931DF029769AF70E2FE471EE /* ChatView.swift in Sources */,
-				A10000000000000000000002 /* LiveActivityController.swift in Sources */,
+				16F7D00D5BB31B1D5D0A6BEA /* CitationRepository.swift in Sources */,
+				52B71215F0DCE3AF6F0D4A92 /* CodexModels.swift in Sources */,
+				712E5C626126D9F55C575F4C /* CodexOAuthService.swift in Sources */,
+				48EF6B1CD9F26AC3020C6ACF /* CodexResponsesAdapter.swift in Sources */,
 				33AED704E1BCE03E6E0E09E0 /* ContentBlockRendering.swift in Sources */,
 				3ACCCA454086C9CF5F82A19C /* Context.swift in Sources */,
+				890993ACD4F7C42BA28341A2 /* ContextRepository.swift in Sources */,
+				F9741A7D4635E6AF4BD0579E /* ContextStore.swift in Sources */,
+				8C54DF6C8EFE5E3190E623F8 /* ContextViews.swift in Sources */,
 				D2BA3C147930FC0D8B3F9923 /* Conversation.swift in Sources */,
-				A10000000000000000000001 /* GinnyLiveActivityAttributes.swift in Sources */,
 				48581DCD3065254370E583FE /* ConversationRepository.swift in Sources */,
 				B01CFF6ED6A68A558D3CB3FA /* CredentialStore.swift in Sources */,
 				803BD71F77F13C6ED1BD96F0 /* Diagnostics.swift in Sources */,
 				D60072509CB892EDD6D1F83A /* DiagramCraftSkill.swift in Sources */,
 				245B149ADCD9AF4513964DAD /* Exporters.swift in Sources */,
 				66C73CF757CE8A01BCA2C2C7 /* GinnyApp.swift in Sources */,
+				41A083C1D8A7F8A3D9209B12 /* GinnyLiveActivityAttributes.swift in Sources */,
 				D9BEB6E6A505D06E41A6B43D /* Glass.swift in Sources */,
 				78ECC8D8DE069DCB2EDC7B87 /* Identifiers.swift in Sources */,
+				A73C9120BAB279E20F283C21 /* LiveActivityController.swift in Sources */,
 				41D19214FF2E191CE77F83A1 /* ModelCatalog.swift in Sources */,
 				92B12C300FAF9C2E0E3485B3 /* OpenAICompatibleAdapter.swift in Sources */,
 				1460F8A2A269DAAA4905B4B6 /* Provider.swift in Sources */,
@@ -687,27 +592,9 @@
 				586A6E3717047F4B33BFDB71 /* StreamingTransport.swift in Sources */,
 				24C1EBB267687B9B38781BB8 /* Theme.swift in Sources */,
 				5CB9D914FFB636615F434EC6 /* ToolRegistry.swift in Sources */,
-				A20000000000000000000001 /* WebSearchTools.swift in Sources */,
-				A20000000000000000000002 /* WebSearch.swift in Sources */,
-				A20000000000000000000003 /* CitationRepository.swift in Sources */,
-				A20000000000000000000004 /* ContextRepository.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D10000000000000000000001 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A10000000000000000000003 /* GinnyLiveActivityAttributes.swift in Sources */,
-				A10000000000000000000004 /* GinnyLiveActivityWidget.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F50000000000000000000001 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F20000000000000000000001 /* GinnyUITests.swift in Sources */,
+				51717BA1028B232869E778BA /* WebSearch.swift in Sources */,
+				ADF8715A9B4FA05AAB353996 /* WebSearchTools.swift in Sources */,
+				445BE946D7E85555FD806A8F /* WorkspaceSearchView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -718,16 +605,6 @@
 			isa = PBXTargetDependency;
 			target = 0AEBED158889DE2A3984B81A /* Ginny */;
 			targetProxy = 07D610BA248542447DCC26AB /* PBXContainerItemProxy */;
-		};
-		D10000000000000000000006 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = E10000000000000000000001 /* GinnyLiveActivity */;
-			targetProxy = 110000000000000000000001 /* PBXContainerItemProxy */;
-		};
-		F90000000000000000000002 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 0AEBED158889DE2A3984B81A /* Ginny */;
-			targetProxy = F90000000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -921,76 +798,6 @@
 			};
 			name = Release;
 		};
-		F10000000000000000000001 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = P2B3GABB6H;
-				INFOPLIST_FILE = GinnyLiveActivity/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.liveactivity;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		F10000000000000000000002 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = P2B3GABB6H;
-				INFOPLIST_FILE = GinnyLiveActivity/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.liveactivity;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		F80000000000000000000001 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = P2B3GABB6H;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.uitests;
-				SDKROOT = iphoneos;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Ginny;
-			};
-			name = Debug;
-		};
-		F80000000000000000000002 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = P2B3GABB6H;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fm.teal.ginny.uitests;
-				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Ginny;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1021,24 +828,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		F10000000000000000000003 /* Build configuration list for PBXNativeTarget "GinnyLiveActivity" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F10000000000000000000001 /* Debug */,
-				F10000000000000000000002 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		F70000000000000000000001 /* Build configuration list for PBXNativeTarget "GinnyUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F80000000000000000000001 /* Debug */,
-				F80000000000000000000002 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -1050,23 +839,7 @@
 				kind = branch;
 			};
 		};
-		A70000000000000000000003 /* XCRemoteSwiftPackageReference "swift-atproto" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/nnabeyang/swift-atproto.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.42.2;
-			};
-		};
-		A60000000000000000000003 /* XCRemoteSwiftPackageReference "AtprotoOAuth" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/germ-network/AtprotoOAuth.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.5.11;
-			};
-		};
-		A60000000000000000000006 /* XCRemoteSwiftPackageReference "AtprotoClient" */ = {
+		0DCB67B6B95CEC680545DF70 /* XCRemoteSwiftPackageReference "AtprotoClient" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/germ-network/AtprotoClient.git";
 			requirement = {
@@ -1074,23 +847,15 @@
 				minimumVersion = 0.6.0;
 			};
 		};
-		A60000000000000000000009 /* XCRemoteSwiftPackageReference "AtprotoTypes" */ = {
+		117E0E71EC4550BCA4B73B5F /* XCRemoteSwiftPackageReference "AtprotoOAuth" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/germ-network/AtprotoTypes.git";
+			repositoryURL = "https://github.com/germ-network/AtprotoOAuth.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.4.6;
+				minimumVersion = 0.5.11;
 			};
 		};
-		A6000000000000000000000C /* XCRemoteSwiftPackageReference "GermConvenience" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/germ-network/GermConvenience.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.2.4;
-			};
-		};
-		A6000000000000000000000F /* XCRemoteSwiftPackageReference "oauth4swift" */ = {
+		5C053614B4D438CA0C5622D5 /* XCRemoteSwiftPackageReference "oauth4swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/germ-network/oauth4swift.git";
 			requirement = {
@@ -1098,43 +863,67 @@
 				minimumVersion = 0.5.0;
 			};
 		};
+		888A99DF700B0A7AF258BAAE /* XCRemoteSwiftPackageReference "swift-atproto" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nnabeyang/swift-atproto.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.42.2;
+			};
+		};
+		D00FC355078BA31ED7C869E6 /* XCRemoteSwiftPackageReference "AtprotoTypes" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/germ-network/AtprotoTypes.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.4.6;
+			};
+		};
+		D41ED9CBAEE6630E41A20773 /* XCRemoteSwiftPackageReference "GermConvenience" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/germ-network/GermConvenience.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.4;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		A70000000000000000000002 /* SwiftAtproto */ = {
+		0C2B50492388AAAFD8B9BB36 /* AtprotoTypes */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A70000000000000000000003 /* XCRemoteSwiftPackageReference "swift-atproto" */;
-			productName = SwiftAtproto;
-		};
-		A60000000000000000000002 /* AtprotoOAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A60000000000000000000003 /* XCRemoteSwiftPackageReference "AtprotoOAuth" */;
-			productName = AtprotoOAuth;
-		};
-		A60000000000000000000005 /* AtprotoClient */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A60000000000000000000006 /* XCRemoteSwiftPackageReference "AtprotoClient" */;
-			productName = AtprotoClient;
-		};
-		A60000000000000000000008 /* AtprotoTypes */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A60000000000000000000009 /* XCRemoteSwiftPackageReference "AtprotoTypes" */;
+			package = D00FC355078BA31ED7C869E6 /* XCRemoteSwiftPackageReference "AtprotoTypes" */;
 			productName = AtprotoTypes;
 		};
-		A6000000000000000000000B /* GermConvenience */ = {
+		0FB4E45F7FEC426C94BDFC28 /* AtprotoOAuth */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A6000000000000000000000C /* XCRemoteSwiftPackageReference "GermConvenience" */;
+			package = 117E0E71EC4550BCA4B73B5F /* XCRemoteSwiftPackageReference "AtprotoOAuth" */;
+			productName = AtprotoOAuth;
+		};
+		120DA9AE37878ACADC05C5D5 /* GermConvenience */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D41ED9CBAEE6630E41A20773 /* XCRemoteSwiftPackageReference "GermConvenience" */;
 			productName = GermConvenience;
 		};
-		A6000000000000000000000E /* OAuth4Swift */ = {
+		772EA495CDA0A7CEE0C18871 /* OAuth4Swift */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A6000000000000000000000F /* XCRemoteSwiftPackageReference "oauth4swift" */;
+			package = 5C053614B4D438CA0C5622D5 /* XCRemoteSwiftPackageReference "oauth4swift" */;
 			productName = OAuth4Swift;
+		};
+		B8290BA911DA96E5511DE33C /* SwiftAtproto */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 888A99DF700B0A7AF258BAAE /* XCRemoteSwiftPackageReference "swift-atproto" */;
+			productName = SwiftAtproto;
 		};
 		BF8D6C77705725ED96320C4C /* SwiftStreamingMarkdown */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 05FDBFA513F800E81A112DA8 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */;
 			productName = SwiftStreamingMarkdown;
+		};
+		EAD9B18FB2D76DA923939243 /* AtprotoClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0DCB67B6B95CEC680545DF70 /* XCRemoteSwiftPackageReference "AtprotoClient" */;
+			productName = AtprotoClient;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

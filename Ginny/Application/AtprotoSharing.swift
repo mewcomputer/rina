@@ -266,19 +266,22 @@ enum AtprotoSnapshotBuilder {
                         attributes: block.attributes
                     )
                 }
-                guard !blocks.isEmpty || !message.providerContinuations.isEmpty else {
+                let shareableContinuations = message.providerContinuations.filter {
+                    !$0.shareableFields.isEmpty
+                }
+                guard !blocks.isEmpty || !shareableContinuations.isEmpty else {
                     return nil
                 }
                 return RinaRecordMessage(
                     id: message.id.rawValue.rawValue,
                     role: message.role,
                     blocks: blocks,
-                    providerContinuations: message.providerContinuations.map {
+                    providerContinuations: shareableContinuations.map {
                         RinaRecordContinuation(
                             provider: $0.provider.rawValue,
                             id: $0.id,
                             kind: $0.kind,
-                            fields: $0.fields
+                            fields: $0.shareableFields
                         )
                     },
                     createdAt: timestamp(message.createdAt)

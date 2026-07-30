@@ -17,6 +17,7 @@ struct AppDependencies: Sendable {
     let localDataResetter: LocalDataResetter
     let atprotoAuth: AtprotoAuthService
     let atprotoSharing: AtprotoSharingService
+    let codexOAuth: CodexOAuthService
 
     init(
         credentialStore: any CredentialStore,
@@ -32,7 +33,8 @@ struct AppDependencies: Sendable {
         contextRepository: ContextRepository? = nil,
         localDataResetter: LocalDataResetter? = nil,
         atprotoAuth: AtprotoAuthService = AtprotoAuthService(),
-        atprotoSharing: AtprotoSharingService? = nil
+        atprotoSharing: AtprotoSharingService? = nil,
+        codexOAuth: CodexOAuthService? = nil
     ) {
         self.credentialStore = credentialStore
         self.transport = transport
@@ -52,6 +54,7 @@ struct AppDependencies: Sendable {
         )
         self.atprotoAuth = atprotoAuth
         self.atprotoSharing = atprotoSharing ?? AtprotoSharingService(authService: atprotoAuth)
+        self.codexOAuth = codexOAuth ?? CodexOAuthService(credentialStore: credentialStore)
     }
 
     static func makeLive() throws -> AppDependencies {
@@ -175,6 +178,12 @@ struct AppDependencies: Sendable {
             OpenAICompatibleAdapter(
                 configuration: configuration,
                 credentialStore: credentialStore,
+                transport: transport
+            )
+        case .codex:
+            CodexResponsesAdapter(
+                configuration: configuration,
+                oauthService: codexOAuth,
                 transport: transport
             )
         }

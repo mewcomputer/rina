@@ -282,17 +282,23 @@ final class ChatSession: ObservableObject {
                 case .replace:
                     assistant.providerContinuations[index].fields[delta.field] = delta.value
                 }
+                if delta.isPrivate {
+                    assistant.providerContinuations[index].privateFields.insert(delta.field)
+                } else {
+                    assistant.providerContinuations[index].privateFields.remove(delta.field)
+                }
             } else {
                 assistant.providerContinuations.append(
                     ProviderContinuation(
                         provider: delta.provider,
                         id: delta.id,
                         kind: delta.kind,
-                        fields: [delta.field: delta.value]
+                        fields: [delta.field: delta.value],
+                        privateFields: delta.isPrivate ? [delta.field] : []
                     )
                 )
             }
-            if delta.field == "thinking" || delta.field == "text" {
+            if !delta.isPrivate, (delta.field == "thinking" || delta.field == "text") {
                 switch delta.operation {
                 case .append:
                     streamingReasoningText += delta.value
@@ -624,7 +630,9 @@ final class ChatSession: ObservableObject {
             .artefactReference(
                 artefactID: artefactID,
                 revisionID: revisionID,
-                presentation: details.kind.defaultReferencePresentation
+                presentation: details.displayImmediately
+                    ? .inline
+                    : details.kind.defaultReferencePresentation
             )
         )
         try conversation.updateMessage(assistant)

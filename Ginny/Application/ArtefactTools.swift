@@ -228,7 +228,7 @@ struct CreateArtefactTool: GinnyTool {
     var definition: ProviderToolDefinition {
         ProviderToolDefinition(
             name: "create_artefact",
-            description: "Creates and persists a new durable artefact with its first immutable revision. Choose inlineWeb for a compact visual embedded in chat; choose web for a standalone game, simulation, editor, dashboard, map, or rich interactive experience. Before creating a web or inlineWeb artefact, call read_skill with the relevant frontend skill and follow its instructions.",
+            description: "Creates and persists a new durable artefact with its first immutable revision. Choose inlineWeb for a compact visual embedded in chat; choose web for a standalone game, simulation, editor, dashboard, map, or rich interactive experience. Before creating a web or inlineWeb artefact, call discover_skills, then read_skill with ginny.frontend-design or ginny.diagram-craft as relevant, and follow its instructions.",
             inputSchema: .object(
                 properties: artefactWriteSchemaProperties,
                 required: ["title", "kind", "source"]

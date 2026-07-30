@@ -51,17 +51,6 @@
                ReferencedContainer = "container:Ginny.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F60000000000000000000001"
-               BuildableName = "GinnyUITests.xctest"
-               BlueprintName = "GinnyUITests"
-               ReferencedContainer = "container:Ginny.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

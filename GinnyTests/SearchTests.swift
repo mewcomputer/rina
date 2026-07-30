@@ -127,6 +127,45 @@ final class SearchTests: XCTestCase {
         XCTAssertEqual(decoded, response)
     }
 
+    func testSearchWebToolDecodesCodexWikipediaArguments() async throws {
+        let recorder = SearchRequestRecorder()
+        let tool = SearchWebTool(
+            service: RecordingWebSearchService(
+                recorder: recorder,
+                response: WebSearchResponse(
+                    query: "\"turrffabrikant\" \"Jan van Speijk\"",
+                    provider: .tavily,
+                    answer: "A result.",
+                    results: []
+                )
+            )
+        )
+
+        let output = try await tool.execute(arguments: """
+        {"include_domains":["nl.wikipedia.org","en.wikipedia.org"],"exclude_domains":[],"include_answer":true,"max_results":5,"recency":"year","query":"\\"turrffabrikant\\" \\"Jan van Speijk\\""}
+        """)
+
+        XCTAssertFalse(output.isEmpty)
+        let request = try await recorder.webSearchRequest()
+        XCTAssertEqual(request.query, "\"turrffabrikant\" \"Jan van Speijk\"")
+        XCTAssertEqual(request.maxResults, 5)
+        XCTAssertEqual(request.includeDomains, ["nl.wikipedia.org", "en.wikipedia.org"])
+        XCTAssertEqual(request.excludeDomains, [])
+        XCTAssertEqual(request.recency, .year)
+        XCTAssertTrue(request.includeAnswer)
+    }
+
+    func testToolExecutionErrorsExposeTheirActionableMessage() {
+        XCTAssertEqual(
+            ToolExecutionError.invalidArguments("search_web arguments were not valid JSON.").errorDescription,
+            "search_web arguments were not valid JSON."
+        )
+        XCTAssertEqual(
+            ToolExecutionError.unknownTool("search_web").errorDescription,
+            "Unknown tool: search_web."
+        )
+    }
+
     func testSearchWorkspaceToolReturnsLocalResultsWithoutApproval() async throws {
         let citation = Citation.from(
             WebSearchResult(
@@ -329,9 +368,14 @@ final class SearchTests: XCTestCase {
 
 private actor SearchRequestRecorder {
     private var recordedRequest: URLRequest?
+    private var recordedWebSearchRequest: WebSearchRequest?
 
     func record(_ request: URLRequest) {
         recordedRequest = request
+    }
+
+    func record(_ request: WebSearchRequest) {
+        recordedWebSearchRequest = request
     }
 
     func request() throws -> URLRequest {
@@ -339,6 +383,13 @@ private actor SearchRequestRecorder {
             throw NSError(domain: "SearchTests", code: 1)
         }
         return recordedRequest
+    }
+
+    func webSearchRequest() throws -> WebSearchRequest {
+        guard let recordedWebSearchRequest else {
+            throw NSError(domain: "SearchTests", code: 2)
+        }
+        return recordedWebSearchRequest
     }
 }
 
@@ -357,5 +408,15 @@ private struct StubWebSearchService: WebSearchProviding {
 
     func search(_ request: WebSearchRequest) async throws -> WebSearchResponse {
         response
+    }
+}
+
+private struct RecordingWebSearchService: WebSearchProviding {
+    let recorder: SearchRequestRecorder
+    let response: WebSearchResponse
+
+    func search(_ request: WebSearchRequest) async throws -> WebSearchResponse {
+        await recorder.record(request)
+        return response
     }
 }

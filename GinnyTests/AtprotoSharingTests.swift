@@ -8,7 +8,7 @@ final class AtprotoSharingTests: XCTestCase {
         XCTAssertThrowsError(try RinaRecordKey(string: "3jv3l5k7w20bc"))
     }
 
-    func testConversationSnapshotPublishesToolActivityAndThinkingTrace() throws {
+    func testConversationSnapshotPublishesToolActivityAndVisibleThinkingButNotPrivateState() throws {
         var conversation = Conversation(title: "Web accessibility")
         try conversation.appendMessage(.user("Can you review this page?"))
         try conversation.appendMessage(
@@ -24,7 +24,11 @@ final class AtprotoSharingTests: XCTestCase {
                         provider: .umans,
                         id: "reasoning-1",
                         kind: "reasoning",
-                        fields: ["thinking": "private reasoning"]
+                        fields: [
+                            "thinking": "visible summary",
+                            "signature": "private signature"
+                        ],
+                        privateFields: ["signature"]
                     )
                 ]
             )
@@ -45,7 +49,8 @@ final class AtprotoSharingTests: XCTestCase {
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         XCTAssertTrue(object["createdAt"] is String)
         XCTAssertTrue(object["updatedAt"] is String)
-        XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("private reasoning"))
+        XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("visible summary"))
+        XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("private signature"))
         XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("private tool output"))
     }
 

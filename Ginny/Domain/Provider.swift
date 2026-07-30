@@ -5,6 +5,7 @@ enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
     case kimi
     case kimiCode
     case openAICompatible
+    case codex
 
     var displayName: String {
         switch self {
@@ -16,6 +17,8 @@ enum ProviderID: String, CaseIterable, Codable, Equatable, Sendable {
             "Kimi Code"
         case .openAICompatible:
             "OpenAI-compatible"
+        case .codex:
+            "Codex"
         }
     }
 }
@@ -26,7 +29,9 @@ enum ThinkingLevel: String, CaseIterable, Codable, Equatable, Hashable, Sendable
     case low
     case medium
     case high
+    case xhigh
     case max
+    case ultra
 
     var displayName: String {
         rawValue.capitalized
@@ -45,6 +50,60 @@ struct ProviderContinuation: Codable, Equatable, Sendable {
     let id: String
     let kind: String
     var fields: [String: String]
+    var privateFields: Set<String>
+
+    init(
+        provider: ProviderID,
+        id: String,
+        kind: String,
+        fields: [String: String],
+        privateFields: Set<String> = []
+    ) {
+        self.provider = provider
+        self.id = id
+        self.kind = kind
+        self.fields = fields
+        self.privateFields = privateFields
+    }
+
+    init(provider: ProviderID, id: String, kind: String, fields: [String: String]) {
+        self.init(
+            provider: provider,
+            id: id,
+            kind: kind,
+            fields: fields,
+            privateFields: []
+        )
+    }
+
+    var shareableFields: [String: String] {
+        fields.filter { !privateFields.contains($0.key) }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case provider
+        case id
+        case kind
+        case fields
+        case privateFields
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try container.decode(ProviderID.self, forKey: .provider)
+        id = try container.decode(String.self, forKey: .id)
+        kind = try container.decode(String.self, forKey: .kind)
+        fields = try container.decode([String: String].self, forKey: .fields)
+        let decodedPrivateFields = try container.decodeIfPresent(Set<String>.self, forKey: .privateFields)
+        privateFields = decodedPrivateFields ?? Set(fields.keys.filter(Self.defaultPrivateFieldNames.contains))
+    }
+
+    private static let defaultPrivateFieldNames: Set<String> = [
+        "data",
+        "encrypted_content",
+        "model",
+        "signature",
+    ]
 }
 
 struct ProviderContinuationDelta: Equatable, Sendable {
@@ -59,6 +118,44 @@ struct ProviderContinuationDelta: Equatable, Sendable {
     let field: String
     let value: String
     let operation: Operation
+    let isPrivate: Bool
+
+    init(
+        provider: ProviderID,
+        id: String,
+        kind: String,
+        field: String,
+        value: String,
+        operation: Operation,
+        isPrivate: Bool = false
+    ) {
+        self.provider = provider
+        self.id = id
+        self.kind = kind
+        self.field = field
+        self.value = value
+        self.operation = operation
+        self.isPrivate = isPrivate
+    }
+
+    init(
+        provider: ProviderID,
+        id: String,
+        kind: String,
+        field: String,
+        value: String,
+        operation: Operation
+    ) {
+        self.init(
+            provider: provider,
+            id: id,
+            kind: kind,
+            field: field,
+            value: value,
+            operation: operation,
+            isPrivate: false
+        )
+    }
 }
 
 enum JSONSchemaType: String, Codable, Equatable, Sendable {

@@ -49,7 +49,8 @@ struct ChatView: View {
         _settings = StateObject(
             wrappedValue: ProviderSettings(
                 credentialStore: dependencies.credentialStore,
-                modelCatalog: dependencies.modelCatalog
+                modelCatalog: dependencies.modelCatalog,
+                codexOAuth: dependencies.codexOAuth
             )
         )
         _history = StateObject(
@@ -352,6 +353,23 @@ struct ChatView: View {
                         .ignoresSafeArea(edges: .top)
                     }
                     .zIndex(1)
+
+                    if let persistenceErrorMessage {
+                        Text("Workspace data could not be saved: \(persistenceErrorMessage)")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(theme.color("text.error"))
+                            .frame(maxWidth: 760, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .ginnyGlass(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous),
+                                prominence: .subtle
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.top, 78)
+                            .frame(maxWidth: .infinity, alignment: .top)
+                            .zIndex(2)
+                    }
                 }
                 .frame(maxHeight: .infinity)
 
@@ -399,6 +417,13 @@ struct ChatView: View {
         return history.title(for: session.conversation)
     }
 
+    private var persistenceErrorMessage: String? {
+        session.persistenceError
+            ?? history.persistenceError
+            ?? artefacts.persistenceError
+            ?? contextStore.persistenceError
+    }
+
     private var displayedMessages: [Message] {
         guard activeResponse != nil,
               let lastMessage = session.conversation.messages.last,
@@ -437,7 +462,7 @@ struct ChatView: View {
         }
         return lastMessage.providerContinuations
             .filter { $0.kind == "reasoning" }
-            .compactMap { $0.fields["thinking"] ?? $0.fields["text"] }
+            .compactMap { $0.shareableFields["thinking"] ?? $0.shareableFields["text"] }
             .joined()
     }
 
@@ -1686,13 +1711,16 @@ private struct ChatMessageView: View {
     }
 
     private var hasReasoning: Bool {
-        message.providerContinuations.contains { $0.kind == "reasoning" }
+        message.providerContinuations.contains {
+            $0.kind == "reasoning"
+                && (!$0.shareableFields.isEmpty || $0.fields["data"] != nil)
+        }
     }
 
     private var reasoningText: String {
         message.providerContinuations
             .filter { $0.kind == "reasoning" }
-            .compactMap { $0.fields["thinking"] ?? $0.fields["text"] }
+            .compactMap { $0.shareableFields["thinking"] ?? $0.shareableFields["text"] }
             .joined()
     }
 
@@ -2261,6 +2289,8 @@ private struct SettingsNavigationRow: View {
 private struct ProviderConfigurationSettingsView: View {
     @ObservedObject var settings: ProviderSettings
     @Environment(\.ginnyTheme) private var theme
+    @State private var isAuthenticatingCodex = false
+    @State private var codexAuthMessage: String?
 
     var body: some View {
         Form {
@@ -2272,6 +2302,7 @@ private struct ProviderConfigurationSettingsView: View {
                 }
                 .onChange(of: settings.provider) { _, provider in
                     settings.selectProvider(provider)
+                    Task { await settings.refreshModels() }
                 }
 
                 TextField("Base URL", text: $settings.endpointText)
@@ -2281,7 +2312,7 @@ private struct ProviderConfigurationSettingsView: View {
             }
 
             Section("Model") {
-                if settings.provider == .umans, !settings.availableModels.isEmpty {
+                if !settings.availableModels.isEmpty {
                     Picker("Model", selection: $settings.modelText) {
                         ForEach(settings.availableModels) { model in
                             Text(model.displayName).tag(model.id)
@@ -2296,7 +2327,7 @@ private struct ProviderConfigurationSettingsView: View {
                         .autocorrectionDisabled()
                 }
 
-                if settings.provider == .umans {
+                if settings.provider != .kimiCode {
                     HStack {
                         if settings.isLoadingModels {
                             ThinkingIndicator(isAnimating: true)
@@ -2310,13 +2341,52 @@ private struct ProviderConfigurationSettingsView: View {
             }
 
             Section("Credential") {
-                SecureField("API key", text: $settings.credentialText)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+                if settings.provider == .codex {
+                    HStack {
+                        Label(
+                            settings.isCodexSignedIn ? "ChatGPT connected" : "ChatGPT not connected",
+                            systemImage: settings.isCodexSignedIn
+                                ? "checkmark.circle.fill"
+                                : "person.crop.circle.badge.exclamationmark"
+                        )
+                        .foregroundStyle(
+                            settings.isCodexSignedIn
+                                ? theme.color("primary")
+                                : theme.color("text.muted")
+                        )
+                        Spacer()
+                        if isAuthenticatingCodex {
+                            ProgressView()
+                        } else if settings.isCodexSignedIn {
+                            Button("Sign out") {
+                                Task { await settings.signOutOfCodex() }
+                            }
+                        } else {
+                            Button("Sign in with ChatGPT") {
+                                signInToCodex()
+                            }
+                        }
+                    }
 
-                Text("The key is stored in the system Keychain and is only attached when a request is sent.")
-                    .font(.footnote)
-                    .foregroundStyle(theme.color("text.muted"))
+                    Text("Codex uses the ChatGPT account flow. Its session is stored in the system Keychain.")
+                        .font(.footnote)
+                        .foregroundStyle(theme.color("text.muted"))
+                } else {
+                    SecureField("API key", text: $settings.credentialText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                    Text("The key is stored in the system Keychain and is only attached when a request is sent.")
+                        .font(.footnote)
+                        .foregroundStyle(theme.color("text.muted"))
+                }
+            }
+
+            if let codexAuthMessage {
+                Section {
+                    Text(codexAuthMessage)
+                        .foregroundStyle(theme.color("text.error"))
+                }
             }
 
             if let validationMessage = settings.validationMessage {
@@ -2336,6 +2406,19 @@ private struct ProviderConfigurationSettingsView: View {
         .scrollContentBackground(.hidden)
         .background(theme.color("background"))
         .navigationTitle("Provider and models")
+    }
+
+    private func signInToCodex() {
+        isAuthenticatingCodex = true
+        codexAuthMessage = nil
+        Task {
+            do {
+                try await settings.signInToCodex()
+            } catch {
+                codexAuthMessage = error.localizedDescription
+            }
+            isAuthenticatingCodex = false
+        }
     }
 }
 
