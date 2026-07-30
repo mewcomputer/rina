@@ -58,6 +58,11 @@ final class ArtefactTests: XCTestCase {
         XCTAssertEqual(decoded.metadata["styling"], "tailwind")
     }
 
+    func testWebArtefactsUseCardsWhileInlineWebUsesInlinePresentation() {
+        XCTAssertEqual(ArtefactKind.web.defaultReferencePresentation, .card)
+        XCTAssertEqual(ArtefactKind.inlineWeb.defaultReferencePresentation, .inline)
+    }
+
     func testWebPreviewInjectsShadcnTokensAndTailwindRuntime() {
         let document = WebArtefactPreview.document(
             for: "<html><head><title>Preview</title></head><body><button class=\"bg-primary text-primary-foreground rounded-lg\">Save</button></body></html>",
@@ -146,10 +151,6 @@ final class ArtefactTests: XCTestCase {
         )
 
         XCTAssertTrue(document.contains("connect-src https:;"))
-    }
-
-    func testInlineWebPreviewHasAUsableScrollableHeightCap() {
-        XCTAssertEqual(WebArtefactPreview.maxInlineHeight, 520)
     }
 
     func testWebPreviewViewUsesDeclaredNetworkOrigins() {

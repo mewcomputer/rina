@@ -5,6 +5,10 @@ enum ArtefactKind: String, Codable, CaseIterable, Equatable, Hashable, Sendable 
     case code
     case web
     case inlineWeb
+
+    var defaultReferencePresentation: ArtefactReferencePresentation {
+        self == .inlineWeb ? .inline : .card
+    }
 }
 
 enum ArtefactError: Error, Equatable, Sendable {

@@ -228,7 +228,7 @@ struct CreateArtefactTool: GinnyTool {
     var definition: ProviderToolDefinition {
         ProviderToolDefinition(
             name: "create_artefact",
-            description: "Creates and persists a new durable artefact with its first immutable revision. Before creating an inlineWeb artefact, always call read_skill with id ginny.diagram-craft and follow its instructions.",
+            description: "Creates and persists a new durable artefact with its first immutable revision. Choose inlineWeb for a compact visual embedded in chat; choose web for a standalone game, simulation, editor, dashboard, map, or rich interactive experience. Before creating a web or inlineWeb artefact, call read_skill with the relevant frontend skill and follow its instructions.",
             inputSchema: .object(
                 properties: artefactWriteSchemaProperties,
                 required: ["title", "kind", "source"]
@@ -324,7 +324,7 @@ struct DisplayArtefactTool: GinnyTool {
     var definition: ProviderToolDefinition {
         ProviderToolDefinition(
             name: "display_artefact",
-            description: "Displays an existing artefact inline in the current conversation. Use this when the user should see a durable document or code artefact now.",
+            description: "Surfaces an existing artefact in the current conversation. InlineWeb artefacts appear inline; web artefacts appear as a launch card that opens the full interactive surface; documents and code appear as compact cards.",
             inputSchema: .object(
                 properties: [
                     "id": JSONSchema(type: .string),

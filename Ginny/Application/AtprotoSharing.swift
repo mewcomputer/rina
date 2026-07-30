@@ -90,6 +90,22 @@ struct RinaArtefactReference: Codable, Equatable, Sendable {
     let uri: String
 }
 
+struct RinaGenerationMetadata: Codable, Equatable, Sendable {
+    let provider: String?
+    let model: String?
+    let thinkingLevel: String?
+
+    init(
+        provider: String? = nil,
+        model: String? = nil,
+        thinkingLevel: String? = nil
+    ) {
+        self.provider = provider
+        self.model = model
+        self.thinkingLevel = thinkingLevel
+    }
+}
+
 struct RinaConversationSnapshot: Codable, Equatable, Sendable {
     static let schemaVersion = 1
 
@@ -97,6 +113,7 @@ struct RinaConversationSnapshot: Codable, Equatable, Sendable {
     let title: String
     let createdAt: String
     let updatedAt: String
+    let generation: RinaGenerationMetadata?
     let messages: [RinaRecordMessage]
     let artefacts: [RinaArtefactReference]
 
@@ -105,6 +122,7 @@ struct RinaConversationSnapshot: Codable, Equatable, Sendable {
         title: String,
         createdAt: String,
         updatedAt: String,
+        generation: RinaGenerationMetadata? = nil,
         messages: [RinaRecordMessage],
         artefacts: [RinaArtefactReference] = []
     ) {
@@ -112,6 +130,7 @@ struct RinaConversationSnapshot: Codable, Equatable, Sendable {
         self.title = title
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.generation = generation
         self.messages = messages
         self.artefacts = artefacts
     }
@@ -121,6 +140,7 @@ struct RinaConversationSnapshot: Codable, Equatable, Sendable {
         case title
         case createdAt
         case updatedAt
+        case generation
         case messages
         case artefacts
     }
@@ -131,6 +151,7 @@ struct RinaConversationSnapshot: Codable, Equatable, Sendable {
         title = try container.decode(String.self, forKey: .title)
         createdAt = try container.decode(String.self, forKey: .createdAt)
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
+        generation = try container.decodeIfPresent(RinaGenerationMetadata.self, forKey: .generation)
         messages = try container.decode([RinaRecordMessage].self, forKey: .messages)
         artefacts = try container.decodeIfPresent(
             [RinaArtefactReference].self,
@@ -227,6 +248,7 @@ enum AtprotoSnapshotBuilder {
     static func conversation(
         _ conversation: Conversation,
         artefactReferences: [RinaArtefactReference] = [],
+        generation: RinaGenerationMetadata? = nil,
         now: Date = Date()
     ) -> RinaConversationSnapshot {
         RinaConversationSnapshot(
@@ -234,6 +256,7 @@ enum AtprotoSnapshotBuilder {
             title: conversation.title ?? "Untitled conversation",
             createdAt: timestamp(conversation.createdAt),
             updatedAt: timestamp(now),
+            generation: generation,
             messages: conversation.messages.compactMap { message in
                 let blocks = message.blocks.map { block in
                     RinaRecordBlock(

@@ -90,11 +90,12 @@ export class AtprotoShareClient {
     const referencedSnapshots = await Promise.all(
       snapshot.artefactReferences.map((reference) => this.fetchRecord(reference.uri)),
     )
-    const artefacts = referencedSnapshots.flatMap((referenced) => {
+    const artefacts = referencedSnapshots.flatMap((referenced, index) => {
       if (referenced.kind !== 'artefact') {
         throw new AtprotoShareError('Referenced record is not an artefact.')
       }
-      return referenced.artefacts
+      const uri = snapshot.artefactReferences[index]?.uri
+      return referenced.artefacts.map((artefact) => ({ ...artefact, uri }))
     })
 
     return { ...snapshot, artefacts }

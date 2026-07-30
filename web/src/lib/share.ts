@@ -40,6 +40,12 @@ export type ShareProviderContinuation = {
   fields: Record<string, string>
 }
 
+export type ShareGenerationMetadata = {
+  provider?: string
+  model?: string
+  thinkingLevel?: string
+}
+
 export type ShareMessage = {
   id?: string
   role: 'user' | 'assistant' | 'system' | 'tool'
@@ -51,6 +57,7 @@ export type ShareMessage = {
 export type ShareArtefact = {
   id?: string
   revisionID?: string
+  uri?: string
   title: string
   kind: 'document' | 'code' | 'web' | 'inlineWeb'
   source: string
@@ -81,10 +88,22 @@ export type ShareSnapshot = {
   title: string
   createdAt: string
   kind: ShareKind
+  generation?: ShareGenerationMetadata
   messages: ShareMessage[]
   artefacts: ShareArtefact[]
   artefactReferences: ShareArtefactReference[]
   relationships: ShareRelationship[]
+}
+
+export function referencedArtefactIDs(messages: ShareMessage[]) {
+  return new Set(
+    messages.flatMap((message) =>
+      message.blocks
+        .filter((block) => block.kind === 'artefactReference')
+        .map((block) => block.attributes.artefactID)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  )
 }
 
 export type ShareReference = {
@@ -210,6 +229,7 @@ export function parseShareRecord(
     title,
     createdAt,
     kind,
+    generation: parseGenerationMetadata(snapshot.generation),
     messages: parseMessages(snapshot.messages),
     artefacts: parseArtefacts(snapshot.artefacts),
     artefactReferences: [],
@@ -232,10 +252,26 @@ function parseConversationRecord(record: Record<string, unknown>): ShareSnapshot
     title: requiredString(snapshot.title, 'snapshot.title', MAX_TITLE_LENGTH),
     createdAt: requiredDate(snapshot.createdAt, 'snapshot.createdAt'),
     kind: 'conversation',
+    generation: parseGenerationMetadata(snapshot.generation),
     messages: parseMessages(snapshot.messages),
     artefacts: [],
     artefactReferences: parseArtefactReferences(snapshot.artefacts),
     relationships: [],
+  }
+}
+
+function parseGenerationMetadata(
+  input: unknown,
+): ShareGenerationMetadata | undefined {
+  if (input === undefined) return undefined
+  const metadata = asRecord(input, 'snapshot.generation')
+  return {
+    provider: optionalString(metadata.provider, 'snapshot.generation.provider'),
+    model: optionalString(metadata.model, 'snapshot.generation.model'),
+    thinkingLevel: optionalString(
+      metadata.thinkingLevel,
+      'snapshot.generation.thinkingLevel',
+    ),
   }
 }
 

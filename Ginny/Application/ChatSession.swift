@@ -93,9 +93,7 @@ final class ChatSession: ObservableObject {
             return
         }
 
-        let presentation: ArtefactReferencePresentation = artefact.kind == .inlineWeb
-            ? .inline
-            : .card
+        let presentation = artefact.kind.defaultReferencePresentation
         message.blocks.append(
             .artefactReference(
                 artefactID: artefact.id,
@@ -626,7 +624,7 @@ final class ChatSession: ObservableObject {
             .artefactReference(
                 artefactID: artefactID,
                 revisionID: revisionID,
-                presentation: .inline
+                presentation: details.kind.defaultReferencePresentation
             )
         )
         try conversation.updateMessage(assistant)

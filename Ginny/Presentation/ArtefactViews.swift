@@ -835,8 +835,6 @@ private struct SkillEditorView: View {
 }
 
 struct WebArtefactPreview: UIViewRepresentable {
-    static let maxInlineHeight: CGFloat = 520
-
     let html: String
     let isInline: Bool
     let networkOrigins: [String]
@@ -874,7 +872,7 @@ struct WebArtefactPreview: UIViewRepresentable {
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
-        view.scrollView.isScrollEnabled = true
+        view.scrollView.isScrollEnabled = !isInline
         view.navigationDelegate = context.coordinator
         return view
     }
@@ -992,7 +990,7 @@ struct WebArtefactPreview: UIViewRepresentable {
         let rootVariables = variables.keys.sorted().map { key in
             "--\(key): \(variables[key]!);"
         }.joined(separator: "\n                    ")
-        let bodyPadding = isInline ? "16px" : "20px"
+        let bodyPadding = isInline ? "12px" : "20px"
 
         return """
             :root {

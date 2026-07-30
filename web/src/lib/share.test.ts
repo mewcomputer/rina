@@ -6,6 +6,7 @@ import {
   ShareParseError,
   parseAtUri,
   parseShareRecord,
+  referencedArtefactIDs,
 } from './share'
 
 const validRecord = {
@@ -71,6 +72,11 @@ describe('parseShareRecord', () => {
             title: 'Accessible card review',
             createdAt: '2026-07-29T18:00:00.000Z',
             updatedAt: '2026-07-29T18:01:00.000Z',
+            generation: {
+              provider: 'Umans',
+              model: 'umans-coder',
+              thinkingLevel: 'high',
+            },
             messages: [
               {
                 id: 'message-1',
@@ -107,6 +113,11 @@ describe('parseShareRecord', () => {
     ).toMatchObject({
       title: 'Accessible card review',
       kind: 'conversation',
+      generation: {
+        provider: 'Umans',
+        model: 'umans-coder',
+        thinkingLevel: 'high',
+      },
       messages: [
         {
           role: 'assistant',
@@ -151,6 +162,39 @@ describe('parseShareRecord', () => {
         },
       ],
     })
+  })
+
+  it('finds artefacts at their message attachment points', () => {
+    const messages = parseShareRecord(
+      {
+        $type: CONVERSATION_COLLECTION,
+        snapshot: {
+          schemaVersion: 1,
+          title: 'Inline preview',
+          createdAt: '2026-07-29T18:00:00.000Z',
+          messages: [
+            {
+              role: 'assistant',
+              blocks: [
+                {
+                  kind: 'markdown',
+                  payload: 'Before the preview.',
+                },
+                {
+                  kind: 'artefactReference',
+                  payload: '',
+                  attributes: { artefactID: '3aaaaaaaaaaaa' },
+                },
+              ],
+            },
+          ],
+          artefacts: [],
+        },
+      },
+      CONVERSATION_COLLECTION,
+    ).messages
+
+    expect([...referencedArtefactIDs(messages)]).toEqual(['3aaaaaaaaaaaa'])
   })
 
   it('parses a typed artefact record', () => {

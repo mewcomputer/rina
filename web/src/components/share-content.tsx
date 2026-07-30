@@ -1,5 +1,6 @@
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
   Check,
@@ -19,11 +20,19 @@ import {
 import type {
   ShareArtefact,
   ShareBlock,
+  ShareGenerationMetadata,
   ShareMessage,
   ShareProviderContinuation,
 } from '@/lib/share'
+import { parseAtUri } from '@/lib/share'
 
-export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
+export function ShareMessageList({
+  messages,
+  artefacts = [],
+}: {
+  messages: ShareMessage[]
+  artefacts?: ShareArtefact[]
+}) {
   const items = []
 
   for (let index = 0; index < messages.length;) {
@@ -50,6 +59,7 @@ export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
         <ShareMessageCard
           key={message.id ?? `${message.role}-${index}`}
           message={message}
+          artefacts={artefacts}
           toolActivity={{ calls, results, citationBlocks }}
         />,
       )
@@ -75,6 +85,7 @@ export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
       <ShareMessageCard
         key={message.id ?? `${message.role}-${index}`}
         message={message}
+        artefacts={artefacts}
       />,
     )
     index += 1
@@ -83,11 +94,37 @@ export function ShareMessageList({ messages }: { messages: ShareMessage[] }) {
   return items
 }
 
+export function ShareGenerationDetails({
+  generation,
+}: {
+  generation?: ShareGenerationMetadata
+}) {
+  if (!generation) return null
+  const values = [generation.provider, generation.model].filter(Boolean)
+  if (generation.thinkingLevel) values.push(`Thinking ${generation.thinkingLevel}`)
+  if (values.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      {values.map((value, index) => (
+        <span key={`${value}-${index}`} className={index === 0 ? 'font-medium text-foreground/80' : undefined}>
+          {value}
+          {index < values.length - 1 && (
+            <span aria-hidden="true" className="ml-3 text-border">·</span>
+          )}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function ShareMessageCard({
   message,
+  artefacts = [],
   toolActivity,
 }: {
   message: ShareMessage
+  artefacts?: ShareArtefact[]
   toolActivity?: {
     calls: ShareBlock[]
     results: ShareBlock[]
@@ -108,14 +145,34 @@ export function ShareMessageCard({
       <ThinkingDisclosure continuations={message.providerContinuations} />
       <div className="typeset typeset-docs max-w-[65ch]">
         {message.blocks.map((block, index) => (
-          block.kind === 'citationGroup' || activityCitationIDs.has(block.id)
-            ? null
-            : (
-              <ShareBlockView
+          block.kind === 'artefactReference'
+            ? (
+              <div
                 key={block.id ?? `${block.kind}-${index}`}
-                block={block}
-              />
+                className="not-typeset my-6"
+              >
+                {(() => {
+                  const artefact = artefacts.find(
+                    (candidate) => candidate.id === block.attributes.artefactID,
+                  )
+                  return artefact ? (
+                    <ShareArtefactCard artefact={artefact} />
+                  ) : (
+                    <div className="border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+                      Shared artefact unavailable.
+                    </div>
+                  )
+                })()}
+              </div>
             )
+            : block.kind === 'citationGroup' || activityCitationIDs.has(block.id)
+              ? null
+              : (
+                <ShareBlockView
+                  key={block.id ?? `${block.kind}-${index}`}
+                  block={block}
+                />
+              )
         ))}
       </div>
       {standaloneCitationBlocks.length > 0 && (
@@ -274,13 +331,45 @@ function ShareToolActivityCard({
   )
 }
 
-export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
+export function ShareArtefactCard({
+  artefact,
+  mode = 'preview',
+}: {
+  artefact: ShareArtefact
+  mode?: 'preview' | 'page'
+}) {
   const content = artefact.renderedContent ?? artefact.source
   const isDocument = artefact.kind === 'document'
   const isWeb = artefact.kind === 'web' || artefact.kind === 'inlineWeb'
+  const fullArtefactPath = artefactPath(artefact.uri)
+
+  if (artefact.kind === 'web' && mode === 'preview' && fullArtefactPath) {
+    return (
+      <a href={fullArtefactPath} className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Card className="overflow-hidden border-border/70 bg-card/35 shadow-sm transition-colors group-hover:bg-card/55">
+          <CardHeader className="gap-2 border-b border-border/60 px-5 py-5 sm:px-6">
+            <CardTitle className="text-xl tracking-[-0.025em]">{artefact.title}</CardTitle>
+            <CardDescription className="text-[11px] font-medium uppercase tracking-[0.16em]">
+              Web artefact
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4 px-5 py-5 sm:px-6">
+            <div>
+              <p className="text-sm font-medium">Open full artefact</p>
+              <p className="mt-1 text-sm text-muted-foreground">Launch the interactive experience.</p>
+            </div>
+            <ExternalLink className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </CardContent>
+        </Card>
+      </a>
+    )
+  }
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/35 shadow-sm">
+    <Card className={[
+      'overflow-hidden border-border/70 bg-card/35 shadow-sm',
+      mode === 'page' && artefact.kind === 'web' ? 'min-h-[calc(100svh-8rem)]' : '',
+    ].join(' ')}>
       <CardHeader className="gap-2 border-b border-border/60 px-5 py-5 sm:px-6">
         <CardTitle className="text-xl tracking-[-0.025em]">{artefact.title}</CardTitle>
         <CardDescription className="text-[11px] font-medium uppercase tracking-[0.16em]">
@@ -293,7 +382,12 @@ export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
             <MarkdownContent content={artefact.source} />
           </div>
         ) : isWeb ? (
-          <InlineWebPreview title={artefact.title} content={content} />
+          <WebArtefactPreview
+            title={artefact.title}
+            content={content}
+            isInline={artefact.kind === 'inlineWeb'}
+            isFullscreen={mode === 'page' && artefact.kind === 'web'}
+          />
         ) : (
           <div className="not-typeset">
             <pre className="overflow-x-auto whitespace-pre-wrap text-sm leading-6">
@@ -306,19 +400,72 @@ export function ShareArtefactCard({ artefact }: { artefact: ShareArtefact }) {
   )
 }
 
-function InlineWebPreview({ title, content }: { title: string; content: string }) {
+function WebArtefactPreview({
+  title,
+  content,
+  isInline,
+  isFullscreen = false,
+}: {
+  title: string
+  content: string
+  isInline: boolean
+  isFullscreen?: boolean
+}) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [contentHeight, setContentHeight] = useState<number>()
+
+  useEffect(() => {
+    if (!isInline) return
+
+    const handleMessage = (event: MessageEvent) => {
+      if (
+        event.source !== iframeRef.current?.contentWindow
+        || event.data?.type !== 'rina-artefact-height'
+        || typeof event.data.height !== 'number'
+      ) {
+        return
+      }
+
+      setContentHeight(Math.max(288, Math.ceil(event.data.height)))
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [isInline])
+
+  const className = isInline
+    ? 'block min-h-72 w-full border-0 bg-background'
+    : isFullscreen
+      ? 'block min-h-[calc(100svh-14rem)] w-full overflow-y-auto border-0 bg-background'
+      : 'block h-[min(70vh,32rem)] min-h-64 w-full overflow-y-auto border-0 bg-background'
+
   return (
     <div className="-mx-5 overflow-hidden sm:-mx-6">
       <iframe
+        ref={iframeRef}
         title={`${title} preview`}
         srcDoc={sandboxedWebDocument(content)}
         sandbox="allow-scripts"
-        loading="lazy"
+        loading="eager"
         referrerPolicy="no-referrer"
-        className="block h-[min(70vh,32rem)] min-h-64 w-full border-0 bg-background"
+        className={className}
+        style={isInline ? {
+          height: contentHeight ? `${contentHeight}px` : 'min(78vh, 36rem)',
+        } : undefined}
       />
     </div>
   )
+}
+
+function artefactPath(uri?: string) {
+  if (!uri) return undefined
+
+  try {
+    const reference = parseAtUri(uri)
+    return `/s/${encodeURIComponent(reference.repo)}/${reference.collection}/${reference.rkey}`
+  } catch {
+    return undefined
+  }
 }
 
 function sandboxedWebDocument(content: string) {
@@ -329,6 +476,19 @@ function sandboxedWebDocument(content: string) {
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
     <style type="text/tailwindcss">${themeStyles}</style>
+    <script>
+      (() => {
+        const reportHeight = () => {
+          const height = Math.max(
+            document.body?.scrollHeight ?? 0,
+            document.documentElement?.scrollHeight ?? 0
+          )
+          parent.postMessage({ type: 'rina-artefact-height', height }, '*')
+        }
+        addEventListener('load', reportHeight)
+        new ResizeObserver(reportHeight).observe(document.documentElement)
+      })()
+    </script>
   `
 
   if (/<head\b[^>]*>/i.test(content)) {
@@ -398,7 +558,7 @@ function previewThemeStyles() {
       *, ::before, ::after { box-sizing: border-box; }
       html, body { margin: 0; min-height: 100%; }
       body {
-        padding: 16px;
+        padding: 12px;
         background: var(--background);
         color: var(--foreground);
         overflow-x: hidden;
@@ -413,7 +573,7 @@ function ShareBlockView({ block }: { block: ShareBlock }) {
   ) {
     return (
       <div className="not-typeset">
-    <pre className="overflow-x-auto rounded-lg bg-muted/60 p-4 text-sm leading-6 ring-1 ring-inset ring-border/50">
+        <pre className="overflow-x-auto rounded-lg bg-muted/60 p-4 text-sm leading-6 ring-1 ring-inset ring-border/50">
           {block.payload}
         </pre>
       </div>

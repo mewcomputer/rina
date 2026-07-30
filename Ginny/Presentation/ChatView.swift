@@ -209,6 +209,11 @@ struct ChatView: View {
             ConversationSharePreviewSheet(
                 conversation: session.conversation,
                 artefacts: artefacts.artefacts,
+                generation: RinaGenerationMetadata(
+                    provider: settings.provider.displayName,
+                    model: settings.modelText.trimmingCharacters(in: .whitespacesAndNewlines),
+                    thinkingLevel: settings.thinkingLevel.displayName
+                ),
                 publication: publicationStore.publications.first {
                     $0.collection == AtprotoRecordCollection.conversation
                         && $0.subjectID == session.conversation.id.rawValue.rawValue
@@ -864,6 +869,7 @@ private struct ChatHeader: View {
 private struct ConversationSharePreviewSheet: View {
     let conversation: Conversation
     let artefacts: [Artefact]
+    let generation: RinaGenerationMetadata
     let publication: AtprotoPublication?
     let sharingService: AtprotoSharingService
     @ObservedObject var publicationStore: AtprotoPublicationStore
@@ -980,7 +986,8 @@ private struct ConversationSharePreviewSheet: View {
 
                 let snapshot = AtprotoSnapshotBuilder.conversation(
                     conversation,
-                    artefactReferences: publishedArtefactReferences
+                    artefactReferences: publishedArtefactReferences,
+                    generation: generation
                 )
                 let published = try await sharingService.publish(
                     snapshot,
@@ -1816,7 +1823,8 @@ private struct ArtefactReferenceView: View {
     @ObservedObject var store: ArtefactStore
     let markdownConfig: MarkdownRenderConfig
     @Environment(\.ginnyTheme) private var theme
-    @State private var inlineHeight: CGFloat = 180
+    @State private var inlineHeight: CGFloat = 220
+    @State private var showingWebArtefact = false
     @State private var approvedNetworkOrigins: [String] = []
     @State private var pendingNetworkOrigin: String?
     @AppStorage(ArtefactPreferences.allowAllNetworkRequestsKey) private var allowAllNetworkRequests = false
@@ -1846,7 +1854,7 @@ private struct ArtefactReferenceView: View {
                             }
                         )
                         .frame(maxWidth: .infinity)
-                        .frame(height: min(inlineHeight, WebArtefactPreview.maxInlineHeight))
+                        .frame(height: max(inlineHeight, 1))
                     }
                     .alert(
                         "Allow network access?",
@@ -1878,34 +1886,138 @@ private struct ArtefactReferenceView: View {
                     )
                 }
             } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 8) {
-                        Image(systemName: artefact.kind == .inlineWeb ? "rectangle.on.rectangle" : "doc.text")
-                        Text(artefact.title)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                        Text(artefact.kind.rawValue)
-                            .font(.caption)
-                            .foregroundStyle(theme.color("text.muted"))
-                    }
+                if artefact.kind == .web {
+                    Button {
+                        showingWebArtefact = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "globe")
+                                .font(.title3)
+                                .foregroundStyle(theme.color("primary"))
 
-                    Text(revision.source)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(theme.color("text.muted"))
-                        .lineLimit(5)
-                        .textSelection(.enabled)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(artefact.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .lineLimit(2)
+                                Text("Open interactive artefact")
+                                    .font(.caption)
+                                    .foregroundStyle(theme.color("text.muted"))
+                            }
+
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.up.right")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(theme.color("text.muted"))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(
+                            theme.color("card").opacity(0.35),
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .fullScreenCover(isPresented: $showingWebArtefact) {
+                        FullscreenWebArtefactView(
+                            title: artefact.title,
+                            html: revision.renderedContent ?? revision.source,
+                            networkOrigins: ArtefactNetworkPolicy(metadata: revision.metadata).origins,
+                            allowAllNetworkRequests: allowAllNetworkRequests
+                        )
+                        .environment(\.ginnyTheme, theme)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: artefact.kind == .inlineWeb ? "rectangle.on.rectangle" : "doc.text")
+                            Text(artefact.title)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Text(artefact.kind.rawValue)
+                                .font(.caption)
+                                .foregroundStyle(theme.color("text.muted"))
+                        }
+
+                        Text(revision.source)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(theme.color("text.muted"))
+                            .lineLimit(5)
+                            .textSelection(.enabled)
+                    }
+                    .padding(14)
+                    .background(
+                        theme.color("card").opacity(0.35),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
                 }
-                .padding(14)
-                .background(
-                    theme.color("card").opacity(0.35),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
             }
         } else {
             Label("Artefact unavailable", systemImage: "exclamationmark.triangle")
                 .font(.footnote)
                 .foregroundStyle(theme.color("text.muted"))
+        }
+    }
+}
+
+private struct FullscreenWebArtefactView: View {
+    let title: String
+    let html: String
+    let networkOrigins: [String]
+    let allowAllNetworkRequests: Bool
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.ginnyTheme) private var theme
+    @State private var approvedNetworkOrigins: [String] = []
+    @State private var pendingNetworkOrigin: String?
+
+    private var permittedNetworkOrigins: [String] {
+        Array(Set(networkOrigins + approvedNetworkOrigins)).sorted()
+    }
+
+    var body: some View {
+        NavigationStack {
+            WebArtefactPreview(
+                html: html,
+                isInline: false,
+                networkOrigins: permittedNetworkOrigins,
+                allowAllNetworkRequests: allowAllNetworkRequests,
+                onNetworkOriginRequest: { origin in
+                    guard !permittedNetworkOrigins.contains(origin), pendingNetworkOrigin == nil else { return }
+                    pendingNetworkOrigin = origin
+                }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(theme.color("background"))
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .tint(theme.color("primary"))
+        .alert(
+            "Allow network access?",
+            isPresented: Binding(
+                get: { pendingNetworkOrigin != nil },
+                set: { isPresented in
+                    if !isPresented { pendingNetworkOrigin = nil }
+                }
+            )
+        ) {
+            Button("Allow") {
+                if let origin = pendingNetworkOrigin,
+                   !approvedNetworkOrigins.contains(origin) {
+                    approvedNetworkOrigins.append(origin)
+                }
+                pendingNetworkOrigin = nil
+            }
+            Button("Don’t Allow", role: .cancel) {
+                pendingNetworkOrigin = nil
+            }
+        } message: {
+            Text("This artefact wants to connect to \(pendingNetworkOrigin ?? "a new site").")
         }
     }
 }

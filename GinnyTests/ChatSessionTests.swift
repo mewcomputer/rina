@@ -16,6 +16,8 @@ final class ChatSessionTests: XCTestCase {
         XCTAssertTrue(systemMessage.content.contains("artefact"))
         XCTAssertTrue(systemMessage.content.contains("immutable revisions"))
         XCTAssertTrue(systemMessage.content.contains("inlineWeb"))
+        XCTAssertTrue(systemMessage.content.contains("fullscreen-sized canvas"))
+        XCTAssertTrue(systemMessage.content.contains("compact launch card"))
         XCTAssertTrue(systemMessage.content.contains("discover_skills"))
         XCTAssertTrue(systemMessage.content.contains("create_artefact"))
         XCTAssertTrue(systemMessage.content.contains("display_artefact"))

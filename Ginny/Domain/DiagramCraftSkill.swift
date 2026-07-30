@@ -11,6 +11,13 @@ description: Create clear SVG diagrams, charts, and interactive visuals in a Tai
 
 Use this skill when you need to create a visual directly with SVG, HTML, Tailwind, and shadcn/ui.
 
+Choose the artefact kind before designing. Use `inlineWeb` for a focused visual embedded in chat.
+Use `web` for an immersive experience such as a game, simulation, editor, map, or interactive demo
+that needs its own scene, navigation, persistent controls, or a fullscreen-sized canvas. The strict
+seamless-host rules below apply to `inlineWeb` and host-facing UI. A `web` scene may own its visual
+background, physical materials, lighting, and internal scrolling, while keeping controls, labels,
+focus states, network access, and accessibility within Ginny’s injected boundaries.
+
 ## Governing principle: make the widget seamless
 
 The user should not be able to tell where the chat response ends and the widget begins. Treat the widget as a visual extension of the response, not as a separate mini-application or document.
@@ -38,6 +45,87 @@ Follow this order:
 7. Run the pre-flight checks.
 
 Do not start with colors or markup. A technically correct diagram can still fail if the form or layout is wrong.
+
+---
+
+## Hard constraints: three tiers
+
+These rules are intentionally strict for inlineWeb. Ginny injects Tailwind CSS, shadcn-compatible utilities,
+and the project’s theme variables into every web and inlineWeb preview. The artefact is a guest
+inside the host conversation, not a standalone design exercise.
+
+Do not slop the visual. Do not manufacture a dashboard, poster, card grid, decorative hero,
+or mini design system when a focused diagram will do. Every shape, color, label, and control must
+earn its place by explaining the mechanism or supporting the interaction.
+
+### Tier 1 — breaks
+
+These are non-negotiable and must be checked before returning the artefact:
+
+- Ginny injects Tailwind CSS and the theme colors. Do not include Tailwind, a CDN stylesheet,
+  a CSS reset, a second palette, or replacement theme variables.
+- Do not put literal colors in inlineWeb or host-facing UI. No hex, `rgb()`, `hsl()`, `oklch()`,
+  named colors, inline SVG colors, or invented color variables. Use the injected semantic and chart
+  tokens. A full web scene may use physical colors only when they describe the depicted object or
+  lighting, never as a replacement for injected control or host UI tokens.
+- Keep an inlineWeb root transparent. Do not add a full-canvas background, outer border, host card,
+  visible title, subtitle, caption, instructions, or explanatory prose. A full web scene may own a
+  background and scene shell when those are the experience itself.
+- In SVG, use `fill-*` for `<text>`, never only `text-*`; use `fill-none` on every connector path.
+- Use literal Tailwind class names. Never interpolate class names such as ``fill-chart-${i}``.
+- Give every SVG marker and clip-path a diagram-unique ID. IDs are global across the page.
+- Keep inlineWeb content in normal flow. Never use `position: fixed` or a full-device canvas in an
+  inlineWeb artefact. A web artefact may use a fullscreen-sized scene when its interaction requires it.
+- Keep state in memory or the provided artefact API. Never use `localStorage` or `sessionStorage`
+  in a sandboxed preview.
+- Format every displayed number with rounding or a formatter. Floating-point noise is a rendering
+  failure, not a cosmetic detail.
+- Do not use `role="img"` on an SVG that contains focusable controls.
+
+### Tier 2 — reads as broken
+
+These choices render, but make the visual feel like a bug or a low-quality generated widget:
+
+- Use one fixed `viewBox` width, preferably `680`, across related diagrams. Do not let a narrow
+  diagram magnify its text relative to the rest of the set.
+- Prefer three or four major nodes. Split before seven. Do not hand-place dense ERDs or class
+  diagrams; use Mermaid for schema layout.
+- Do not draw cycles as rings, rotate text, draw backward arrows through a linear flow, or let
+  connectors pass through shapes and rely on fills to hide them.
+- Do not solve label collisions with opaque rectangles behind text. Move, shorten, simplify, or
+  split the diagram.
+- Do not use black or neutral text on a colored fill. Use a readable same-hue token.
+- Do not assign colors by sequence. Color encodes category, magnitude, polarity, status, or
+  emphasis, never “step one is blue.” Never use role-loaded status colors as arbitrary categories.
+- Never let color be the only encoding. Add line style, shape, marker, or another cue.
+- Do not add more hues to rescue an overcrowded chart. Fold minor series into “other,” use small
+  multiples, or switch to a table.
+- Never invent geographic coordinates or topology. Fetch real data or do not draw a map.
+- Strip every label as a test. If the remaining shapes do not convey a mechanism or relationship,
+  the visual is decoration and should become prose.
+
+### Tier 3 — design-system opinions
+
+These are defaults, not physics. Break them only for a clear reason and keep the surrounding
+system coherent:
+
+- Use two font sizes: 14px for primary labels and 12px for secondary labels.
+- Use weights 400 and 500. Avoid 600/700 unless the host system requires them.
+- Use `0.5` for hairline boundaries and `1.5` for connectors.
+- Use an 8px corner radius and 12px internal box padding unless the injected theme suggests otherwise.
+- Keep animation loops under two seconds and animate only `transform` or `opacity`.
+
+### Hard numbers
+
+| Constraint | Default | Ceiling or rule |
+|---|---:|---|
+| Related SVG `viewBox` width | `680` | keep fixed across the set |
+| Primary / secondary text sizes | `14px` / `12px` | two sizes only |
+| Hairline / connector stroke | `0.5` / `1.5` | do not make structure heavier to solve layout |
+| Major nodes | `3–4` | split at `7` |
+| Category hues | `2–3` | `5` is the hard maximum |
+| Chart series | `5` | fold minor series past `7` |
+| Bottom padding | `40px` | add descender allowance first |
 
 ---
 
@@ -139,7 +227,8 @@ A shadcn/ui project already provides theme-aware colors. Use those tokens instea
 
 The widget root must remain transparent. Tokens such as `--card` and `--muted` may be used for meaningful internal nodes, regions, controls, or plotted areas, but never to paint an outer widget background or recreate the host card.
 
-Do not place literal hex values in diagram markup.
+Do not place literal hex values in inlineWeb or host-facing UI. A full web scene may use physical
+colors for depicted materials and lighting when tokens would misrepresent the subject.
 
 Dark mode should normally come from the ancestor `.dark` class. Avoid adding individual `dark:` variants unless they are genuinely needed.
 
@@ -186,7 +275,7 @@ A chart token provides one solid color, but a diagram node often needs:
 - a stronger border
 - readable text from the same color family
 
-There are two supported approaches.
+Use the injected tokens directly. If a node needs a softer fill, prefer an opacity modifier.
 
 #### Option A: use opacity modifiers
 
@@ -197,30 +286,13 @@ This is the simplest option and works automatically in light and dark mode.
 <text class="fill-chart-1 text-sm font-medium">Auth service</text>
 ```
 
-#### Option B: add subtle and strong token variants
+Do not add a second palette for inlineWeb or host-facing UI. If the injected tokens do not provide
+a suitable variant, use a neutral token or simplify the visual. A full web scene may use physical
+colors for its depicted materials, but must still use injected tokens for controls, labels, focus
+states, and host-facing UI.
 
-Use this when the node needs an opaque fill.
-
-Match the token format already used by the project. Current Tailwind v4 and shadcn setups often use `oklch()` values and `@theme inline`. Older projects may use HSL channels.
-
-```css
-:root {
-  --chart-1-subtle: oklch(0.95 0.03 250);
-  --chart-1-strong: oklch(0.45 0.13 250);
-}
-
-.dark {
-  --chart-1-subtle: oklch(0.32 0.07 250);
-  --chart-1-strong: oklch(0.82 0.09 250);
-}
-
-@theme inline {
-  --color-chart-1-subtle: var(--chart-1-subtle);
-  --color-chart-1-strong: var(--chart-1-strong);
-}
-```
-
-For colored nodes, use same-hue text rather than black, `--foreground`, or neutral gray. The text should belong to the same color ramp as the fill and border.
+For colored nodes, use same-hue text rather than black, `--foreground`, or neutral gray. The text
+should belong to the same injected color ramp as the fill and border.
 
 ---
 

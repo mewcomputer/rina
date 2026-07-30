@@ -129,7 +129,11 @@ describe('AtprotoShareClient', () => {
 
     await expect(client.fetchAtUri(conversationURI)).resolves.toMatchObject({
       artefacts: [
-        expect.objectContaining({ title: 'Shared preview', kind: 'inlineWeb' }),
+        expect.objectContaining({
+          title: 'Shared preview',
+          kind: 'inlineWeb',
+          uri: artefactURI,
+        }),
       ],
     })
   })

@@ -74,6 +74,13 @@ final class SkillTests: XCTestCase {
         XCTAssertTrue(diagram.keywords.contains("diagram"))
         XCTAssertTrue(diagram.currentRevision?.instructions.contains("make the widget seamless") == true)
         XCTAssertTrue(diagram.currentRevision?.instructions.contains("fill-*") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("Ginny injects Tailwind CSS") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("Do not put literal colors") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("Tier 1") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("Do not slop") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("Choose the artefact kind") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("immersive experience") == true)
+        XCTAssertTrue(diagram.currentRevision?.instructions.contains("full web scene") == true)
     }
 
     func testDiscoveryToolReturnsMatchingSkillDescriptors() async throws {

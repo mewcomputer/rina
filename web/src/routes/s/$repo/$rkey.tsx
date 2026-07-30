@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   ShareArtefactCard,
+  ShareGenerationDetails,
   ShareMessageList,
 } from '@/components/share-content'
 import {
@@ -13,6 +14,7 @@ import {
 } from '@/lib/atproto-share-client'
 import {
   SHARE_COLLECTION,
+  referencedArtefactIDs,
 } from '@/lib/share'
 
 export const Route = createFileRoute('/s/$repo/$rkey')({
@@ -28,6 +30,10 @@ export const Route = createFileRoute('/s/$repo/$rkey')({
 function SharePage() {
   const snapshot = Route.useLoaderData()
   const [shareStatus, setShareStatus] = useState<ShareStatus>('idle')
+  const inlineArtefactIDs = referencedArtefactIDs(snapshot.messages)
+  const standaloneArtefacts = snapshot.artefacts.filter(
+    (artefact) => !inlineArtefactIDs.has(artefact.id ?? ''),
+  )
 
   return (
     <section className="min-h-[calc(100svh-3.5rem)]">
@@ -44,6 +50,7 @@ function SharePage() {
             <time className="block text-sm text-muted-foreground" dateTime={snapshot.createdAt}>
               Shared {new Date(snapshot.createdAt).toLocaleDateString()}
             </time>
+            <ShareGenerationDetails generation={snapshot.generation} />
           </div>
           <ShareMenu onShare={shareCurrentPage} onStatusChange={setShareStatus} />
           <span className="sr-only" role="status" aria-live="polite">
@@ -55,15 +62,15 @@ function SharePage() {
 
         <div className="mx-auto max-w-3xl space-y-12 pt-10 sm:pt-14">
           <div className="space-y-10">
-            <ShareMessageList messages={snapshot.messages} />
+            <ShareMessageList messages={snapshot.messages} artefacts={snapshot.artefacts} />
           </div>
-          {snapshot.artefacts.length > 0 && (
+          {standaloneArtefacts.length > 0 && (
             <section className="space-y-5 border-t border-border/70 pt-8">
               <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                 Artefacts
               </p>
               <div className="space-y-6">
-                {snapshot.artefacts.map((artefact, index) => (
+                {standaloneArtefacts.map((artefact, index) => (
                   <ShareArtefactCard
                     key={artefact.id ?? `${artefact.title}-${index}`}
                     artefact={artefact}

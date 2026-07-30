@@ -184,10 +184,24 @@ enum CuratedSkills {
         a replacement color to get around the role.
         For HTML or React/Tailwind-style artefacts, preserve the component intent in the
         source but provide a self-contained HTML/CSS/JavaScript preview with no dependency downloads.
+        Choose inlineWeb for a compact visual embedded in the conversation. Choose web for a
+        standalone experience such as a game, simulation, editor, dashboard, map, or rich demo
+        that needs its own scene, navigation, persistent controls, or a fullscreen-sized canvas.
+        In chat, web artefacts appear as launch cards and open into their full surface.
         Network access is denied by default. If live network behavior is explicitly requested,
         declare exact HTTPS origins in metadata.networkOrigins as a JSON array. Never use wildcards,
         local endpoints, credentials, or undeclared network destinations. Keep inline artefacts
-        self-contained and appropriate to the available space.
+        self-contained and appropriate to the available space. Prefer compact vertical rhythm,
+        modest padding, short gaps, and useful content near the top. Avoid empty vertical bands
+        and oversized headings. Inline artefacts should use normal flow and content-sized sections
+        so the host conversation owns scrolling, with no nested scroll regions or fixed-height
+        inline canvases. If viewport-relative height is useful, use a bounded 72–80vh section
+        rather than a full-device 100vh canvas so the host can scroll.
+        Those compact, transparent rules apply to inlineWeb. A web artefact may own a bounded or
+        fullscreen scene and internal scrolling when the experience needs it. Physical scene colors
+        are allowed when they describe the object or lighting; use injected tokens for controls,
+        labels, focus states, and host-facing UI. Keep the same network, sandbox, responsiveness,
+        and accessibility boundaries.
         """,
         targetKinds: [.web, .inlineWeb],
         keywords: ["frontend", "web", "react", "tailwind", "shadcn", "ui", "accessibility"],

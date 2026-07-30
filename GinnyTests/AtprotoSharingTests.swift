@@ -49,6 +49,27 @@ final class AtprotoSharingTests: XCTestCase {
         XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("private tool output"))
     }
 
+    func testConversationSnapshotCarriesOptionalGenerationMetadata() throws {
+        let conversation = Conversation(title: "A shared session")
+        let metadata = RinaGenerationMetadata(
+            provider: "Umans",
+            model: "umans-coder",
+            thinkingLevel: "high"
+        )
+
+        let snapshot = AtprotoSnapshotBuilder.conversation(
+            conversation,
+            generation: metadata
+        )
+
+        XCTAssertEqual(snapshot.generation, metadata)
+        let decoded = try JSONDecoder().decode(
+            RinaConversationSnapshot.self,
+            from: JSONEncoder().encode(snapshot)
+        )
+        XCTAssertEqual(decoded.generation, metadata)
+    }
+
     func testArtefactRecordUsesCurrentRevision() throws {
         var artefact = Artefact(title: "Accessible card", kind: .code)
         let revisionID = artefact.checkpoint(
